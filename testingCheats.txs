@@ -1,0 +1,38 @@
+// add a user and test
+
+localStorage.setItem('trustu_token', 'dev-mock-token-123')
+
+localStorage.setItem('trustu_user', JSON.stringify({
+  id: "1",
+  name: "Abu Laise",
+  email: "abu@example.com",
+  phone: "+91 9876543210",
+  gender: "Male",
+  designation: "Student",
+  institute: "Jamia Millia Islamia",
+  avatarUrl: null,
+  profileComplete: true,
+  communityJoined: true,
+  communityId: "c-001",
+  communityName: "Jamia Millia Islamia Community",
+  createdAt: "2024-01-01T00:00:00.000Z",
+  updatedAt: "2024-01-01T00:00:00.000Z"
+}))
+
+// remove user
+
+localStorage.removeItem('trustu_token')
+localStorage.removeItem('trustu_user')
+
+// add mock data
+
+localStorage.setItem('trustu_mock', 'true')
+
+// remove mock data
+
+localStorage.removeItem('trustu_mock')
+
+1. Delete src/mocks/ folder
+2. Remove these 2 lines from apiClient.ts:
+    import { setupMockInterceptor } from '@/mocks/mockInterceptor'
+    setupMockInterceptor(apiClient)
