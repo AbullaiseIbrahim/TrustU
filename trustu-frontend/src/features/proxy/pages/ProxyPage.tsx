@@ -1,11 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Box, Chip } from '@mui/material'
 import DeliveryDiningOutlinedIcon from '@mui/icons-material/DeliveryDiningOutlined'
+import { useSearchParams } from 'react-router-dom'
 import FilterBar, { type FilterField, type FilterValues } from '@/components/FilterBar'
 import ListingCard from '@/components/ListingCard'
 import ContentSkeleton from '@/components/ContentSkeleton'
 import EmptyState from '@/components/EmptyState'
 import { useProxyListings } from '../hooks/useProxyQueries'
+import CreateProxyDialog from '../components/CreateProxyDialog'
 import { makeStyles } from 'tss-react/mui'
 import { formatINR } from '@/utils'
 import colors from '@/theme/colors'
@@ -48,6 +50,16 @@ const INITIAL_FILTERS: FilterValues = { service_type: '', charge_max: '', locati
 const ProxyPage: React.FC = () => {
   const { classes } = useStyles()
   const [filters, setFilters] = useState<FilterValues>(INITIAL_FILTERS)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Auto-open create dialog if navigated with ?action=create-proxy
+  useEffect(() => {
+    if (searchParams.get('action') === 'create-proxy') {
+      setCreateOpen(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const apiParams = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== ''))
   const { data, isLoading, isError } = useProxyListings(Object.keys(apiParams).length > 0 ? apiParams : undefined)
@@ -91,6 +103,8 @@ const ProxyPage: React.FC = () => {
           />
         ))}
       </Box>
+
+      <CreateProxyDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </Box>
   )
 }

@@ -7,19 +7,13 @@ import {
   TextField,
   InputAdornment,
   CircularProgress,
-  useMediaQuery,
 } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import SearchIcon from '@mui/icons-material/Search'
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import CheckIcon from '@mui/icons-material/Check'
 import CloseIcon from '@mui/icons-material/Close'
 import { makeStyles } from 'tss-react/mui'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/app/AuthProvider'
-import { PATHS } from '@/routes/paths'
 import { getInitials } from '@/utils'
 import colors from '@/theme/colors'
 import {
@@ -36,90 +30,25 @@ import type { Friend, PendingRequest } from '@/services/friendship.api'
 
 const useStyles = makeStyles()(() => ({
   page: {
-    minHeight: '100vh',
-    backgroundColor: colors.bgMint,
-  },
-
-  // ── Header ──────────────────────────────────────────────────────────────────
-  header: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 1100,
-    backgroundColor: colors.white,
-    borderBottom: `1px solid ${colors.divider}`,
-  },
-  headerInner: {
-    maxWidth: 1100,
-    margin: '0 auto',
-    padding: '0 12px',
-    height: 52,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  headerCenter: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    justifyContent: 'center',
-    minWidth: 0,
-    overflow: 'hidden',
-  },
-  headerRight: {
-    display: 'flex',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  logoCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: '50%',
-    backgroundColor: colors.primary,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  headerBtn: {
-    textTransform: 'none',
-    fontSize: '0.85rem',
-    color: colors.textSecondary,
-    fontWeight: 500,
-    padding: '4px 8px',
-    minWidth: 'auto',
-    '&:hover': {
-      color: colors.textPrimary,
-      backgroundColor: colors.actionHover,
-    },
+    minHeight: '100%',
+    backgroundColor: '#F2F8F3',
   },
 
   // ── Page content ─────────────────────────────────────────────────────────────
   content: {
-    maxWidth: 1100,
-    margin: '0 auto',
-    padding: '24px 16px',
+    padding: '16px',
     display: 'flex',
     flexDirection: 'column',
-    gap: 24,
-    '@media (max-width:600px)': {
-      padding: '16px 12px',
-      gap: 16,
-    },
+    gap: 14,
   },
 
   // ── Section card ─────────────────────────────────────────────────────────────
   section: {
     backgroundColor: colors.white,
-    borderRadius: 12,
+    borderRadius: 20,
     overflow: 'hidden',
-    border: `1px solid ${colors.divider}`,
+    border: '1px solid rgba(0,0,0,0.06)',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
   },
   sectionHeader: {
     display: 'flex',
@@ -170,13 +99,19 @@ const useStyles = makeStyles()(() => ({
 
   // ── Card ──────────────────────────────────────────────────────────────────────
   card: {
-    border: `1px solid ${colors.divider}`,
-    borderRadius: 10,
-    padding: 16,
+    border: '1px solid rgba(0,0,0,0.07)',
+    borderRadius: 16,
+    padding: 14,
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
-    backgroundColor: colors.white,
+    backgroundColor: '#FAFAFA',
+    transition: 'all 0.18s ease',
+    '&:hover': {
+      backgroundColor: colors.white,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+      transform: 'translateY(-1px)',
+    },
   },
   cardTop: {
     display: 'flex',
@@ -187,8 +122,10 @@ const useStyles = makeStyles()(() => ({
     width: 46,
     height: 46,
     fontSize: '1rem',
-    backgroundColor: colors.primary,
+    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primaryDark} 100%)`,
     flexShrink: 0,
+    fontWeight: 700,
+    boxShadow: '0 2px 8px rgba(46,125,50,0.22)',
   },
   memberInfo: {
     flex: 1,
@@ -274,11 +211,6 @@ const EmptySection: React.FC<{ message: string }> = ({ message }) => (
 // ── Component ─────────────────────────────────────────────────────────────────
 const CirclePage: React.FC = () => {
   const { classes } = useStyles()
-  const { user } = useAuth()
-  const navigate = useNavigate()
-  const isMobile = useMediaQuery('(max-width:600px)')
-
-  const communityName = user?.communityName ?? 'Your Community'
 
   const [search, setSearch] = useState('')
   const [sendingTo, setSendingTo] = useState<string | null>(null)
@@ -382,59 +314,6 @@ const CirclePage: React.FC = () => {
 
   return (
     <Box className={classes.page}>
-
-      {/* ── Sticky header ── */}
-      <Box className={classes.header}>
-        <Box className={classes.headerInner}>
-
-          <Box className={classes.headerLeft}>
-            <Button
-              className={classes.headerBtn}
-              startIcon={<ArrowBackIcon sx={{ fontSize: '1rem !important' }} />}
-              onClick={() => navigate(PATHS.dashboard.community)}
-            >
-              {!isMobile && 'Back to Feed'}
-            </Button>
-          </Box>
-
-          <Box className={classes.headerCenter}>
-            <Box className={classes.logoCircle}>
-              <svg width={18} height={14} viewBox="0 0 36 28" fill="none" aria-hidden="true">
-                <circle cx="9" cy="8" r="5" fill="white" />
-                <path d="M0 26C0 21.029 4.029 17 9 17C11.09 17 13.02 17.716 14.55 18.92" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-                <circle cx="27" cy="8" r="5" fill="white" />
-                <path d="M36 26C36 21.029 31.971 17 27 17C24.91 17 22.98 17.716 21.45 18.92" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-                <circle cx="18" cy="7" r="5.5" fill="white" />
-                <path d="M8 27C8 21.477 12.477 17 18 17C23.523 17 28 21.477 28 27" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-              </svg>
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', lineHeight: 1.2, color: colors.textPrimary }}>
-                My Circle
-              </Typography>
-              <Typography sx={{
-                fontSize: '0.68rem', color: colors.textSecondary, lineHeight: 1.2,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160,
-              }}>
-                {communityName}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box className={classes.headerRight}>
-            <Button
-              className={classes.headerBtn}
-              startIcon={<SettingsOutlinedIcon sx={{ fontSize: '1rem !important' }} />}
-              onClick={() => navigate(PATHS.profile)}
-            >
-              {!isMobile && 'My Profile'}
-            </Button>
-          </Box>
-
-        </Box>
-      </Box>
-
-      {/* ── Page content ── */}
       <Box className={classes.content}>
 
         {/* ── Pending Requests section — only shown when there are pending requests ── */}

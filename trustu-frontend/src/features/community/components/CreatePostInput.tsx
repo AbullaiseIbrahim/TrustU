@@ -1,110 +1,242 @@
-import React, { useState } from 'react'
-import { Box, TextField, Button, Avatar, CircularProgress } from '@mui/material'
+import React, { useState, useEffect } from 'react'
+import { Box, Avatar, Typography, CircularProgress, Button } from '@mui/material'
 import { makeStyles } from 'tss-react/mui'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/app/AuthProvider'
 import { useCreatePost } from '../hooks/usePostQueries'
 import { getInitials } from '@/utils'
 import colors from '@/theme/colors'
 
 const useStyles = makeStyles()(() => ({
-  root: {
+  wrapper: {
+    padding: '12px 16px 8px',
+  },
+  // Collapsed pill row
+  pill: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: colors.white,
-    borderBottom: `1px solid ${colors.divider}`,
-    padding: '16px',
-    marginBottom: '12px',
-  },
-  inputRow: {
-    display: 'flex',
-    gap: '12px',
-    alignItems: 'flex-start',
-  },
-  avatar: {
-    width: 38,
-    height: 38,
-    fontSize: '0.875rem',
-    backgroundColor: colors.primary,
-    flexShrink: 0,
-    marginTop: 4,
-  },
-  inputWrapper: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  textField: {
-    '& .MuiOutlinedInput-root': {
-      backgroundColor: colors.bgMint,
-      borderRadius: '10px',
-      fontSize: '0.875rem',
+    borderRadius: 20,
+    padding: '10px 16px',
+    border: '1.5px solid rgba(0,0,0,0.07)',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+    cursor: 'text',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      borderColor: `${colors.primary}50`,
+      boxShadow: `0 2px 14px ${colors.primary}15`,
     },
   },
-  actionRow: {
-    display: 'flex',
-    justifyContent: 'flex-end',
+  avatar: {
+    width: 36,
+    height: 36,
+    fontSize: '0.82rem',
+    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primaryDark} 100%)`,
+    flexShrink: 0,
+    fontWeight: 700,
+    boxShadow: '0 2px 6px rgba(46,125,50,0.25)',
   },
-  postButton: {
-    textTransform: 'none',
-    fontWeight: 600,
+  pillText: {
+    flex: 1,
+    fontSize: '0.875rem',
+    color: colors.textSecondary,
+    userSelect: 'none',
+  },
+  // Expanded card
+  expandedCard: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    border: `2px solid ${colors.primary}`,
+    boxShadow: `0 4px 20px ${colors.primary}18`,
+    overflow: 'hidden',
+    animation: 'fadeSlideUp 0.2s ease both',
+  },
+  expandedHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '14px 16px 10px',
+    borderBottom: '1px solid rgba(0,0,0,0.05)',
+  },
+  expandedAvatar: {
+    width: 36,
+    height: 36,
+    fontSize: '0.82rem',
+    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primaryDark} 100%)`,
+    flexShrink: 0,
+    fontWeight: 700,
+    boxShadow: '0 2px 6px rgba(46,125,50,0.25)',
+  },
+  userName: {
+    fontWeight: 700,
     fontSize: '0.85rem',
+    color: colors.textPrimary,
+  },
+  userMeta: {
+    fontSize: '0.7rem',
+    color: colors.textSecondary,
+  },
+  titleInput: {
+    width: '100%',
+    border: 'none',
+    outline: 'none',
+    backgroundColor: 'transparent',
+    fontSize: '0.98rem',
+    fontWeight: 700,
+    lineHeight: 1.4,
+    color: colors.textPrimary,
+    fontFamily: 'inherit',
+    padding: '12px 16px 6px',
+    resize: 'none',
+  },
+  bodyInput: {
+    width: '100%',
+    border: 'none',
+    outline: 'none',
+    backgroundColor: 'transparent',
+    fontSize: '0.875rem',
+    lineHeight: 1.65,
+    color: colors.textSecondary,
+    fontFamily: 'inherit',
+    padding: '4px 16px 12px',
+    resize: 'none',
+    minHeight: 72,
+  },
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '10px 14px 12px',
+    borderTop: '1px solid rgba(0,0,0,0.05)',
+    backgroundColor: '#FAFFF9',
+  },
+  charCount: {
+    fontSize: '0.7rem',
+    color: colors.textDisabled,
+    fontWeight: 500,
+  },
+  btnRow: {
+    display: 'flex',
+    gap: 8,
+  },
+  cancelBtn: {
+    borderRadius: 10,
+    fontWeight: 600,
+    fontSize: '0.82rem',
     height: 34,
-    borderRadius: '8px',
-    paddingLeft: '20px',
-    paddingRight: '20px',
+    color: colors.textSecondary,
+    '&:hover': { backgroundColor: '#F3F4F6' },
+  },
+  postBtn: {
+    borderRadius: 10,
+    fontWeight: 700,
+    fontSize: '0.82rem',
+    height: 34,
+    paddingLeft: 20,
+    paddingRight: 20,
+    boxShadow: `0 4px 12px ${colors.primary}35`,
+    '&:hover': { boxShadow: `0 6px 16px ${colors.primary}40` },
+    '&:disabled': { boxShadow: 'none' },
   },
 }))
 
 const CreatePostInput: React.FC = () => {
   const { classes } = useStyles()
   const { user } = useAuth()
-  const [content, setContent] = useState('')
+  const [expanded, setExpanded] = useState(false)
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const createPost = useCreatePost()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'create-post') {
+      setExpanded(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const handlePost = () => {
-    const trimmed = content.trim()
-    if (!trimmed) return
-    createPost.mutate({ content: trimmed }, { onSuccess: () => setContent('') })
+    const t = title.trim()
+    const d = description.trim()
+    if (!t || !d || !user?.communityId) return
+    createPost.mutate(
+      { community_id: user.communityId, title: t, description: d },
+      { onSuccess: () => { setTitle(''); setDescription(''); setExpanded(false) } },
+    )
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handlePost()
-  }
+  const canPost = title.trim().length > 0 && description.trim().length > 0 && !!user?.communityId
 
-  return (
-    <Box className={classes.root}>
-      <Box className={classes.inputRow}>
-        <Avatar className={classes.avatar}>{getInitials(user?.name ?? 'U')}</Avatar>
-        <Box className={classes.inputWrapper}>
-          <TextField
-            className={classes.textField}
-            placeholder="Ask any query to your community..."
-            multiline
-            minRows={1}
-            maxRows={4}
-            fullWidth
-            size="small"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onKeyDown={handleKeyDown}
+  if (expanded) {
+    return (
+      <Box sx={{ px: 2, pt: 1.5, pb: 1 }}>
+        <Box className={classes.expandedCard}>
+          <Box className={classes.expandedHeader}>
+            <Avatar className={classes.expandedAvatar}>{getInitials(user?.name ?? 'U')}</Avatar>
+            <Box>
+              <Typography className={classes.userName}>{user?.name ?? 'You'}</Typography>
+              <Typography className={classes.userMeta}>{user?.communityName ?? 'Community'}</Typography>
+            </Box>
+          </Box>
+
+          <textarea
+            className={classes.titleInput}
+            placeholder="What's your question? Add a title…"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            rows={1}
+            maxLength={120}
+            autoFocus
           />
-          {content.trim() && (
-            <Box className={classes.actionRow}>
+          <textarea
+            className={classes.bodyInput}
+            placeholder="Share the details with your community…"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            maxLength={1000}
+          />
+
+          <Box className={classes.actions}>
+            <Typography className={classes.charCount}>
+              {title.length}/120
+            </Typography>
+            <Box className={classes.btnRow}>
+              <Button
+                className={classes.cancelBtn}
+                onClick={() => { setExpanded(false); setTitle(''); setDescription('') }}
+                size="small"
+              >
+                Cancel
+              </Button>
               <Button
                 variant="contained"
                 color="primary"
-                className={classes.postButton}
+                className={classes.postBtn}
                 onClick={handlePost}
-                disabled={createPost.isPending}
+                disabled={!canPost || createPost.isPending}
+                size="small"
               >
-                {createPost.isPending ? (
-                  <CircularProgress size={16} color="inherit" />
-                ) : (
-                  'Post Query'
-                )}
+                {createPost.isPending
+                  ? <CircularProgress size={14} color="inherit" />
+                  : 'Post'}
               </Button>
             </Box>
-          )}
+          </Box>
         </Box>
+      </Box>
+    )
+  }
+
+  return (
+    <Box className={classes.wrapper}>
+      <Box className={classes.pill} onClick={() => setExpanded(true)}>
+        <Avatar className={classes.avatar}>{getInitials(user?.name ?? 'U')}</Avatar>
+        <Typography className={classes.pillText}>
+          Ask your community something…
+        </Typography>
       </Box>
     </Box>
   )

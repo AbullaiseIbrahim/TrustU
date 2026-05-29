@@ -8,11 +8,12 @@ export const POST_QUERY_KEYS = {
   replies: (postId: string) => ['posts', postId, 'replies'] as const,
 }
 
-/** Fetch paginated community posts */
-export const usePosts = () =>
+/** Fetch paginated community posts — requires communityId to filter correctly */
+export const usePosts = (communityId?: string | null) =>
   useQuery({
-    queryKey: POST_QUERY_KEYS.list,
-    queryFn: () => postsApi.list(),
+    queryKey: [...POST_QUERY_KEYS.list, communityId],
+    queryFn: () => postsApi.list({ community_id: communityId }),
+    enabled: !!communityId,
     staleTime: 30_000,
   })
 

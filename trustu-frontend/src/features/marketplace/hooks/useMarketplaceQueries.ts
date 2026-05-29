@@ -15,6 +15,13 @@ export const useMarketplaceListings = (params?: Record<string, unknown>) =>
     staleTime: 30_000,
   })
 
+export const useUserMarketplaceListings = () =>
+  useQuery({
+    queryKey: MARKETPLACE_KEYS.userList,
+    queryFn: marketplaceApi.userList,
+    staleTime: 30_000,
+  })
+
 export const useCreateMarketplaceListing = () => {
   const { showSuccess, showError } = useSnackbar()
   const queryClient = useQueryClient()

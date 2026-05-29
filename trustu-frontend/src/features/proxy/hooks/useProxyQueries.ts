@@ -15,6 +15,13 @@ export const useProxyListings = (params?: Record<string, unknown>) =>
     staleTime: 30_000,
   })
 
+export const useUserProxyListings = () =>
+  useQuery({
+    queryKey: PROXY_KEYS.userList,
+    queryFn: proxyApi.userList,
+    staleTime: 30_000,
+  })
+
 export const useCreateProxy = () => {
   const { showSuccess, showError } = useSnackbar()
   const queryClient = useQueryClient()

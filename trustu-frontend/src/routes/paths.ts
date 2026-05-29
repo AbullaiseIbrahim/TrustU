@@ -14,6 +14,7 @@ export const PATHS = {
     marketplace: '/dashboard/marketplace',
   },
   profile: '/profile',
+  myListings: '/my-listings',
   circle: '/circle',
   notFound: '/404',
 } as const

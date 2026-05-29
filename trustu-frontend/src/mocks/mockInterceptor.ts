@@ -74,7 +74,7 @@ function getMockResponse(url: string, method: string): unknown | null {
   if (url === '/posts' && m === 'post') {
     const newPost: Post = {
       id: `p-${Date.now()}`, userId: 'u1', userName: 'You', userDesignation: 'Student',
-      content: '(new post)', upvotes: 0, replyCount: 0, hasUpvoted: false,
+      title: '(new post)', description: '', upvotes: 0, replyCount: 0, hasUpvoted: false,
       createdAt: new Date().toISOString(),
     }
     return { data: newPost, message: 'Created', success: true } as ApiResponse<Post>
@@ -86,7 +86,7 @@ function getMockResponse(url: string, method: string): unknown | null {
     const post = MOCK_POSTS.data.find((p) => p.id === upvoteMatch[1])
     const toggled: Post = post
       ? { ...post, hasUpvoted: !post.hasUpvoted, upvotes: post.hasUpvoted ? post.upvotes - 1 : post.upvotes + 1 }
-      : { id: upvoteMatch[1], userId: '', userName: '', userDesignation: '', content: '', upvotes: 1, replyCount: 0, hasUpvoted: true, createdAt: '' }
+      : { id: upvoteMatch[1], userId: '', userName: '', userDesignation: '', title: '', description: '', upvotes: 1, replyCount: 0, hasUpvoted: true, createdAt: '' }
     return { data: toggled, message: 'OK', success: true } as ApiResponse<Post>
   }
 

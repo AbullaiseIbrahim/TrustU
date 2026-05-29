@@ -1,8 +1,8 @@
 import React from 'react'
-import { Box, Typography, Avatar, Link, Chip } from '@mui/material'
-import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
+import { Box, Typography, Avatar } from '@mui/material'
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
-import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import { makeStyles } from 'tss-react/mui'
 import classNames from 'classnames'
 import { getInitials, formatRelativeTime, truncate } from '@/utils'
@@ -22,170 +22,189 @@ export interface ListingCardProps {
   className?: string
   sx?: object
   extra?: React.ReactNode
+  /** listing type key for photo hue: 'accommodation' | 'proxy' | 'marketplace' */
+  listingTypeKey?: 'accommodation' | 'proxy' | 'marketplace'
+  posterName?: string
+}
+
+// Hue by listing type
+const TYPE_HUE: Record<string, number> = {
+  accommodation: 110,
+  proxy: 280,
+  marketplace: 30,
 }
 
 const useStyles = makeStyles()(() => ({
   root: {
     backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: '16px',
-    border: `1px solid ${colors.divider}`,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    marginBottom: '12px',
-    transition: 'box-shadow 0.15s',
-    '&:hover': { boxShadow: '0 2px 12px rgba(0,0,0,0.08)' },
+    borderRadius: 18,
+    overflow: 'hidden',
+    marginBottom: 12,
+    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 6px 22px rgba(20,20,15,0.05)',
+    transition: 'all 0.22s ease',
+    animation: 'fadeSlideUp 0.3s ease both',
+    cursor: 'pointer',
+    '&:hover': {
+      boxShadow: '0 8px 28px rgba(20,20,15,0.10)',
+      transform: 'translateY(-2px)',
+    },
+    '&:active': { transform: 'translateY(0)' },
   },
-  topRow: {
+  photoBlock: {
+    height: 140,
+    position: 'relative',
     display: 'flex',
     alignItems: 'flex-start',
-    gap: '12px',
+    justifyContent: 'flex-end',
+    padding: 10,
   },
-  avatar: {
-    width: 38,
-    height: 38,
-    fontSize: '0.875rem',
-    backgroundColor: colors.primary,
-    flexShrink: 0,
-  },
-  info: {
-    flex: 1,
-    minWidth: 0,
-  },
-  name: {
-    fontWeight: 600,
-    fontSize: '0.9rem',
-    lineHeight: 1.3,
-  },
-  metaRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    marginTop: 2,
-    flexWrap: 'wrap',
-  },
-  metaText: {
-    fontSize: '0.75rem',
-    color: colors.textSecondary,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 2,
-    '& svg': { fontSize: '0.8rem' },
-  },
-  dot: {
-    width: 3,
-    height: 3,
+  saveBtn: {
+    width: 32,
+    height: 32,
     borderRadius: '50%',
-    backgroundColor: colors.textDisabled,
-    flexShrink: 0,
-  },
-  connectionRow: {
+    backgroundColor: 'rgba(255,255,255,0.88)',
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
+    justifyContent: 'center',
+    color: colors.ink3,
+    cursor: 'pointer',
+    '&:hover': { color: colors.urgent },
   },
-  connectionChip: {
-    height: 20,
-    fontSize: '0.7rem',
-    fontWeight: 500,
-  },
-  connected: {
-    backgroundColor: `${colors.successLight}30`,
-    color: colors.successDark,
-  },
-  notConnected: {
-    backgroundColor: colors.grey100,
-    color: colors.textSecondary,
-  },
-  mutualText: {
-    fontSize: '0.72rem',
-    color: colors.textSecondary,
+  body: {
+    padding: '12px 14px',
     display: 'flex',
-    alignItems: 'center',
-    gap: 3,
-    '& svg': { fontSize: '0.8rem' },
+    flexDirection: 'column',
+    gap: 6,
   },
   title: {
     fontWeight: 700,
     fontSize: '0.95rem',
-    color: colors.textPrimary,
+    color: colors.ink,
+    letterSpacing: '-0.3px',
     lineHeight: 1.3,
-    marginBottom: 2,
+  },
+  locationRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+    fontSize: '0.78rem',
+    color: colors.ink3,
+    '& svg': { fontSize: '0.8rem', color: colors.ink4 },
   },
   description: {
     fontSize: '0.8rem',
-    color: colors.textSecondary,
-    lineHeight: 1.5,
+    color: colors.ink3,
+    lineHeight: 1.55,
   },
-  viewLink: {
-    fontSize: '0.8rem',
-    fontWeight: 600,
-    color: colors.primary,
+  footer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTop: `1px solid ${colors.lineSoft}`,
+    marginTop: 2,
+  },
+  fromText: {
+    fontSize: '0.72rem',
+    color: colors.ink4,
+    fontWeight: 500,
+  },
+  viewBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    color: colors.moss,
     cursor: 'pointer',
-    alignSelf: 'flex-start',
-    textDecoration: 'none',
-    '&:hover': { textDecoration: 'underline' },
+    padding: '4px 10px',
+    borderRadius: 8,
+    transition: 'background-color 0.15s ease',
+    '&:hover': { backgroundColor: colors.mossSoft },
+  },
+  posterChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.mossSoft,
+    borderRadius: 20,
+    padding: '4px 10px 4px 4px',
+    marginTop: 2,
+  },
+  posterAvatar: {
+    width: 22,
+    height: 22,
+    fontSize: '0.6rem',
+    fontWeight: 700,
+    background: `linear-gradient(135deg, ${colors.moss}, ${colors.mossDeep})`,
+  },
+  posterName: {
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    color: colors.mossDeep,
+  },
+  mutualText: {
+    fontSize: '0.68rem',
+    color: colors.ink3,
+    fontWeight: 500,
   },
 }))
 
 const ListingCard: React.FC<ListingCardProps> = ({
   id, title, userName, type, location, description, createdAt,
-  isConnected, mutualFriends = 0, onViewDetails, className, sx, extra,
+  mutualFriends = 0, onViewDetails, className, sx, extra,
+  listingTypeKey = 'accommodation', posterName,
 }) => {
   const { classes } = useStyles()
+  const hue = TYPE_HUE[listingTypeKey] ?? 110
+  const photoGradient = `linear-gradient(160deg, oklch(86% 0.04 ${hue}), oklch(70% 0.07 ${hue}))`
 
   return (
-    <Box className={classNames(classes.root, className)} sx={sx}>
-      {/* Title */}
-      {title && <Typography className={classes.title}>{title}</Typography>}
-
-      <Box className={classes.topRow}>
-        <Avatar className={classes.avatar}>{getInitials(title ?? userName ?? 'L')}</Avatar>
-        <Box className={classes.info}>
-          <Typography className={classes.name}>{type}</Typography>
-          <Box className={classes.metaRow}>
-            {location && (
-              <Typography className={classes.metaText}>
-                <LocationOnOutlinedIcon />{location}
-              </Typography>
-            )}
-            {location && <Box className={classes.dot} />}
-            <Typography className={classes.metaText}>
-              <CalendarTodayOutlinedIcon />{formatRelativeTime(createdAt)}
-            </Typography>
-          </Box>
+    <Box className={classNames(classes.root, className)} sx={sx} onClick={() => onViewDetails?.(id)}>
+      {/* Photo placeholder */}
+      <Box className={classes.photoBlock} sx={{ background: photoGradient }}>
+        <Box className={classes.saveBtn} onClick={(e) => e.stopPropagation()}>
+          <FavoriteBorderIcon sx={{ fontSize: '1rem' }} />
         </Box>
       </Box>
 
-      {extra}
+      {/* Body */}
+      <Box className={classes.body}>
+        {title && <Typography className={classes.title}>{title}</Typography>}
 
-      {/* Description */}
-      {description && (
-        <Typography className={classes.description}>
-          {truncate(description, 140)}
-        </Typography>
-      )}
-
-      <Box className={classes.connectionRow}>
-        <Chip
-          size="small"
-          label={isConnected ? 'Connected' : 'Not Connected'}
-          className={classNames(classes.connectionChip, {
-            [classes.connected]: isConnected,
-            [classes.notConnected]: !isConnected,
-          })}
-        />
-        {mutualFriends > 0 && (
-          <Typography className={classes.mutualText}>
-            <PeopleAltOutlinedIcon />{mutualFriends} mutual friends
+        {location && (
+          <Typography className={classes.locationRow}>
+            <LocationOnOutlinedIcon /> {location} · {formatRelativeTime(createdAt)}
           </Typography>
         )}
-      </Box>
 
-      <Link component="button" className={classes.viewLink} onClick={() => onViewDetails?.(id)} underline="hover">
-        View More Details
-      </Link>
+        {extra}
+
+        {description && (
+          <Typography className={classes.description}>{truncate(description, 120)}</Typography>
+        )}
+
+        {/* Poster chip */}
+        {(posterName ?? userName) && (
+          <Box className={classes.posterChip}>
+            <Avatar className={classes.posterAvatar}>{getInitials(posterName ?? userName ?? 'L')}</Avatar>
+            <Typography className={classes.posterName}>{posterName ?? userName}</Typography>
+            {mutualFriends > 0 && (
+              <Typography className={classes.mutualText}>· {mutualFriends} mutual</Typography>
+            )}
+          </Box>
+        )}
+
+        {/* Footer */}
+        <Box className={classes.footer}>
+          <Typography className={classes.fromText}>
+            {type}
+          </Typography>
+          <Box className={classes.viewBtn}>
+            More details <ArrowForwardIcon sx={{ fontSize: '0.82rem' }} />
+          </Box>
+        </Box>
+      </Box>
     </Box>
   )
 }

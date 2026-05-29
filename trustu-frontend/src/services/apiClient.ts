@@ -4,7 +4,6 @@ import axios, {
   type AxiosResponse,
   type AxiosError,
 } from 'axios'
-import { setupMockInterceptor } from '@/mocks/mockInterceptor' // ← remove this line to fully revert
 
 // In development VITE_API_BASE_URL is intentionally empty — Vite proxies /api → backend.
 // In production it holds the full backend host (set in .env.production).
@@ -19,8 +18,12 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 15000,
 })
 
-// ── Dev mock mode (remove this line to fully revert) ─────────────────────────
-setupMockInterceptor(apiClient)
+// ── Dev mock mode (loaded only during local development) ───────────────────
+if (import.meta.env.DEV) {
+  import('@/mocks/mockInterceptor').then(({ setupMockInterceptor }) => {
+    setupMockInterceptor(apiClient)
+  })
+}
 
 // Attach Bearer token from localStorage
 apiClient.interceptors.request.use(

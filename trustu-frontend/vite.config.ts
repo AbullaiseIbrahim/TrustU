@@ -14,8 +14,17 @@ export default defineConfig({
       '@app': path.resolve(__dirname, './src/app'),
       '@routes': path.resolve(__dirname, './src/routes'),
       '@theme': path.resolve(__dirname, './src/theme'),
-      '@assets': path.resolve(__dirname, './src/assets'),
       '@utils': path.resolve(__dirname, './src/utils'),
+    },
+  },
+  build: {
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) return 'vendor'
+        },
+      },
     },
   },
   server: {

@@ -3,7 +3,8 @@ export interface Post {
   userId: string
   userName: string
   userDesignation: string
-  content: string
+  title: string
+  description: string
   upvotes: number
   replyCount: number
   hasUpvoted: boolean
@@ -20,7 +21,9 @@ export interface Reply {
 }
 
 export interface CreatePostPayload {
-  content: string
+  community_id: string
+  title: string
+  description: string
 }
 
 export interface CreateReplyPayload {
