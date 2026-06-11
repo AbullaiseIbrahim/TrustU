@@ -58,18 +58,18 @@ export const authApi = {
     await apiClient.post(ENDPOINTS.auth.logout())
   },
 
-  sendOtp: async (): Promise<{ message: string }> => {
-    const { data } = await apiClient.post<ApiResponse<{ message: string }>>(ENDPOINTS.otp.send())
+  sendOtp: async (identifier: 'email' | 'phone' = 'email'): Promise<{ message: string }> => {
+    const { data } = await apiClient.post<ApiResponse<{ message: string }>>(ENDPOINTS.otp.send(), { identifier })
     return data.data
   },
 
-  verifyOtp: async (otp: string): Promise<{ message: string }> => {
-    const { data } = await apiClient.post<ApiResponse<{ message: string }>>(ENDPOINTS.otp.verify(), { otp })
+  verifyOtp: async (otp: string, identifier: 'email' | 'phone' = 'email'): Promise<{ message: string }> => {
+    const { data } = await apiClient.post<ApiResponse<{ message: string }>>(ENDPOINTS.otp.verify(), { identifier, otp })
     return data.data
   },
 
-  resendOtp: async (): Promise<{ message: string }> => {
-    const { data } = await apiClient.post<ApiResponse<{ message: string }>>(ENDPOINTS.otp.resend())
+  resendOtp: async (identifier: 'email' | 'phone' = 'email'): Promise<{ message: string }> => {
+    const { data } = await apiClient.post<ApiResponse<{ message: string }>>(ENDPOINTS.otp.resend(), { identifier })
     return data.data
   },
 }

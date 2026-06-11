@@ -14,7 +14,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { makeStyles } from 'tss-react/mui'
 import { getInitials, formatRelativeTime } from '@/utils'
 import type { Post } from '@/types/post.types'
-import { useCreateReply, useReplies, useUpvotePost, useDeletePost } from '../hooks/usePostQueries'
+import { useCreateComment, useComments, useLikePost, useDeletePost, useDeleteComment } from '../hooks/usePostQueries'
 import { useAuth } from '@/app/AuthProvider'
 import colors from '@/theme/colors'
 
@@ -195,23 +195,24 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [replyText, setReplyText] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
 
-  const createReplyMutation = useCreateReply(post.id)
-  const upvoteMutation = useUpvotePost()
+  const createCommentMutation = useCreateComment(post.id)
+  const likeMutation = useLikePost()
   const deleteMutation = useDeletePost()
+  const deleteCommentMutation = useDeleteComment(post.id)
 
-  const { data: replies = [], isLoading: loadingReplies } = useReplies(
+  const { data: comments = [], isLoading: loadingComments } = useComments(
     showReplies ? post.id : '',
   )
 
   const isOwnPost = user?.id === post.userId
 
-  const handleReply = () => {
+  const handleComment = () => {
     const trimmed = replyText.trim()
     if (!trimmed) return
-    createReplyMutation.mutate({ content: trimmed }, { onSuccess: () => setReplyText('') })
+    createCommentMutation.mutate({ content: trimmed }, { onSuccess: () => setReplyText('') })
   }
 
-  const handleUpvote = () => upvoteMutation.mutate(post.id)
+  const handleLike = () => likeMutation.mutate({ postId: post.id, hasLiked: post.hasLiked })
 
   const handleDeletePost = () => {
     setMenuAnchor(null)
@@ -275,20 +276,20 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       {/* Actions: heart | comment | upvote | share */}
       <Box className={classes.actions}>
 
-        {/* Heart (maps to upvote API) */}
+        {/* Like */}
         <Box
-          className={cx(classes.actionBtn, { [classes.actionBtnActive]: post.hasUpvoted })}
-          onClick={handleUpvote}
+          className={cx(classes.actionBtn, { [classes.actionBtnActive]: post.hasLiked })}
+          onClick={handleLike}
           role="button"
           aria-label="like"
         >
-          {post.hasUpvoted
+          {post.hasLiked
             ? <FavoriteIcon className={classes.actionIcon} />
             : <FavoriteBorderIcon className={classes.actionIcon} />}
-          <span>{post.upvotes > 0 ? post.upvotes : ''}</span>
+          <span>{post.likes > 0 ? post.likes : ''}</span>
         </Box>
 
-        {/* Comment */}
+        {/* Comments */}
         <Box
           className={classes.actionBtn}
           onClick={() => setShowReplies((prev) => !prev)}
@@ -296,20 +297,20 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           aria-label="comments"
         >
           <ChatBubbleOutlineIcon className={classes.actionIcon} />
-          <span>{post.replyCount > 0 ? post.replyCount : ''}</span>
+          <span>{post.commentCount > 0 ? post.commentCount : ''}</span>
         </Box>
 
-        {/* Upvote */}
+        {/* Helpful (thumbs up — also maps to like) */}
         <Box
-          className={cx(classes.actionBtn, { [classes.actionBtnActive]: post.hasUpvoted })}
-          onClick={handleUpvote}
+          className={cx(classes.actionBtn, { [classes.actionBtnActive]: post.hasLiked })}
+          onClick={handleLike}
           role="button"
-          aria-label="upvote"
+          aria-label="helpful"
         >
-          {post.hasUpvoted
+          {post.hasLiked
             ? <ThumbUpIcon className={classes.actionIcon} />
             : <ThumbUpOutlinedIcon className={classes.actionIcon} />}
-          <span>{post.upvotes > 0 ? post.upvotes : 'Helpful'}</span>
+          <span>{post.likes > 0 ? post.likes : 'Helpful'}</span>
         </Box>
 
         {/* Share (non-functional) */}
@@ -338,27 +339,35 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 color="primary"
                 size="small"
                 className={classes.postBtn}
-                onClick={handleReply}
-                disabled={createReplyMutation.isPending}
+                onClick={handleComment}
+                disabled={createCommentMutation.isPending}
               >
                 Reply
               </Button>
             )}
           </Box>
 
-          {loadingReplies ? (
+          {loadingComments ? (
             <Typography sx={{ fontSize: '0.78rem', color: colors.ink3, pl: 1 }}>
               Loading…
             </Typography>
           ) : (
-            replies.map((reply) => (
-              <Box key={reply.id} className={classes.replyItem}>
-                <Avatar className={classes.replyAvatar}>{getInitials(reply.userName)}</Avatar>
+            comments.map((comment) => (
+              <Box key={comment.id} className={classes.replyItem}>
+                <Avatar className={classes.replyAvatar}>{getInitials(comment.userName)}</Avatar>
                 <Box className={classes.replyBubble}>
                   <Typography className={classes.replyMeta}>
-                    <strong>{reply.userName}</strong> · {formatRelativeTime(reply.createdAt)}
+                    <strong>{comment.userName}</strong> · {formatRelativeTime(comment.createdAt)}
                   </Typography>
-                  <Typography className={classes.replyContent}>{reply.content}</Typography>
+                  <Typography className={classes.replyContent}>{comment.content}</Typography>
+                  {comment.userId === user?.id && (
+                    <Typography
+                      onClick={() => deleteCommentMutation.mutate(comment.id)}
+                      sx={{ fontSize: '0.68rem', color: colors.urgent, cursor: 'pointer', mt: '4px', display: 'inline-block' }}
+                    >
+                      Delete
+                    </Typography>
+                  )}
                 </Box>
               </Box>
             ))

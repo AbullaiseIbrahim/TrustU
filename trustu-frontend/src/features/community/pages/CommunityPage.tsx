@@ -14,8 +14,11 @@ import {
   useAcceptRequest,
   useRejectRequest,
   useRemoveFriend,
+  useSendFriendRequest,
 } from '@/features/circle/hooks/useFriendshipQueries'
 import type { Friend, PendingRequest } from '@/services/friendship.api'
+import { useCommunityMembers } from '../hooks/useCommunityQueries'
+import type { CommunityMember } from '@/types/community.types'
 import { getInitials } from '@/utils'
 import colors from '@/theme/colors'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -23,7 +26,7 @@ import Button from '@mui/material/Button'
 import CheckIcon from '@mui/icons-material/Check'
 import CloseIcon from '@mui/icons-material/Close'
 
-type Tab = 'feed' | 'friends' | 'requests'
+type Tab = 'feed' | 'friends' | 'requests' | 'members'
 
 const useStyles = makeStyles()(() => ({
   // ── Community gradient card ────────────────────────────────────────────────
@@ -264,6 +267,31 @@ const useStyles = makeStyles()(() => ({
     width: '100%',
     padding: '4px 8px',
   },
+  addFriendBtn: {
+    textTransform: 'none',
+    fontWeight: 600,
+    fontSize: '0.75rem',
+    flex: 1,
+    borderRadius: 8,
+    backgroundColor: colors.moss,
+    color: '#fff',
+    '&:hover': { backgroundColor: colors.mossDeep },
+    minWidth: 0,
+    padding: '4px 8px',
+  },
+  friendedPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '4px 10px',
+    borderRadius: 8,
+    border: `1px solid ${colors.line}`,
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    color: colors.ink3,
+    width: '100%',
+    justifyContent: 'center',
+  },
 }))
 
 // ── Community gradient card ────────────────────────────────────────────────────
@@ -437,6 +465,71 @@ const RequestsTab: React.FC = () => {
   )
 }
 
+// ── Members tab ───────────────────────────────────────────────────────────────
+const MembersTab: React.FC<{ communityId?: string | null }> = ({ communityId }) => {
+  const { classes } = useStyles()
+  const { data: members = [], isLoading } = useCommunityMembers(communityId)
+  const { data: friends = [] } = useFriends()
+  const sendRequestMutation = useSendFriendRequest()
+
+  const friendUserIds = new Set((friends as Friend[]).map(f => f.userId))
+
+  if (isLoading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+      <CircularProgress size={28} sx={{ color: colors.moss }} />
+    </Box>
+  )
+
+  return (
+    <Box className={classes.circleContent}>
+      <Box className={classes.circleCard}>
+        <Box className={classes.circleCardHeader}>
+          <Typography className={classes.circleCardTitle}>
+            Community Members ({(members as CommunityMember[]).length})
+          </Typography>
+        </Box>
+        <Box className={classes.memberGrid}>
+          {(members as CommunityMember[]).length === 0 ? (
+            <Typography sx={{ gridColumn: '1/-1', textAlign: 'center', py: 3, color: colors.ink3, fontSize: '0.85rem' }}>
+              No members yet
+            </Typography>
+          ) : (members as CommunityMember[]).map((m) => {
+            const isFriend = friendUserIds.has(m.id)
+            return (
+              <Box key={m.id} className={classes.memberCard}>
+                <Box className={classes.memberCardTop}>
+                  <Avatar className={classes.memberAvatar}>{getInitials(m.name)}</Avatar>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography className={classes.memberName}>{m.name}</Typography>
+                    {m.designation && (
+                      <Typography className={classes.memberDesig}>{m.designation}</Typography>
+                    )}
+                  </Box>
+                </Box>
+                {isFriend ? (
+                  <Box className={classes.friendedPill}>
+                    <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
+                    Friends
+                  </Box>
+                ) : (
+                  <Button
+                    disableElevation
+                    className={classes.addFriendBtn}
+                    onClick={() => sendRequestMutation.mutate(m.id)}
+                    disabled={sendRequestMutation.isPending}
+                  >
+                    Add Friend
+                  </Button>
+                )}
+              </Box>
+            )
+          })}
+        </Box>
+      </Box>
+    </Box>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 const CommunityPage: React.FC = () => {
   const { classes, cx } = useStyles()
@@ -452,8 +545,9 @@ const CommunityPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('feed')
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
-    { key: 'feed', label: 'Feed' },
-    { key: 'friends', label: 'Friends' },
+    { key: 'feed',     label: 'Feed' },
+    { key: 'members',  label: 'Members' },
+    { key: 'friends',  label: 'Friends' },
     { key: 'requests', label: 'Requests', badge: pendingCount },
   ]
 
@@ -512,7 +606,8 @@ const CommunityPage: React.FC = () => {
         </>
       )}
 
-      {activeTab === 'friends' && <FriendsTab />}
+      {activeTab === 'members'  && <MembersTab communityId={user?.communityId} />}
+      {activeTab === 'friends'  && <FriendsTab />}
       {activeTab === 'requests' && <RequestsTab />}
     </Box>
   )

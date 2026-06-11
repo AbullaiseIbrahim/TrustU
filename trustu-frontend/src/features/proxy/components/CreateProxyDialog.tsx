@@ -1,13 +1,15 @@
 import React from 'react'
 import {
   Dialog, DialogTitle, DialogContent, IconButton, Typography,
-  Box, Grid, TextField, MenuItem, Button, CircularProgress, InputAdornment,
+  Box, Grid, TextField, Button, CircularProgress, InputAdornment,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useCreateProxy } from '../hooks/useProxyQueries'
+import DatePickerField from '@/components/DatePickerField'
+import SelectField from '@/components/SelectField'
 
 interface CreateProxyDialogProps {
   open: boolean
@@ -74,12 +76,14 @@ const CreateProxyDialog: React.FC<CreateProxyDialogProps> = ({ open, onClose }) 
             {/* Service Type */}
             <Grid item xs={12} sm={6}>
               <Controller name="serviceType" control={control} render={({ field }) => (
-                <TextField
-                  {...field} select fullWidth label="Service Type"
-                  error={!!errors.serviceType} helperText={errors.serviceType?.message}
-                >
-                  {SERVICE_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-                </TextField>
+                <SelectField
+                  label="Service Type"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  options={SERVICE_TYPES.map(t => ({ value: t, label: t }))}
+                  error={!!errors.serviceType}
+                  helperText={errors.serviceType?.message}
+                />
               )} />
             </Grid>
 
@@ -113,9 +117,16 @@ const CreateProxyDialog: React.FC<CreateProxyDialogProps> = ({ open, onClose }) 
 
             {/* Available Until */}
             <Grid item xs={12} sm={6}>
-              <TextField
-                {...register('availableUntil')} fullWidth label="Available Until (optional)"
-                type="date" InputLabelProps={{ shrink: true }}
+              <Controller
+                name="availableUntil"
+                control={control}
+                render={({ field }) => (
+                  <DatePickerField
+                    label="Available Until (optional)"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                  />
+                )}
               />
             </Grid>
 

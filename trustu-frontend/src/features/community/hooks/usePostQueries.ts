@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { postsApi } from '@/services/posts.api'
 import { useSnackbar } from '@/app/SnackbarProvider'
-import type { CreatePostPayload, CreateReplyPayload } from '@/types/post.types'
+import type { Post, CreatePostPayload, CreateCommentPayload } from '@/types/post.types'
 
 export const POST_QUERY_KEYS = {
   list: ['posts'] as const,
-  replies: (postId: string) => ['posts', postId, 'replies'] as const,
+  comments: (postId: string) => ['posts', postId, 'comments'] as const,
 }
 
 /** Fetch paginated community posts — requires communityId to filter correctly */
@@ -26,20 +26,21 @@ export const useCreatePost = () => {
     mutationFn: (payload: CreatePostPayload) => postsApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.list })
-      showSuccess('Query posted successfully!')
+      showSuccess('Post created successfully!')
     },
     onError: () => {
-      showError('Failed to post query. Please try again.')
+      showError('Failed to create post. Please try again.')
     },
   })
 }
 
-/** Toggle upvote on a post */
-export const useUpvotePost = () => {
+/** Toggle like on a post — calls /like or /unlike based on current state */
+export const useLikePost = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (postId: string) => postsApi.upvote(postId),
+    mutationFn: ({ postId, hasLiked }: { postId: string; hasLiked: boolean }) =>
+      hasLiked ? postsApi.unlike(postId) : postsApi.like(postId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.list })
     },
@@ -63,28 +64,49 @@ export const useDeletePost = () => {
   })
 }
 
-/** Fetch replies for a post */
-export const useReplies = (postId: string) =>
+/** Fetch comments for a post */
+export const useComments = (postId: string) =>
   useQuery({
-    queryKey: POST_QUERY_KEYS.replies(postId),
-    queryFn: () => postsApi.getReplies(postId),
+    queryKey: POST_QUERY_KEYS.comments(postId),
+    queryFn: () => postsApi.getComments(postId),
     enabled: !!postId,
   })
 
-/** Create a reply on a post */
-export const useCreateReply = (postId: string) => {
+/** Create a comment on a post */
+export const useCreateComment = (postId: string) => {
   const { showSuccess, showError } = useSnackbar()
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (payload: CreateReplyPayload) => postsApi.createReply(postId, payload),
+    mutationFn: (payload: CreateCommentPayload) => postsApi.createComment(postId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.replies(postId) })
+      queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.comments(postId) })
       queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.list })
-      showSuccess('Reply posted!')
+      showSuccess('Comment posted!')
     },
     onError: () => {
-      showError('Failed to post reply.')
+      showError('Failed to post comment.')
     },
   })
 }
+
+/** Delete a comment */
+export const useDeleteComment = (postId: string) => {
+  const { showError } = useSnackbar()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (commentId: string) => postsApi.deleteComment(commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.comments(postId) })
+      queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.list })
+    },
+    onError: () => {
+      showError('Failed to delete comment.')
+    },
+  })
+}
+
+// ── Legacy alias kept so PostCard import doesn't break ────────────────────────
+export { useLikePost as useUpvotePost }
+export type { Post }

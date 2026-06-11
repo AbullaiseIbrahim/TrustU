@@ -1,126 +1,94 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import {
   Box,
-  Button,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  FormControl,
-  FormControlLabel,
-  FormHelperText,
-  Grid,
-  IconButton,
-  InputAdornment,
-  InputLabel,
-  MenuItem,
-  Select,
-  Stack,
-  TextField,
   Typography,
   Avatar,
+  Skeleton,
 } from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
-import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined'
+import TuneIcon from '@mui/icons-material/Tune'
+import SearchIcon from '@mui/icons-material/Search'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
-import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined'
-import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee'
-import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
-import { Controller, useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
+import FavoriteIcon from '@mui/icons-material/Favorite'
+import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
+import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined'
 import { makeStyles } from 'tss-react/mui'
-import FilterBar, { type FilterField, type FilterValues } from '@/components/FilterBar'
-import ListingCard from '@/components/ListingCard'
-import EmptyState from '@/components/EmptyState'
-import { Skeleton } from '@mui/material'
 import {
   useAccommodations,
-  useCreateAccommodation,
 } from '../hooks/useAccommodationQueries'
 import {
-  ACCOMMODATION_TYPES,
-  ACCOMMODATION_GENDERS,
   accommodationTypeLabel,
   accommodationGenderLabel,
   type Accommodation,
 } from '@/services/accommodation.api'
-import { useMutualFriends } from '@/features/circle/hooks/useFriendshipQueries'
-import { INDIA_STATES } from '@/constants/states'
-import { useAuth } from '@/app/AuthProvider'
-import { formatINR, formatDate, getInitials } from '@/utils'
+import { formatINR, getInitials } from '@/utils'
 import colors from '@/theme/colors'
-import { PATHS } from '@/routes/paths'
+import EmptyState from '@/components/EmptyState'
+import SharedRoomFilterSheet, {
+  type SharedRoomFilters,
+  EMPTY_SHARED_FILTERS,
+  getActiveChips,
+} from '../components/SharedRoomFilterSheet'
+import SharedRoomDetailSheet from '../components/SharedRoomDetailSheet'
+import ShortStayFilterSheet, {
+  type ShortStayFilters,
+  EMPTY_SHORT_STAY_FILTERS,
+  getShortStayActiveChips,
+} from '../components/ShortStayFilterSheet'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
+
 const useStyles = makeStyles()(() => ({
-  list: {
-    padding: '12px 16px',
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '12px',
-  },
-  infoChips: {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
-    marginTop: '4px',
-    marginBottom: '4px',
-  },
-  chip: {
-    height: 22,
-    fontSize: '0.72rem',
-    fontWeight: 500,
-    backgroundColor: colors.mossSoft,
-    color: colors.mossDeep,
-  },
-  dialogTitle: {
+  // Page sub-header
+  pageHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: '8px',
+    padding: '10px 18px 8px',
   },
-  // Community compact card
-  communityCard: {
-    background: `linear-gradient(140deg, ${colors.moss}, ${colors.mossDeep})`,
-    borderRadius: 18,
-    margin: '8px 16px 4px',
-    padding: '12px 16px',
-    color: '#fff',
-    position: 'relative',
-    overflow: 'hidden',
+  pageHeaderLeft: {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    animation: 'fadeSlideUp 0.3s ease both',
+    flexDirection: 'column',
   },
-  communityCardName: {
+  pageTitle: {
     fontWeight: 700,
-    fontSize: '0.95rem',
-    letterSpacing: '-0.3px',
+    fontSize: '1.15rem',
+    color: colors.ink,
+    letterSpacing: '-0.4px',
   },
-  communityCardLabel: {
-    fontSize: '0.65rem',
-    opacity: 0.7,
-    marginBottom: 2,
+  pageSub: {
+    fontSize: '0.75rem',
+    color: colors.ink3,
     fontWeight: 500,
+    marginTop: 1,
+  },
+  filterIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: colors.cream,
+    border: `1px solid ${colors.line}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    color: colors.ink2,
+    transition: 'all 0.15s ease',
+    '&:hover': { backgroundColor: colors.line },
   },
   // Mode tabs
   modeTabs: {
     display: 'flex',
     gap: 6,
-    padding: '10px 16px 4px',
+    padding: '4px 18px 8px',
     overflowX: 'auto',
     '&::-webkit-scrollbar': { display: 'none' },
   },
   modeTab: {
-    padding: '6px 14px',
+    padding: '6px 16px',
     borderRadius: 20,
-    fontSize: '0.78rem',
+    fontSize: '0.8rem',
     fontWeight: 600,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
@@ -134,476 +102,489 @@ const useStyles = makeStyles()(() => ({
     background: colors.ink,
     color: '#fff',
   },
+  // Search pill
+  searchPill: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    margin: '4px 18px 0',
+    padding: '10px 8px 10px 14px',
+    borderRadius: 999,
+    backgroundColor: colors.white,
+    border: `1.5px solid ${colors.line}`,
+    cursor: 'pointer',
+    transition: 'border-color 0.15s ease',
+    '&:hover': { borderColor: colors.ink3 },
+  },
+  searchText: {
+    flex: 1,
+    fontSize: '0.85rem',
+    color: colors.ink4,
+    fontWeight: 500,
+  },
+  searchArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: '50%',
+    backgroundColor: colors.moss,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  // Filter chips row
+  chipsBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    padding: '10px 18px 4px',
+    overflowX: 'auto',
+    scrollbarWidth: 'none',
+    '&::-webkit-scrollbar': { display: 'none' },
+  },
+  activeChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5,
+    height: 30,
+    paddingLeft: 10,
+    paddingRight: 10,
+    borderRadius: 999,
+    backgroundColor: colors.moss,
+    color: '#fff',
+    fontSize: '0.76rem',
+    fontWeight: 600,
+    flexShrink: 0,
+    cursor: 'default',
+    userSelect: 'none',
+  },
+  clearChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    height: 30,
+    paddingLeft: 10,
+    paddingRight: 10,
+    borderRadius: 999,
+    border: `1px solid ${colors.line}`,
+    backgroundColor: colors.white,
+    color: colors.ink3,
+    fontSize: '0.76rem',
+    fontWeight: 600,
+    flexShrink: 0,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    '&:hover': { backgroundColor: colors.cream },
+  },
+  // List area
+  listArea: {
+    padding: '10px 18px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  // Listing card
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 6px 22px rgba(20,20,15,0.05)',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    animation: 'fadeSlideUp 0.28s ease both',
+    '&:hover': {
+      boxShadow: '0 8px 28px rgba(20,20,15,0.10)',
+      transform: 'translateY(-2px)',
+    },
+    '&:active': { transform: 'translateY(0)' },
+  },
+  // Card photo area
+  photoBlock: {
+    height: 160,
+    position: 'relative',
+  },
+  urgentBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: colors.urgent,
+    color: '#fff',
+    fontSize: '0.65rem',
+    fontWeight: 700,
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    padding: '4px 9px',
+    borderRadius: 6,
+  },
+  typeBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 12,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    color: colors.ink2,
+    fontSize: '0.7rem',
+    fontWeight: 700,
+    padding: '3px 8px',
+    borderRadius: 6,
+    backdropFilter: 'blur(4px)',
+  },
+  heartBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: '50%',
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: 'none',
+    cursor: 'pointer',
+    backdropFilter: 'blur(4px)',
+    transition: 'all 0.15s ease',
+    '&:hover': { backgroundColor: 'rgba(255,255,255,0.96)' },
+  },
+  // Card body
+  cardBody: {
+    padding: '13px 16px 14px',
+  },
+  cardTitle: {
+    fontWeight: 700,
+    fontSize: '0.95rem',
+    color: colors.ink,
+    letterSpacing: '-0.25px',
+    lineHeight: 1.3,
+    marginBottom: 4,
+  },
+  cardLocation: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+    fontSize: '0.76rem',
+    color: colors.ink3,
+    marginBottom: 8,
+    '& svg': { fontSize: '0.82rem', color: colors.ink4 },
+  },
+  cardPrice: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 3,
+    marginBottom: 10,
+  },
+  cardPriceAmt: {
+    fontWeight: 700,
+    fontSize: '1.15rem',
+    color: colors.ink,
+    letterSpacing: '-0.4px',
+  },
+  cardPricePer: {
+    fontSize: '0.78rem',
+    color: colors.ink3,
+    fontWeight: 500,
+  },
+  // Poster row
+  posterRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  posterAvatar: {
+    width: 34,
+    height: 34,
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  posterName: {
+    fontWeight: 700,
+    fontSize: '0.82rem',
+    color: colors.ink,
+  },
+  posterMutual: {
+    fontSize: '0.72rem',
+    color: colors.ink3,
+    fontWeight: 500,
+    marginTop: 1,
+  },
+  addFriendBtn: {
+    marginLeft: 'auto',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '6px 12px',
+    borderRadius: 8,
+    border: `1.5px solid ${colors.moss}`,
+    backgroundColor: 'transparent',
+    color: colors.moss,
+    fontSize: '0.76rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    flexShrink: 0,
+    transition: 'all 0.15s ease',
+    '&:hover': { backgroundColor: colors.mossSoft },
+  },
+  // Card footer
+  cardFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    borderTop: `1px solid ${colors.lineSoft}`,
+  },
+  cardFrom: {
+    fontSize: '0.72rem',
+    color: colors.ink4,
+    fontWeight: 500,
+  },
+  moreLink: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    color: colors.moss,
+    cursor: 'pointer',
+    '& svg': { fontSize: '0.8rem' },
+  },
 }))
 
-// ── Filter config ─────────────────────────────────────────────────────────────
-const FILTER_FIELDS: FilterField[] = [
-  {
-    key: 'type', label: 'Type', type: 'select', options: ACCOMMODATION_TYPES.map(t => ({
-      label: t.label, value: String(t.value),
-    })),
-  },
-  {
-    key: 'gender', label: 'Available For', type: 'select', options: ACCOMMODATION_GENDERS.map(g => ({
-      label: g.label, value: String(g.value),
-    })),
-  },
-]
+// ── Listing Card ──────────────────────────────────────────────────────────────
 
-const INITIAL_FILTERS: FilterValues = { type: '', gender: '' }
-
-// ── Detail dialog ─────────────────────────────────────────────────────────────
-interface DetailDialogProps {
-  acc: Accommodation | null
-  onClose: () => void
+interface CardProps {
+  acc: Accommodation
+  saved: boolean
+  onSave: (id: string) => void
+  onClick: () => void
 }
 
-function AccommodationDetailDialog({ acc, onClose }: DetailDialogProps) {
+const hueForGender = (g: number) => g === 2 ? 340 : g === 1 ? 200 : 110
+
+const AccommodationCard: React.FC<CardProps> = ({ acc, saved, onSave, onClick }) => {
   const { classes } = useStyles()
+  const hue = hueForGender(acc.gender)
+  const heroGrad = `linear-gradient(160deg, oklch(84% 0.05 ${hue}), oklch(70% 0.08 ${hue + 30}))`
+  const avatarHue = 200
+  const avatarGrad = `linear-gradient(140deg, oklch(82% 0.07 ${avatarHue}), oklch(72% 0.09 ${avatarHue + 40}))`
 
-  // ── Mutual friends — only fetch when dialog is open and lister has a userId
-  const { data: mutualFriends = [], isLoading: loadingMutual } = useMutualFriends(
-    acc?.userId ?? '',
-  )
-
-  if (!acc) return null
+  const isUrgent = acc.isNegotiable
+  const flatLabel = acc.type === 1 ? '2BHK' : acc.type === 2 ? '3BHK' : '1BHK'
+  const priceUnit = '/night · per head'
 
   return (
-    <Dialog open={!!acc} onClose={onClose} fullWidth maxWidth="sm"
-      PaperProps={{ sx: { borderRadius: 3 } }}>
-      <DialogTitle className={classes.dialogTitle}>
-        <Typography variant="h6" fontWeight={700} sx={{ pr: 2, lineHeight: 1.3 }}>
-          {acc.title || 'Accommodation Details'}
+    <Box className={classes.card} onClick={onClick}>
+      {/* Photo */}
+      <Box className={classes.photoBlock} sx={{ background: heroGrad }}>
+        {isUrgent && <Box className={classes.urgentBadge}>URGENT</Box>}
+        <Box className={classes.typeBadge}>{flatLabel}</Box>
+        <Box
+          component="button"
+          className={classes.heartBtn}
+          onClick={e => { e.stopPropagation(); onSave(acc.id) }}
+        >
+          {saved
+            ? <FavoriteIcon sx={{ fontSize: '0.9rem', color: colors.urgent }} />
+            : <FavoriteBorderIcon sx={{ fontSize: '0.9rem', color: colors.ink2 }} />}
+        </Box>
+      </Box>
+
+      {/* Body */}
+      <Box className={classes.cardBody}>
+        <Typography className={classes.cardTitle}>
+          {acc.title || 'Stay Listing'}
         </Typography>
-        <IconButton size="small" onClick={onClose} aria-label="close" sx={{ flexShrink: 0 }}>
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
 
-      <DialogContent sx={{ pt: 0 }}>
-        {/* Lister name */}
-        {acc.userName && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <Avatar sx={{ width: 32, height: 32, fontSize: '0.78rem', backgroundColor: colors.primary, fontWeight: 600 }}>
-              {getInitials(acc.userName)}
-            </Avatar>
-            <Box>
-              <Typography sx={{ fontWeight: 600, fontSize: '0.88rem', lineHeight: 1.2, color: colors.textPrimary }}>
-                {acc.userName}
-              </Typography>
-              <Typography sx={{ fontSize: '0.72rem', color: colors.textSecondary }}>Listed this place</Typography>
-            </Box>
-          </Box>
-        )}
-
-        {/* Type + Gender + Negotiable chips */}
-        <Stack direction="row" spacing={1} flexWrap="wrap" mb={2}>
-          <Chip label={accommodationTypeLabel(acc.type)} size="small" className={classes.chip} />
-          <Chip label={accommodationGenderLabel(acc.gender)} size="small" className={classes.chip} />
-          {acc.isNegotiable && <Chip label="Negotiable" size="small" className={classes.chip} />}
-        </Stack>
-
-        {/* Amount */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
-          <CurrencyRupeeIcon sx={{ fontSize: '1.5rem', color: 'primary.main' }} />
-          <Typography variant="h5" fontWeight={700} color="primary.main">
-            {new Intl.NumberFormat('en-IN').format(acc.amount)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5, mt: 0.5 }}>
-            / month
-          </Typography>
+        <Box className={classes.cardLocation}>
+          <LocationOnOutlinedIcon />
+          {accommodationTypeLabel(acc.type)} · {acc.address}
         </Box>
 
-        <Divider sx={{ mb: 2 }} />
-
-        {/* Key details — 2×2 grid */}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-          {acc.address && (
-            <Box sx={{ display: 'flex', gap: 1, width: 'calc(50% - 8px)' }}>
-              <LocationOnOutlinedIcon sx={{ fontSize: '1.1rem', color: 'text.secondary', mt: 0.1, flexShrink: 0 }} />
-              <Box>
-                <Typography variant="caption" color="text.secondary" display="block">Location</Typography>
-                <Typography variant="body2" fontWeight={500}>{acc.address}</Typography>
-              </Box>
-            </Box>
-          )}
-          {acc.availableFrom && (
-            <Box sx={{ display: 'flex', gap: 1, width: 'calc(50% - 8px)' }}>
-              <CalendarTodayOutlinedIcon sx={{ fontSize: '1.1rem', color: 'text.secondary', mt: 0.1, flexShrink: 0 }} />
-              <Box>
-                <Typography variant="caption" color="text.secondary" display="block">Available From</Typography>
-                <Typography variant="body2" fontWeight={500}>{formatDate(acc.availableFrom)}</Typography>
-              </Box>
-            </Box>
-          )}
-          <Box sx={{ display: 'flex', gap: 1, width: 'calc(50% - 8px)' }}>
-            <PeopleAltOutlinedIcon sx={{ fontSize: '1.1rem', color: 'text.secondary', mt: 0.1, flexShrink: 0 }} />
-            <Box>
-              <Typography variant="caption" color="text.secondary" display="block">Available For</Typography>
-              <Typography variant="body2" fontWeight={500}>{accommodationGenderLabel(acc.gender)}</Typography>
-            </Box>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 1, width: 'calc(50% - 8px)' }}>
-            <CalendarTodayOutlinedIcon sx={{ fontSize: '1.1rem', color: 'text.secondary', mt: 0.1, flexShrink: 0 }} />
-            <Box>
-              <Typography variant="caption" color="text.secondary" display="block">Posted On</Typography>
-              <Typography variant="body2" fontWeight={500}>{formatDate(acc.createdAt)}</Typography>
-            </Box>
-          </Box>
+        <Box className={classes.cardPrice}>
+          <Typography className={classes.cardPriceAmt}>{formatINR(acc.amount)}</Typography>
+          <Typography className={classes.cardPricePer}>{priceUnit}</Typography>
         </Box>
 
-        {/* Description */}
-        {acc.description && (
-          <>
-            <Divider sx={{ mb: 2 }} />
-            <Typography variant="subtitle2" fontWeight={600} mb={0.75}>About this place</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7, whiteSpace: 'pre-line' }}>
-              {acc.description}
-            </Typography>
-          </>
-        )}
-
-        {/* Mutual friends — calls GET /friends/mutual/:user */}
-        {(loadingMutual || mutualFriends.length > 0) && (
-          <>
-            <Divider sx={{ mb: 2, mt: acc.description ? 2 : 0 }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-              <PeopleAltOutlinedIcon sx={{ fontSize: '1rem', color: colors.primary }} />
-              <Typography variant="subtitle2" fontWeight={600} sx={{ color: colors.textPrimary }}>
-                {loadingMutual ? 'Mutual friends' : `${mutualFriends.length} mutual friend${mutualFriends.length !== 1 ? 's' : ''}`}
-              </Typography>
-            </Box>
-            {loadingMutual ? (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                {[1, 2, 3].map(i => <Skeleton key={i} variant="circular" width={32} height={32} />)}
-              </Box>
-            ) : (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {mutualFriends.map(f => (
-                  <Box key={f.id} sx={{ display: 'flex', alignItems: 'center', gap: 0.75,
-                    backgroundColor: `${colors.primary}10`, borderRadius: 20,
-                    paddingLeft: '6px', paddingRight: '10px', paddingTop: '4px', paddingBottom: '4px',
-                  }}>
-                    <Avatar sx={{ width: 22, height: 22, fontSize: '0.6rem', backgroundColor: colors.primary, fontWeight: 600 }}>
-                      {getInitials(f.name)}
-                    </Avatar>
-                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: colors.primaryDark }}>
-                      {f.name}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
+        {/* Poster row */}
+        <Box className={classes.posterRow}>
+          <Avatar
+            className={classes.posterAvatar}
+            sx={{ background: avatarGrad, color: `oklch(28% 0.07 ${avatarHue})` }}
+          >
+            {getInitials(acc.userName)}
+          </Avatar>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography className={classes.posterName}>{acc.userName}</Typography>
+            {acc.mutualFriends > 0 && (
+              <Typography className={classes.posterMutual}>{acc.mutualFriends} mutual friends</Typography>
             )}
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// ── Create form schema ────────────────────────────────────────────────────────
-const createSchema = z.object({
-  title:          z.string().min(3, 'Title is required'),
-  address:        z.string().min(3, 'Address is required'),
-  description:    z.string().optional(),
-  amount:         z.string().refine(v => Number(v) > 0, { message: 'Amount must be greater than 0' }),
-  city_id:        z.string().min(1, 'Please select a city / state'),
-  type:           z.string().min(1, 'Please select a type'),
-  gender:         z.string().min(1, 'Please select who it is available for'),
-  available_from: z.string().min(1, 'Please select a date'),
-  is_negotiable:  z.boolean(),
-})
-
-type CreateFormValues = z.infer<typeof createSchema>
-
-// ── Create dialog ─────────────────────────────────────────────────────────────
-interface CreateDialogProps {
-  open: boolean
-  onClose: () => void
-}
-
-function CreateAccommodationDialog({ open, onClose }: CreateDialogProps) {
-  const { classes } = useStyles()
-  const { user } = useAuth()
-  const createMutation = useCreateAccommodation()
-
-  const { control, register, handleSubmit, reset, formState: { errors } } =
-    useForm<CreateFormValues>({
-      resolver: zodResolver(createSchema),
-      defaultValues: {
-        title: '', address: '', description: '', amount: '',
-        city_id: '', type: '', gender: '0',
-        available_from: '', is_negotiable: false,
-      },
-    })
-
-  const handleClose = () => { reset(); onClose() }
-
-  const onSubmit = (values: CreateFormValues) => {
-    createMutation.mutate(
-      {
-        title:          values.title,
-        address:        values.address,
-        description:    values.description ?? '',
-        amount:         Number(values.amount),
-        city_id:        Number(values.city_id),
-        community_id:   user?.communityId != null ? Number(user.communityId) : null,
-        sub_community_id: null,
-        type:           Number(values.type),
-        is_negotiable:  values.is_negotiable,
-        available_from: values.available_from,
-        gender:         Number(values.gender),
-      },
-      { onSuccess: handleClose },
-    )
-  }
-
-  return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm"
-      PaperProps={{ sx: { borderRadius: 3 } }}>
-      <DialogTitle className={classes.dialogTitle}>
-        <Typography variant="h6" fontWeight={700}>List Accommodation</Typography>
-        <IconButton size="small" onClick={handleClose} aria-label="close">
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-
-      <DialogContent>
-        <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)} sx={{ pt: 0.5 }}>
-          <Grid container spacing={2}>
-
-            {/* Title */}
-            <Grid item xs={12}>
-              <TextField
-                {...register('title')}
-                fullWidth label="Title"
-                placeholder="e.g. Spacious room near metro"
-                error={!!errors.title} helperText={errors.title?.message}
-              />
-            </Grid>
-
-            {/* Address */}
-            <Grid item xs={12}>
-              <TextField
-                {...register('address')}
-                fullWidth label="Address / Area"
-                placeholder="e.g. Lajpat Nagar, New Delhi"
-                error={!!errors.address} helperText={errors.address?.message}
-              />
-            </Grid>
-
-            {/* Type + Gender */}
-            <Grid item xs={12} sm={6}>
-              <Controller name="type" control={control} render={({ field }) => (
-                <FormControl fullWidth error={!!errors.type}>
-                  <InputLabel>Accommodation Type</InputLabel>
-                  <Select {...field} label="Accommodation Type">
-                    {ACCOMMODATION_TYPES.map(t => (
-                      <MenuItem key={t.value} value={String(t.value)}>{t.label}</MenuItem>
-                    ))}
-                  </Select>
-                  {errors.type && <FormHelperText>{errors.type.message}</FormHelperText>}
-                </FormControl>
-              )} />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <Controller name="gender" control={control} render={({ field }) => (
-                <FormControl fullWidth error={!!errors.gender}>
-                  <InputLabel>Available For</InputLabel>
-                  <Select {...field} label="Available For">
-                    {ACCOMMODATION_GENDERS.map(g => (
-                      <MenuItem key={g.value} value={String(g.value)}>{g.label}</MenuItem>
-                    ))}
-                  </Select>
-                  {errors.gender && <FormHelperText>{errors.gender.message}</FormHelperText>}
-                </FormControl>
-              )} />
-            </Grid>
-
-            {/* City (using states list as city proxy) */}
-            <Grid item xs={12} sm={6}>
-              <Controller name="city_id" control={control} render={({ field }) => (
-                <FormControl fullWidth error={!!errors.city_id}>
-                  <InputLabel>City / State</InputLabel>
-                  <Select {...field} label="City / State">
-                    {INDIA_STATES.map(s => (
-                      <MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>
-                    ))}
-                  </Select>
-                  {errors.city_id && <FormHelperText>{errors.city_id.message}</FormHelperText>}
-                </FormControl>
-              )} />
-            </Grid>
-
-            {/* Amount */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                {...register('amount')}
-                fullWidth label="Rent / Month"
-                type="number" inputProps={{ min: 0 }}
-                InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
-                error={!!errors.amount} helperText={errors.amount?.message}
-              />
-            </Grid>
-
-            {/* Available From */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                {...register('available_from')}
-                fullWidth label="Available From"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                error={!!errors.available_from} helperText={errors.available_from?.message}
-              />
-            </Grid>
-
-            {/* Negotiable */}
-            <Grid item xs={12} sm={6} sx={{ display: 'flex', alignItems: 'center' }}>
-              <Controller name="is_negotiable" control={control} render={({ field }) => (
-                <FormControlLabel
-                  control={<Checkbox checked={field.value} onChange={field.onChange} color="primary" />}
-                  label="Rent is negotiable"
-                />
-              )} />
-            </Grid>
-
-            {/* Description */}
-            <Grid item xs={12}>
-              <TextField
-                {...register('description')}
-                fullWidth label="Description (Optional)"
-                placeholder="Describe the place, rules, nearby landmarks…"
-                multiline minRows={3}
-                error={!!errors.description} helperText={errors.description?.message}
-              />
-            </Grid>
-
-            {/* Submit */}
-            <Grid item xs={12}>
-              <Button type="submit" fullWidth variant="contained" size="large"
-                disabled={createMutation.isPending}
-                sx={{ py: 1.4, fontWeight: 600, borderRadius: 2 }}>
-                {createMutation.isPending
-                  ? <CircularProgress size={22} sx={{ color: '#fff' }} />
-                  : 'Post Listing'}
-              </Button>
-            </Grid>
-          </Grid>
+          </Box>
+          <Box
+            component="button"
+            className={classes.addFriendBtn}
+            onClick={e => e.stopPropagation()}
+          >
+            <PersonAddOutlinedIcon sx={{ fontSize: '0.85rem' }} />
+            Add Friend
+          </Box>
         </Box>
-      </DialogContent>
-    </Dialog>
+
+        {/* Footer */}
+        <Box className={classes.cardFooter}>
+          <Typography className={classes.cardFrom}>
+            From {accommodationGenderLabel(acc.gender) !== 'Any' ? accommodationGenderLabel(acc.gender) : 'Thrissur'}
+          </Typography>
+          <Box className={classes.moreLink}>
+            More details <ArrowForwardIcon />
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   )
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+
+type ModeTab = 'stay' | 'community' | 'marketplace' | 'service'
+
 const AccommodationPage: React.FC = () => {
   const { classes, cx } = useStyles()
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  const [filters, setFilters] = useState<FilterValues>(INITIAL_FILTERS)
-  const [createOpen, setCreateOpen] = useState(false)
+
+  const [modeTab, setModeTab] = useState<ModeTab>('stay')
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [sharedFilters, setSharedFilters] = useState<SharedRoomFilters>(EMPTY_SHARED_FILTERS)
+  const [shortStayFilters, setShortStayFilters] = useState<ShortStayFilters>(EMPTY_SHORT_STAY_FILTERS)
   const [detailAcc, setDetailAcc] = useState<Accommodation | null>(null)
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [modeTab, setModeTab] = useState<'stay' | 'community' | 'marketplace' | 'service'>('stay')
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
 
-  // Auto-open create dialog if navigated with ?action=create-accommodation
-  useEffect(() => {
-    if (searchParams.get('action') === 'create-accommodation') {
-      setCreateOpen(true)
-      setSearchParams({}, { replace: true })
-    }
-  }, [searchParams, setSearchParams])
+  const isShortStay = modeTab === 'marketplace' // reuse for demo; in real app, 'short-stay' tab
+  const activeChips = isShortStay
+    ? getShortStayActiveChips(shortStayFilters)
+    : getActiveChips(sharedFilters)
 
-  const apiParams = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== ''))
+  // Only pass gender/budget that the current API supports
+  const apiParams: Record<string, string> = {}
+  if (sharedFilters.gender === 'male')   apiParams.gender = '1'
+  if (sharedFilters.gender === 'female') apiParams.gender = '2'
+  if (sharedFilters.budgetMin)           apiParams.amount_min = sharedFilters.budgetMin
+  if (sharedFilters.budgetMax)           apiParams.amount_max = sharedFilters.budgetMax
+
   const { data, isLoading, isError } = useAccommodations(
     Object.keys(apiParams).length > 0 ? apiParams : undefined,
   )
   const accommodations = data?.data ?? []
 
-  const handleFilterChange = (key: string, value: string) =>
-    setFilters(prev => ({ ...prev, [key]: value }))
-  const handleClear = () => setFilters(INITIAL_FILTERS)
+  const handleSave = (id: string) =>
+    setSavedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
 
-  const handleModeTab = (tab: typeof modeTab) => {
-    if (tab === 'community') { navigate(PATHS.dashboard.community); return }
-    if (tab === 'marketplace') { navigate(PATHS.dashboard.marketplace); return }
-    if (tab === 'service') { navigate(PATHS.dashboard.proxy); return }
-    setModeTab(tab)
+  const clearFilters = () => {
+    setSharedFilters(EMPTY_SHARED_FILTERS)
+    setShortStayFilters(EMPTY_SHORT_STAY_FILTERS)
   }
 
+  const listingLabel = accommodations.length
+    ? `${accommodations.length} listing${accommodations.length !== 1 ? 's' : ''}`
+    : 'No listings'
+
   return (
-    <Box>
-      {/* Compact community header card */}
-      <Box className={classes.communityCard}>
-        <Box>
-          <Typography className={classes.communityCardLabel}>Explore</Typography>
-          <Typography className={classes.communityCardName}>{user?.communityName ?? 'My Community'}</Typography>
+    <Box sx={{ backgroundColor: colors.cream, minHeight: '100%' }}>
+
+      {/* Page sub-header */}
+      <Box className={classes.pageHeader}>
+        <Box className={classes.pageHeaderLeft}>
+          <Typography className={classes.pageTitle}>Short Stay</Typography>
+          <Typography className={classes.pageSub}>{listingLabel} · Jamia Nagar</Typography>
         </Box>
-        <svg width={40} height={40} viewBox="0 0 28 28" fill="none" opacity={0.2}>
-          <path d="M14 2l11 4v8c0 7-5 11-11 12-6-1-11-5-11-12V6z" fill="#fff" />
-        </svg>
+        <Box
+          component="button"
+          className={classes.filterIconBtn}
+          onClick={() => setFilterOpen(true)}
+          aria-label="Open filters"
+        >
+          <TuneIcon sx={{ fontSize: '1.1rem' }} />
+        </Box>
       </Box>
 
       {/* Mode tabs */}
       <Box className={classes.modeTabs}>
-        {(['stay', 'community', 'marketplace', 'service'] as const).map((t) => (
+        {(['stay', 'community', 'marketplace', 'service'] as ModeTab[]).map(t => (
           <Box
             key={t}
             component="button"
-            className={cx(classes.modeTab, { [classes.modeTabActive]: modeTab === t && t === 'stay' })}
-            onClick={() => handleModeTab(t)}
+            className={cx(classes.modeTab, { [classes.modeTabActive]: modeTab === t })}
+            onClick={() => setModeTab(t)}
           >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'stay' ? 'Stay' : t === 'community' ? 'Community' : t === 'marketplace' ? 'Marketplace' : 'Service'}
           </Box>
         ))}
       </Box>
 
-      <FilterBar
-        title="Filter Accommodations"
-        fields={FILTER_FIELDS}
-        values={filters}
-        onChange={handleFilterChange}
-        onClear={handleClear}
-      />
+      {/* Search pill */}
+      <Box className={classes.searchPill} onClick={() => setFilterOpen(true)}>
+        <SearchIcon sx={{ fontSize: '1rem', color: colors.ink4 }} />
+        <Typography className={classes.searchText}>Start your search</Typography>
+        <Box className={classes.searchArrow}>
+          <ArrowForwardIcon sx={{ fontSize: '0.9rem', color: '#fff' }} />
+        </Box>
+      </Box>
 
-      <Box className={classes.list}>
-        {isLoading && Array.from({ length: 4 }).map((_, i) => (
+      {/* Active filter chips */}
+      {activeChips.length > 0 && (
+        <Box className={classes.chipsBar}>
+          {activeChips.map(chip => (
+            <Box key={chip} className={classes.activeChip}>{chip}</Box>
+          ))}
+          <Box
+            component="button"
+            className={classes.clearChip}
+            onClick={clearFilters}
+          >
+            ✕ Clear
+          </Box>
+        </Box>
+      )}
+
+      {/* Listings */}
+      <Box className={classes.listArea}>
+
+        {isLoading && [1, 2, 3].map(i => (
           <Box key={i} sx={{
-            width: { xs: '100%', sm: 'calc(50% - 6px)' },
-            backgroundColor: 'background.paper',
-            borderRadius: '12px',
-            padding: '16px',
-            border: '1px solid',
-            borderColor: 'divider',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
+            backgroundColor: colors.white,
+            borderRadius: '18px',
+            overflow: 'hidden',
+            boxShadow: '0 1px 2px rgba(20,20,15,0.04)',
           }}>
-            {/* Title */}
-            <Skeleton variant="text" width="75%" height={22} />
-            {/* Avatar + type + location row */}
-            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-              <Skeleton variant="circular" width={38} height={38} sx={{ flexShrink: 0 }} />
-              <Box sx={{ flex: 1 }}>
-                <Skeleton variant="text" width="40%" height={16} />
-                <Skeleton variant="text" width="60%" height={14} sx={{ mt: 0.5 }} />
+            {/* Photo block — rectangular with no radius (clipped by parent overflow:hidden) */}
+            <Skeleton
+              variant="rectangular"
+              height={160}
+              sx={{ borderRadius: 0, transform: 'none' }}
+            />
+            <Box sx={{ p: '13px 16px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* Title */}
+              <Skeleton variant="rounded" width="68%" height={16} sx={{ borderRadius: '6px' }} />
+              {/* Location */}
+              <Skeleton variant="rounded" width="50%" height={13} sx={{ borderRadius: '6px' }} />
+              {/* Price */}
+              <Skeleton variant="rounded" width="38%" height={20} sx={{ borderRadius: '6px' }} />
+              {/* Poster row */}
+              <Box sx={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <Skeleton variant="circular" width={34} height={34} sx={{ flexShrink: 0 }} />
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <Skeleton variant="rounded" width="42%" height={13} sx={{ borderRadius: '6px' }} />
+                  <Skeleton variant="rounded" width="32%" height={11} sx={{ borderRadius: '6px' }} />
+                </Box>
+                <Skeleton variant="rounded" width={90} height={30} sx={{ borderRadius: '8px', flexShrink: 0 }} />
               </Box>
-            </Box>
-            {/* Chips row */}
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Skeleton variant="rounded" width={80} height={22} />
-              <Skeleton variant="rounded" width={70} height={22} />
-              <Skeleton variant="rounded" width={110} height={22} />
-            </Box>
-            {/* Description lines */}
-            <Skeleton variant="text" width="100%" height={14} />
-            <Skeleton variant="text" width="85%" height={14} />
-            <Skeleton variant="text" width="60%" height={14} />
-            {/* Connection + view more */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-              <Skeleton variant="rounded" width={90} height={20} />
-              <Skeleton variant="text" width={100} height={16} />
+              {/* Footer divider + from / more details */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: '8px', borderTop: `1px solid ${colors.lineSoft}` }}>
+                <Skeleton variant="rounded" width="28%" height={12} sx={{ borderRadius: '6px' }} />
+                <Skeleton variant="rounded" width="22%" height={12} sx={{ borderRadius: '6px' }} />
+              </Box>
             </Box>
           </Box>
         ))}
@@ -618,52 +599,50 @@ const AccommodationPage: React.FC = () => {
 
         {!isLoading && !isError && accommodations.length === 0 && (
           <EmptyState
-            title="No accommodations found"
-            description="No listings match your filters, or none have been posted yet."
+            title="No listings found"
+            description="No stays match your filters, or none have been posted yet."
             icon={<HomeWorkOutlinedIcon />}
             actionLabel="Clear Filters"
-            onAction={handleClear}
+            onAction={clearFilters}
           />
         )}
 
-        {!isLoading && !isError && accommodations.map((acc) => (
-          <Box key={acc.id} sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)' } }}>
-            <ListingCard
-              id={acc.id}
-              title={acc.title}
-              type={accommodationTypeLabel(acc.type)}
-              location={acc.address}
-              description={acc.description}
-              createdAt={acc.createdAt}
-              isConnected={acc.isConnected}
-              mutualFriends={acc.mutualFriends}
-              onViewDetails={() => setDetailAcc(acc)}
-              sx={{ marginBottom: 0 }}
-              extra={
-                <Box className={classes.infoChips}>
-                  <Chip label={formatINR(acc.amount) + '/mo'} size="small" className={classes.chip} />
-                  <Chip label={accommodationGenderLabel(acc.gender)} size="small" className={classes.chip} />
-                  {acc.isNegotiable && (
-                    <Chip label="Negotiable" size="small" className={classes.chip} />
-                  )}
-                  {acc.availableFrom && (
-                    <Chip label={`Available from ${formatDate(acc.availableFrom)}`} size="small" className={classes.chip} />
-                  )}
-                </Box>
-              }
-            />
-          </Box>
+        {!isLoading && !isError && accommodations.map(acc => (
+          <AccommodationCard
+            key={acc.id}
+            acc={acc}
+            saved={savedIds.has(acc.id)}
+            onSave={handleSave}
+            onClick={() => setDetailAcc(acc)}
+          />
         ))}
+
       </Box>
 
-      <AccommodationDetailDialog
+      {/* Filter sheets */}
+      {isShortStay ? (
+        <ShortStayFilterSheet
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          filters={shortStayFilters}
+          onChange={setShortStayFilters}
+        />
+      ) : (
+        <SharedRoomFilterSheet
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          filters={sharedFilters}
+          onChange={setSharedFilters}
+          listingCount={accommodations.length}
+        />
+      )}
+
+      {/* Detail sheet */}
+      <SharedRoomDetailSheet
         acc={detailAcc}
         onClose={() => setDetailAcc(null)}
-      />
-
-      <CreateAccommodationDialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        saved={detailAcc ? savedIds.has(detailAcc.id) : false}
+        onToggleSave={handleSave}
       />
     </Box>
   )

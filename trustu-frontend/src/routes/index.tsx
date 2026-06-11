@@ -5,22 +5,22 @@ import { PATHS } from './paths'
 import ProtectedRoute from './ProtectedRoute'
 import PublicRoute from './PublicRoute'
 
-// ── Lazy-loaded pages ──────────────────────────────────────────────────────────
+// ── Lazy-loaded pages (auth + rarely visited) ──────────────────────────────────
 const LandingPage    = lazy(() => import('../features/auth/pages/LandingPage'))
 const LoginPage      = lazy(() => import('../features/auth/pages/LoginPage'))
 const RegisterPage   = lazy(() => import('../features/auth/pages/RegisterPage'))
 const AppShell       = lazy(() => import('../features/dashboard/layouts/AppShell'))
 const DashboardLayout = lazy(() => import('../features/dashboard/layouts/DashboardLayout'))
-const ProfilePage    = lazy(() => import('../features/profile/pages/ProfilePage'))
 const MyListingsPage = lazy(() => import('../features/profile/pages/MyListingsPage'))
 const NotFoundPage   = lazy(() => import('../components/NotFoundPage'))
 
-// ── Eager imports for tab pages ────────────────────────────────────────────────
+// ── Eager imports (tab pages + profile — prevents full-page Suspense flash) ────
 import CommunityPage     from '../features/community/pages/CommunityPage'
 import AccommodationPage from '../features/accommodation/pages/AccommodationPage'
 import ProxyPage         from '../features/proxy/pages/ProxyPage'
 import MarketplacePage   from '../features/marketplace/pages/MarketplacePage'
 import CirclePage        from '../features/circle/pages/CirclePage'
+import ProfilePage       from '../features/profile/pages/ProfilePage'
 
 const PageLoader = () => (
   <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -50,11 +50,11 @@ export interface RegisterRequest {
 }
 
 export interface SendOtpRequest {
-  // OTP endpoints are auth-required (post login/register)
-  type: 'email' | 'phone'
+  identifier: 'email' | 'phone'
 }
 
 export interface VerifyOtpRequest {
+  identifier: 'email' | 'phone'
   otp: string
 }
 

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Dialog, DialogContent, Box, Typography, IconButton, Slide } from '@mui/material'
 import type { TransitionProps } from '@mui/material/transitions'
 import CloseIcon from '@mui/icons-material/Close'
@@ -10,6 +10,7 @@ import { makeStyles } from 'tss-react/mui'
 import { useNavigate } from 'react-router-dom'
 import { PATHS } from '@/routes/paths'
 import colors from '@/theme/colors'
+import PostListingFlow from '@/features/accommodation/components/PostListingFlow'
 
 interface AddServiceModalProps {
   open: boolean
@@ -177,57 +178,64 @@ const SERVICE_OPTIONS = [
 const AddServiceModal: React.FC<AddServiceModalProps> = ({ open, onClose }) => {
   const { classes } = useStyles()
   const navigate = useNavigate()
+  const [postOpen, setPostOpen] = useState(false)
 
   const handleSelect = (path: string, action: string) => {
+    if (action === 'create-accommodation') {
+      onClose()
+      setPostOpen(true)
+      return
+    }
     navigate(`${path}?action=${action}`)
     onClose()
   }
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      TransitionComponent={SlideUp}
-      // Longer enter so the spring settles; snappy exit feels responsive
-      transitionDuration={{ enter: ENTER_MS, exit: EXIT_MS }}
-      PaperProps={{ className: classes.paper }}
-      // No backdrop blur — blur forces GPU compositing of everything behind it
-      // which tanks smoothness on mid-range phones
-      BackdropProps={{ sx: { backgroundColor: 'rgba(0,0,0,0.32)' } }}
-      sx={{ '& .MuiDialog-container': { alignItems: 'flex-end' } }}
-    >
-      <Box className={classes.handle} />
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        TransitionComponent={SlideUp}
+        transitionDuration={{ enter: ENTER_MS, exit: EXIT_MS }}
+        PaperProps={{ className: classes.paper }}
+        slotProps={{ backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.32)' } } }}
+        sx={{ '& .MuiDialog-container': { alignItems: 'flex-end' } }}
+      >
+        <Box className={classes.handle} />
 
-      <Box className={classes.header}>
-        <Typography className={classes.title}>What would you like to do?</Typography>
-        <IconButton size="small" className={classes.closeBtn} onClick={onClose}>
-          <CloseIcon sx={{ fontSize: '1.1rem' }} />
-        </IconButton>
-      </Box>
-
-      <DialogContent sx={{ p: 0 }}>
-        <Box className={classes.grid}>
-          {SERVICE_OPTIONS.map((opt) => (
-            <Box
-              key={opt.action}
-              className={classes.tile}
-              onClick={() => handleSelect(opt.path, opt.action)}
-            >
-              <Box
-                className={classes.tileIcon}
-                sx={{ backgroundColor: opt.iconBg, color: opt.iconColor }}
-              >
-                {opt.icon}
-              </Box>
-              <Box>
-                <Typography className={classes.tileLabel}>{opt.label}</Typography>
-                <Typography className={classes.tileDesc}>{opt.description}</Typography>
-              </Box>
-            </Box>
-          ))}
+        <Box className={classes.header}>
+          <Typography className={classes.title}>What would you like to do?</Typography>
+          <IconButton size="small" className={classes.closeBtn} onClick={onClose}>
+            <CloseIcon sx={{ fontSize: '1.1rem' }} />
+          </IconButton>
         </Box>
-      </DialogContent>
-    </Dialog>
+
+        <DialogContent sx={{ p: 0 }}>
+          <Box className={classes.grid}>
+            {SERVICE_OPTIONS.map((opt) => (
+              <Box
+                key={opt.action}
+                className={classes.tile}
+                onClick={() => handleSelect(opt.path, opt.action)}
+              >
+                <Box
+                  className={classes.tileIcon}
+                  sx={{ backgroundColor: opt.iconBg, color: opt.iconColor }}
+                >
+                  {opt.icon}
+                </Box>
+                <Box>
+                  <Typography className={classes.tileLabel}>{opt.label}</Typography>
+                  <Typography className={classes.tileDesc}>{opt.description}</Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      <PostListingFlow open={postOpen} onClose={() => setPostOpen(false)} />
+    </>
   )
 }
 

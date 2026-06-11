@@ -5,13 +5,13 @@ export interface Post {
   userDesignation: string
   title: string
   description: string
-  upvotes: number
-  replyCount: number
-  hasUpvoted: boolean
+  likes: number
+  commentCount: number
+  hasLiked: boolean
   createdAt: string
 }
 
-export interface Reply {
+export interface Comment {
   id: string
   postId: string
   userId: string
@@ -22,10 +22,11 @@ export interface Reply {
 
 export interface CreatePostPayload {
   community_id: string
+  sub_community_id?: string
   title: string
   description: string
 }
 
-export interface CreateReplyPayload {
+export interface CreateCommentPayload {
   content: string
 }

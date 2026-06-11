@@ -18,13 +18,6 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 15000,
 })
 
-// ── Dev mock mode (loaded only during local development) ───────────────────
-if (import.meta.env.DEV) {
-  import('@/mocks/mockInterceptor').then(({ setupMockInterceptor }) => {
-    setupMockInterceptor(apiClient)
-  })
-}
-
 // Attach Bearer token from localStorage
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {

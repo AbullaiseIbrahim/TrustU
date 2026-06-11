@@ -1,21 +1,21 @@
 import React, { useState } from 'react'
 import {
-  Box, Avatar, Typography, Divider, Chip, Button,
-  CircularProgress, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, MenuItem, IconButton,
+  Box, Avatar, Typography, CircularProgress,
+  Dialog, DialogContent,
 } from '@mui/material'
-import LogoutIcon from '@mui/icons-material/Logout'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
-import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
+import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined'
+import LogoutIcon from '@mui/icons-material/Logout'
+import MaleIcon from '@mui/icons-material/Male'
+import FemaleIcon from '@mui/icons-material/Female'
+import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
+import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
-import WcOutlinedIcon from '@mui/icons-material/WcOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
-import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted'
-import CloseIcon from '@mui/icons-material/Close'
 import { makeStyles } from 'tss-react/mui'
+import SelectField from '@/components/SelectField'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/app/AuthProvider'
 import { useProfileQuery, useUpdateProfile } from '../hooks/useProfileMutations'
@@ -23,144 +23,241 @@ import { authApi } from '@/services/auth.api'
 import { getInitials } from '@/utils'
 import { PATHS } from '@/routes/paths'
 import colors from '@/theme/colors'
-import type { Designation } from '@/types/auth.types'
+import type { Designation, Gender } from '@/types/auth.types'
 import { useFriends } from '@/features/circle/hooks/useFriendshipQueries'
 import type { Friend } from '@/services/friendship.api'
 
 const DESIGNATION_OPTIONS: Designation[] = ['Student', 'Faculty', 'Staff', 'Alumni', 'Other']
+const GENDER_OPTIONS: Gender[] = ['Male', 'Female', 'Other', 'Prefer not to say']
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const useStyles = makeStyles()(() => ({
   page: {
     backgroundColor: colors.cream,
     minHeight: '100%',
-    paddingBottom: 16,
+    paddingBottom: 24,
   },
-  // Hero with gradient banner
-  heroBanner: {
-    height: 100,
-    background: `linear-gradient(135deg, ${colors.moss} 0%, ${colors.mossDeep} 100%)`,
-    position: 'relative',
+  // Page header
+  pageHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '14px 18px 10px',
+    backgroundColor: colors.cream,
   },
-  heroContent: {
+  pageTitle: {
+    fontWeight: 700,
+    fontSize: '1.1rem',
+    color: colors.ink,
+    letterSpacing: '-0.3px',
+  },
+  signOutBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    border: 'none',
+    backgroundColor: 'transparent',
+    color: colors.moss,
+    fontWeight: 600,
+    fontSize: '0.82rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    padding: '4px 8px',
+    borderRadius: 8,
+    '&:hover': { backgroundColor: colors.mossSoft },
+  },
+  // Avatar area
+  avatarSection: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    paddingBottom: 20,
-    paddingLeft: 16,
-    paddingRight: 16,
-    marginTop: -52,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
-  avatarRing: {
-    padding: 3,
-    borderRadius: '50%',
-    background: 'linear-gradient(135deg, #fff 0%, #e8f5e9 100%)',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-    marginBottom: 12,
+  avatarWrap: {
     position: 'relative',
+    marginBottom: 12,
   },
   avatar: {
-    width: 90,
-    height: 90,
-    fontSize: '1.9rem',
-    background: `linear-gradient(135deg, ${colors.moss} 0%, ${colors.mossDeep} 100%)`,
-    fontWeight: 800,
+    width: 88,
+    height: 88,
+    fontSize: '1.7rem',
+    fontWeight: 700,
+    border: `3px solid ${colors.moss}`,
+    background: `linear-gradient(140deg, oklch(82% 0.07 20), oklch(72% 0.09 60))`,
+    color: `oklch(28% 0.07 20)`,
   },
-  editAvatarBtn: {
+  editAvatarFab: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 28,
-    height: 28,
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
     borderRadius: '50%',
-    background: `linear-gradient(135deg, ${colors.moss} 0%, ${colors.mossDeep} 100%)`,
+    backgroundColor: colors.moss,
+    border: `2.5px solid ${colors.cream}`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    border: `2.5px solid #fff`,
-    boxShadow: '0 2px 8px rgba(46,125,50,0.3)',
-    transition: 'transform 0.2s ease',
-    '&:hover': { transform: 'scale(1.1)' },
+    '& svg': { fontSize: '0.75rem', color: '#fff' },
   },
   userName: {
-    fontWeight: 800,
+    fontWeight: 700,
     fontSize: '1.2rem',
     color: colors.ink,
-    textAlign: 'center',
     letterSpacing: '-0.4px',
+    textAlign: 'center',
   },
-  userDesignation: {
-    fontSize: '0.8rem',
+  userLocation: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+    fontSize: '0.75rem',
     color: colors.ink3,
-    marginTop: 2,
     fontWeight: 500,
-  },
-  communityChip: {
-    marginTop: 8,
-    backgroundColor: colors.mossSoft,
-    color: colors.moss,
-    fontWeight: 700,
-    fontSize: '0.72rem',
-    height: 26,
-    border: `1.5px solid ${colors.moss}30`,
-    borderRadius: 8,
+    marginTop: 4,
+    textAlign: 'center',
   },
   // Stats row
   statsRow: {
     display: 'flex',
-    gap: 10,
-    margin: '16px 16px 0',
+    gap: 8,
+    margin: '0 16px 16px',
   },
   statCard: {
     flex: 1,
     backgroundColor: colors.white,
-    borderRadius: 18,
-    padding: '14px 12px',
+    borderRadius: 16,
+    padding: '14px 10px',
     textAlign: 'center',
-    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 6px 22px rgba(20,20,15,0.05)',
+    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 4px 14px rgba(20,20,15,0.05)',
   },
   statCardGreen: {
     backgroundColor: colors.moss,
   },
-  statVal: {
-    fontWeight: 800,
-    fontSize: '1.3rem',
+  statNum: {
+    fontWeight: 700,
+    fontSize: '1.25rem',
     color: colors.ink,
     letterSpacing: '-0.4px',
     lineHeight: 1,
   },
-  statValGreen: {
-    color: '#fff',
-  },
-  statLbl: {
+  statNumGreen: { color: '#fff' },
+  statLabel: {
     fontSize: '0.68rem',
     color: colors.ink3,
-    marginTop: 3,
     fontWeight: 500,
+    marginTop: 4,
   },
-  statLblGreen: {
-    color: 'rgba(255,255,255,0.8)',
+  statLabelGreen: { color: 'rgba(255,255,255,0.75)' },
+  // Section
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0 18px 8px',
   },
-  // Friends grid
-  friendsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
+  sectionTitle: {
+    fontWeight: 700,
+    fontSize: '0.95rem',
+    color: colors.ink,
+    letterSpacing: '-0.2px',
+  },
+  editLink: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+    border: 'none',
+    backgroundColor: 'transparent',
+    color: colors.moss,
+    fontWeight: 600,
+    fontSize: '0.78rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    padding: '3px 6px',
+    borderRadius: 6,
+    '&:hover': { backgroundColor: colors.mossSoft },
+  },
+  // Detail card
+  detailCard: {
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    margin: '0 16px',
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 4px 14px rgba(20,20,15,0.05)',
+  },
+  detailRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '13px 16px',
+    borderBottom: `1px solid ${colors.lineSoft}`,
+    '&:last-child': { borderBottom: 'none' },
+  },
+  detailIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.cream,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    '& svg': { fontSize: '1rem', color: colors.ink3 },
+  },
+  detailText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  detailLabel: {
+    fontSize: '0.68rem',
+    fontWeight: 600,
+    color: colors.ink4,
+    textTransform: 'uppercase',
+    letterSpacing: '0.4px',
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: '0.88rem',
+    fontWeight: 600,
+    color: colors.ink,
+  },
+  detailNotSet: {
+    fontSize: '0.88rem',
+    color: colors.ink4,
+    fontStyle: 'italic',
+  },
+  // Friends strip
+  friendsCard: {
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    margin: '12px 16px 0',
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 4px 14px rgba(20,20,15,0.05)',
+    padding: '14px 16px',
+  },
+  friendsRow: {
+    display: 'flex',
     gap: 10,
-    padding: '12px 18px 14px',
+    marginTop: 10,
+    overflowX: 'auto',
+    scrollbarWidth: 'none',
+    '&::-webkit-scrollbar': { display: 'none' },
   },
   friendItem: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     gap: 5,
+    flexShrink: 0,
   },
   friendAvatar: {
     width: 46,
     height: 46,
     fontSize: '0.88rem',
     fontWeight: 700,
-    background: `linear-gradient(135deg, ${colors.moss}, ${colors.mossDeep})`,
-    boxShadow: `0 2px 8px rgba(14,107,63,0.20)`,
   },
   friendName: {
     fontSize: '0.62rem',
@@ -168,236 +265,391 @@ const useStyles = makeStyles()(() => ({
     color: colors.ink2,
     textAlign: 'center',
     lineHeight: 1.2,
-  },
-  // Info card
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 20,
+    maxWidth: 50,
     overflow: 'hidden',
-    margin: '16px 16px 0',
-    border: '1px solid rgba(0,0,0,0.06)',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
-  cardHeader: {
+  // Edit Profile sheet
+  sheetPaper: {
+    borderRadius: 0,
+    height: '100%',
+    maxHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    margin: '0 !important',
+    width: '100% !important',
+    maxWidth: '480px !important',
+  },
+  sheetHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '14px 18px 10px',
+    padding: '14px 18px',
+    borderBottom: `1px solid ${colors.lineSoft}`,
+    flexShrink: 0,
   },
-  cardTitle: {
-    fontWeight: 700,
-    fontSize: '0.78rem',
-    color: colors.ink3,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-  },
-  editBtn: {
-    textTransform: 'none',
-    fontWeight: 700,
-    fontSize: '0.76rem',
-    color: colors.primary,
-    padding: '4px 12px',
-    borderRadius: 10,
-    border: `1.5px solid ${colors.moss}40`,
-    '&:hover': { backgroundColor: `${colors.moss}08`, borderColor: colors.primary },
-  },
-  detailRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 14,
-    padding: '11px 18px',
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
-    backgroundColor: `${colors.moss}10`,
+  sheetBack: {
+    width: 34,
+    height: 34,
+    borderRadius: '50%',
+    backgroundColor: colors.cream,
+    border: 'none',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
-  },
-  detailLabel: {
-    fontSize: '0.7rem',
-    color: colors.ink3,
-    lineHeight: 1.2,
-    marginBottom: 2,
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-  },
-  detailValue: {
-    fontSize: '0.875rem',
-    fontWeight: 600,
+    cursor: 'pointer',
     color: colors.ink,
-    lineHeight: 1.3,
+    fontFamily: 'inherit',
+    '&:hover': { backgroundColor: colors.line },
   },
-  notSet: {
-    fontSize: '0.85rem',
-    color: colors.ink4,
-    fontStyle: 'italic',
+  sheetTitle: {
+    fontWeight: 700,
+    fontSize: '1rem',
+    color: colors.ink,
+    letterSpacing: '-0.3px',
   },
-  // Nav card
-  navCard: {
-    backgroundColor: colors.white,
+  saveBtn: {
+    border: 'none',
+    backgroundColor: colors.moss,
+    color: '#fff',
+    fontWeight: 700,
+    fontSize: '0.82rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    padding: '8px 18px',
     borderRadius: 20,
-    overflow: 'hidden',
-    margin: '12px 16px 0',
-    border: '1px solid rgba(0,0,0,0.06)',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+    transition: 'background-color 0.15s ease',
+    '&:hover': { backgroundColor: colors.mossDeep },
+    '&:disabled': { opacity: 0.6, cursor: 'not-allowed' },
   },
-  navRow: {
+  sheetBody: {
+    overflowY: 'auto',
+    flex: 1,
+    '&::-webkit-scrollbar': { display: 'none' },
+    scrollbarWidth: 'none',
+  },
+  // Edit avatar section
+  editAvatarSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '24px 18px 16px',
+    borderBottom: `1px solid ${colors.lineSoft}`,
+  },
+  editAvatarWrap: {
+    position: 'relative',
+    marginBottom: 8,
+  },
+  editAvatar: {
+    width: 80,
+    height: 80,
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    border: `3px solid ${colors.moss}`,
+    background: `linear-gradient(140deg, oklch(82% 0.07 20), oklch(72% 0.09 60))`,
+    color: `oklch(28% 0.07 20)`,
+  },
+  editAvatarFab2: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: '50%',
+    backgroundColor: colors.moss,
+    border: `2.5px solid ${colors.white}`,
     display: 'flex',
     alignItems: 'center',
-    gap: 14,
-    padding: '14px 18px',
+    justifyContent: 'center',
     cursor: 'pointer',
-    transition: 'background 0.18s ease',
-    '&:hover': { backgroundColor: '#F7F9F7' },
-    '&:active': { backgroundColor: `${colors.moss}08` },
+    '& svg': { fontSize: '0.72rem', color: '#fff' },
   },
-  navLabel: {
-    flex: 1,
+  changePhotoLabel: {
+    fontSize: '0.78rem',
     fontWeight: 600,
+    color: colors.moss,
+    cursor: 'pointer',
+  },
+  // Edit field rows
+  fieldGroup: {
+    margin: '16px 16px 0',
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 4px 14px rgba(20,20,15,0.05)',
+  },
+  fieldRow: {
+    padding: '12px 16px',
+    borderBottom: `1px solid ${colors.lineSoft}`,
+    '&:last-child': { borderBottom: 'none' },
+  },
+  fieldLabel: {
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    color: colors.ink4,
+    marginBottom: 4,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fieldHint: {
+    fontSize: '0.68rem',
+    color: colors.ink4,
+    fontWeight: 500,
+  },
+  fieldInput: {
+    width: '100%',
+    border: 'none',
+    outline: 'none',
     fontSize: '0.9rem',
+    fontWeight: 500,
     color: colors.ink,
+    backgroundColor: 'transparent',
+    fontFamily: 'inherit',
+    padding: '2px 0',
   },
-  logoutArea: {
-    padding: '16px 16px 4px',
+  // Deactivate
+  deactivateArea: {
+    margin: '20px 16px 8px',
   },
-  logoutBtn: {
+  deactivateBtn: {
+    width: '100%',
+    padding: '13px',
     borderRadius: 14,
-    textTransform: 'none',
-    fontWeight: 700,
-    height: 50,
-    fontSize: '0.9rem',
+    border: `1.5px solid ${colors.urgent}40`,
+    backgroundColor: 'transparent',
     color: colors.urgent,
-    borderColor: `${colors.urgent}40`,
-    '&:hover': { backgroundColor: `${colors.urgent}06`, borderColor: colors.urgent },
+    fontWeight: 700,
+    fontSize: '0.88rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    transition: 'all 0.15s ease',
+    '&:hover': { backgroundColor: `${colors.urgent}08`, borderColor: colors.urgent },
   },
 }))
 
-interface DetailRowItemProps {
+// ── Detail row ────────────────────────────────────────────────────────────────
+
+interface DetailRowProps {
   icon: React.ReactNode
   label: string
   value?: string | null
-  showDivider?: boolean
 }
 
-const DetailRowItem: React.FC<DetailRowItemProps> = ({ icon, label, value, showDivider = true }) => {
+const DetailRow: React.FC<DetailRowProps> = ({ icon, label, value }) => {
   const { classes } = useStyles()
   return (
-    <>
-      <Box className={classes.detailRow}>
-        <Box className={classes.iconWrap}>{icon}</Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography className={classes.detailLabel}>{label}</Typography>
-          {value ? (
-            <Typography className={classes.detailValue}>{value}</Typography>
-          ) : (
-            <Typography className={classes.notSet}>Not set</Typography>
-          )}
-        </Box>
+    <Box className={classes.detailRow}>
+      <Box className={classes.detailIcon}>{icon}</Box>
+      <Box className={classes.detailText}>
+        <Typography className={classes.detailLabel}>{label}</Typography>
+        {value
+          ? <Typography className={classes.detailValue}>{value}</Typography>
+          : <Typography className={classes.detailNotSet}>Not set</Typography>}
       </Box>
-      {showDivider && <Divider sx={{ mx: 2 }} />}
-    </>
+    </Box>
   )
 }
 
-// ── Edit Profile Dialog ───────────────────────────────────────────────────────
-interface EditDialogProps {
-  open: boolean
-  onClose: () => void
-  current: { name: string; designation: string; phone: string; institute: string }
+// ── Avatar hues per first letter ─────────────────────────────────────────────
+
+function avatarGrad(name: string) {
+  const hue = ((name.charCodeAt(0) ?? 0) * 37) % 360
+  return `linear-gradient(140deg, oklch(82% 0.07 ${hue}), oklch(72% 0.09 ${hue + 40}))`
+}
+function avatarColor(name: string) {
+  const hue = ((name.charCodeAt(0) ?? 0) * 37) % 360
+  return `oklch(28% 0.07 ${hue})`
 }
 
-const EditProfileDialog: React.FC<EditDialogProps> = ({ open, onClose, current }) => {
-  const updateProfile = useUpdateProfile()
-  const [form, setForm] = useState(current)
+// ── Edit Profile Sheet ────────────────────────────────────────────────────────
 
-  // Reset form when dialog opens with fresh data
+interface EditForm {
+  firstName: string
+  lastName: string
+  phone: string
+  gender: string
+  designation: string
+  institute: string
+}
+
+interface EditSheetProps {
+  open: boolean
+  onClose: () => void
+  user: { name: string; email: string | null; phone: string | null; gender: string | null; designation: string | null; institute: string | null }
+}
+
+const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => {
+  const { classes } = useStyles()
+  const updateProfile = useUpdateProfile()
+
+  const [form, setForm] = React.useState<EditForm>({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    gender: '',
+    designation: '',
+    institute: '',
+  })
+
   React.useEffect(() => {
-    if (open) setForm(current)
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (open) {
+      const parts = (user.name ?? '').split(' ')
+      setForm({
+        firstName: parts[0] ?? '',
+        lastName: parts.slice(1).join(' ') ?? '',
+        phone: user.phone ?? '',
+        gender: user.gender ?? '',
+        designation: user.designation ?? '',
+        institute: user.institute ?? '',
+      })
+    }
+  }, [open])
+
+  const set = (key: keyof EditForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(prev => ({ ...prev, [key]: e.target.value }))
 
   const handleSave = () => {
+    const fullName = [form.firstName.trim(), form.lastName.trim()].filter(Boolean).join(' ')
     updateProfile.mutate(
       {
-        name: form.name.trim() || undefined,
-        designation: form.designation || undefined,
-        phone: form.phone.trim() || undefined,
-        institute: form.institute.trim() || undefined,
+        name:        fullName || undefined,
+        designation: (form.designation as never) || undefined,
+        phone:       form.phone.trim() || undefined,
+        institute:   form.institute.trim() || undefined,
       },
       { onSuccess: onClose },
     )
   }
 
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm(prev => ({ ...prev, [key]: e.target.value }))
+  const initials = getInitials([form.firstName, form.lastName].filter(Boolean).join(' ') || 'U')
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs"
-      PaperProps={{ sx: { borderRadius: 3 } }}>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
-        <Typography fontWeight={700} fontSize="1rem">Edit Profile</Typography>
-        <IconButton size="small" onClick={onClose} aria-label="close">
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </DialogTitle>
-
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-        <TextField
-          label="Name"
-          fullWidth size="small"
-          value={form.name}
-          onChange={set('name')}
-          inputProps={{ maxLength: 80 }}
-        />
-        <TextField
-          select label="Designation"
-          fullWidth size="small"
-          value={form.designation}
-          onChange={set('designation')}
-        >
-          {DESIGNATION_OPTIONS.map(d => (
-            <MenuItem key={d} value={d}>{d}</MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          label="Phone number"
-          fullWidth size="small"
-          value={form.phone}
-          onChange={set('phone')}
-          inputProps={{ maxLength: 20 }}
-        />
-        <TextField
-          label="Institute / College"
-          fullWidth size="small"
-          value={form.institute}
-          onChange={set('institute')}
-          inputProps={{ maxLength: 120 }}
-        />
-      </DialogContent>
-
-      <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-        <Button onClick={onClose} variant="outlined" size="small"
-          sx={{ borderRadius: 20, textTransform: 'none', fontWeight: 500 }}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained" size="small"
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullScreen
+      PaperProps={{ className: classes.sheetPaper }}
+      sx={{ '& .MuiDialog-container': { justifyContent: 'center' } }}
+    >
+      {/* Header */}
+      <Box className={classes.sheetHeader}>
+        <Box component="button" className={classes.sheetBack} onClick={onClose}>
+          <ArrowBackIcon sx={{ fontSize: '1rem' }} />
+        </Box>
+        <Typography className={classes.sheetTitle}>Edit Profile</Typography>
+        <Box
+          component="button"
+          className={classes.saveBtn}
           onClick={handleSave}
-          disabled={updateProfile.isPending || !form.name.trim()}
-          sx={{ borderRadius: 20, textTransform: 'none', fontWeight: 600, px: 3 }}
+          disabled={updateProfile.isPending}
         >
-          {updateProfile.isPending ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : 'Save'}
-        </Button>
-      </DialogActions>
+          {updateProfile.isPending ? 'Saving…' : 'Save'}
+        </Box>
+      </Box>
+
+      <DialogContent className={classes.sheetBody} sx={{ p: 0 }}>
+
+        {/* Avatar */}
+        <Box className={classes.editAvatarSection}>
+          <Box className={classes.editAvatarWrap}>
+            <Avatar
+              className={classes.editAvatar}
+              sx={{ background: avatarGrad(form.firstName || 'U'), color: avatarColor(form.firstName || 'U') }}
+            >
+              {initials}
+            </Avatar>
+            <Box className={classes.editAvatarFab2}>
+              <CameraAltOutlinedIcon />
+            </Box>
+          </Box>
+          <Typography className={classes.changePhotoLabel}>Change photo</Typography>
+        </Box>
+
+        {/* Name fields */}
+        <Box className={classes.fieldGroup}>
+          <Box className={classes.fieldRow}>
+            <Typography className={classes.fieldLabel}>First Name</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box component="input" className={classes.fieldInput} value={form.firstName} onChange={set('firstName')} placeholder="First name" />
+              <ChevronRightIcon sx={{ fontSize: '1rem', color: colors.ink4, flexShrink: 0 }} />
+            </Box>
+          </Box>
+          <Box className={classes.fieldRow}>
+            <Typography className={classes.fieldLabel}>Last Name</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box component="input" className={classes.fieldInput} value={form.lastName} onChange={set('lastName')} placeholder="Last name" />
+              <ChevronRightIcon sx={{ fontSize: '1rem', color: colors.ink4, flexShrink: 0 }} />
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Contact fields */}
+        <Box className={classes.fieldGroup}>
+          <Box className={classes.fieldRow}>
+            <Typography className={classes.fieldLabel}>
+              Email
+              <Typography component="span" className={classes.fieldHint}>Not visible to others</Typography>
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box component="input" className={classes.fieldInput} value={user.email ?? ''} readOnly placeholder="Email" sx={{ color: colors.ink3 }} />
+              <ChevronRightIcon sx={{ fontSize: '1rem', color: colors.ink4, flexShrink: 0 }} />
+            </Box>
+          </Box>
+          <Box className={classes.fieldRow}>
+            <Typography className={classes.fieldLabel}>
+              Phone Number
+              <Typography component="span" className={classes.fieldHint}>Partially visible</Typography>
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box component="input" className={classes.fieldInput} value={form.phone} onChange={set('phone')} placeholder="+91 ···· ····" />
+              <ChevronRightIcon sx={{ fontSize: '1rem', color: colors.ink4, flexShrink: 0 }} />
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Personal fields */}
+        <Box className={classes.fieldGroup}>
+          <Box className={classes.fieldRow}>
+            <SelectField
+              label="Gender"
+              value={form.gender}
+              onChange={v => setForm(prev => ({ ...prev, gender: v }))}
+              options={GENDER_OPTIONS.map(g => ({ value: g, label: g }))}
+            />
+          </Box>
+          <Box className={classes.fieldRow}>
+            <SelectField
+              label="Designation"
+              value={form.designation}
+              onChange={v => setForm(prev => ({ ...prev, designation: v }))}
+              options={DESIGNATION_OPTIONS.map(d => ({ value: d, label: d }))}
+            />
+          </Box>
+          <Box className={classes.fieldRow}>
+            <Typography className={classes.fieldLabel}>Institution</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box component="input" className={classes.fieldInput} value={form.institute} onChange={set('institute')} placeholder="Your college / university" />
+              <ChevronRightIcon sx={{ fontSize: '1rem', color: colors.ink4, flexShrink: 0 }} />
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Deactivate */}
+        <Box className={classes.deactivateArea}>
+          <Box component="button" className={classes.deactivateBtn}>
+            Deactivate account
+          </Box>
+        </Box>
+
+      </DialogContent>
     </Dialog>
   )
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Main ProfilePage ──────────────────────────────────────────────────────────
+
 const ProfilePage: React.FC = () => {
   const { classes, cx } = useStyles()
   const navigate = useNavigate()
@@ -407,20 +659,24 @@ const ProfilePage: React.FC = () => {
   const { data: friends = [] } = useFriends()
 
   const displayUser = profile ?? user
+  const name = displayUser?.name ?? 'Unknown'
+  const first8 = (friends as Friend[]).slice(0, 8)
   const friendCount = (friends as Friend[]).length
-  const first8Friends = (friends as Friend[]).slice(0, 8)
 
   const handleLogout = async () => {
     try { await authApi.logout() } catch { /* ignore */ } finally {
-      logout()
-      navigate(PATHS.landing)
+      logout(); navigate(PATHS.landing)
     }
   }
+
+  const genderIcon = displayUser?.gender === 'Female'
+    ? <FemaleIcon />
+    : <MaleIcon />
 
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
+        <CircularProgress size={28} sx={{ color: colors.moss }} />
       </Box>
     )
   }
@@ -428,77 +684,99 @@ const ProfilePage: React.FC = () => {
   return (
     <Box className={classes.page}>
 
-      {/* Gradient banner + avatar hero */}
-      <Box className={classes.heroBanner} />
-      <Box className={classes.heroContent}>
-        <Box className={classes.avatarRing}>
-          <Avatar className={classes.avatar}>{getInitials(displayUser?.name ?? 'U')}</Avatar>
-          <Box className={classes.editAvatarBtn} onClick={() => setEditOpen(true)}>
-            <EditOutlinedIcon sx={{ fontSize: '0.8rem', color: '#fff' }} />
-          </Box>
+      {/* ── Page header ── */}
+      <Box className={classes.pageHeader}>
+        <Typography className={classes.pageTitle}>Profile</Typography>
+        <Box component="button" className={classes.signOutBtn} onClick={handleLogout}>
+          <LogoutIcon sx={{ fontSize: '0.9rem' }} />
+          Sign out
         </Box>
-        <Typography className={classes.userName}>{displayUser?.name ?? 'Unknown'}</Typography>
-        {displayUser?.designation && (
-          <Typography className={classes.userDesignation}>{displayUser.designation}</Typography>
-        )}
-        {displayUser?.communityName && (
-          <Chip
-            label={displayUser.communityName}
-            className={classes.communityChip}
-            size="small"
-            icon={<GroupsOutlinedIcon sx={{ fontSize: '0.85rem', color: `${colors.moss} !important` }} />}
-          />
-        )}
       </Box>
 
-      {/* Stats row */}
+      {/* ── Avatar + name + location ── */}
+      <Box className={classes.avatarSection}>
+        <Box className={classes.avatarWrap}>
+          <Avatar
+            className={classes.avatar}
+            sx={{ background: avatarGrad(name), color: avatarColor(name) }}
+          >
+            {getInitials(name)}
+          </Avatar>
+          <Box className={classes.editAvatarFab} onClick={() => setEditOpen(true)}>
+            <EditOutlinedIcon />
+          </Box>
+        </Box>
+
+        <Typography className={classes.userName}>{name}</Typography>
+
+        <Box className={classes.userLocation}>
+          <LocationOnOutlinedIcon sx={{ fontSize: '0.85rem' }} />
+          {displayUser?.institute ? `${displayUser.institute}` : 'Location not set'}
+          {displayUser?.communityName && ` · Living in ${displayUser.communityName}`}
+        </Box>
+      </Box>
+
+      {/* ── Stats row ── */}
       <Box className={classes.statsRow}>
         <Box className={classes.statCard}>
-          <Typography className={classes.statVal}>{friendCount}</Typography>
-          <Typography className={classes.statLbl}>Friends</Typography>
+          <Typography className={classes.statNum}>{friendCount.toLocaleString('en-IN')}</Typography>
+          <Typography className={classes.statLabel}>Friends</Typography>
         </Box>
         <Box className={classes.statCard}>
-          <Typography className={classes.statVal}>{(displayUser as any)?.mutualCount ?? 0}</Typography>
-          <Typography className={classes.statLbl}>Mutuals</Typography>
+          <Typography className={classes.statNum}>{(displayUser as unknown as { mutualCount?: number })?.mutualCount?.toLocaleString('en-IN') ?? '0'}</Typography>
+          <Typography className={classes.statLabel}>Mutuals</Typography>
         </Box>
         <Box className={cx(classes.statCard, classes.statCardGreen)}>
-          <Typography className={cx(classes.statVal, classes.statValGreen)}>{(displayUser as any)?.inCommon ?? 0}</Typography>
-          <Typography className={cx(classes.statLbl, classes.statLblGreen)}>In Common</Typography>
+          <Typography className={cx(classes.statNum, classes.statNumGreen)}>
+            {(displayUser as unknown as { inCommon?: number })?.inCommon?.toLocaleString('en-IN') ?? '0'}
+          </Typography>
+          <Typography className={cx(classes.statLabel, classes.statLabelGreen)}>In common</Typography>
         </Box>
       </Box>
 
-      {/* Account details card */}
-      <Box className={classes.card}>
-        <Box className={classes.cardHeader}>
-          <Typography className={classes.cardTitle}>Account Details</Typography>
-          <Button
-            className={classes.editBtn}
-            startIcon={<EditOutlinedIcon sx={{ fontSize: '0.9rem !important' }} />}
-            onClick={() => setEditOpen(true)}
-            size="small"
-          >
-            Edit
-          </Button>
+      {/* ── Personal Details ── */}
+      <Box className={classes.sectionHeader}>
+        <Typography className={classes.sectionTitle}>Personal Details</Typography>
+        <Box component="button" className={classes.editLink} onClick={() => setEditOpen(true)}>
+          <EditOutlinedIcon sx={{ fontSize: '0.82rem' }} />
+          Edit
         </Box>
-        <Divider />
-        <DetailRowItem icon={<BadgeOutlinedIcon sx={{ fontSize: '1.1rem', color: colors.primary }} />} label="Designation" value={displayUser?.designation} />
-        <DetailRowItem icon={<EmailOutlinedIcon sx={{ fontSize: '1.1rem', color: colors.primary }} />} label="Email" value={displayUser?.email} />
-        <DetailRowItem icon={<PhoneOutlinedIcon sx={{ fontSize: '1.1rem', color: colors.primary }} />} label="Phone Number" value={displayUser?.phone} />
-        <DetailRowItem icon={<SchoolOutlinedIcon sx={{ fontSize: '1.1rem', color: colors.primary }} />} label="Institute / College" value={displayUser?.institute} />
-        <DetailRowItem icon={<WcOutlinedIcon sx={{ fontSize: '1.1rem', color: colors.primary }} />} label="Gender" value={displayUser?.gender} showDivider={false} />
       </Box>
 
-      {/* Friends grid */}
-      {first8Friends.length > 0 && (
-        <Box className={classes.card} sx={{ mt: 0 }}>
-          <Box className={classes.cardHeader}>
-            <Typography className={classes.cardTitle}>Friends</Typography>
+      <Box className={classes.detailCard}>
+        <DetailRow icon={genderIcon} label="Gender" value={displayUser?.gender ?? null} />
+        <DetailRow icon={<FlagOutlinedIcon />} label="From" value={displayUser?.institute ?? null} />
+        <DetailRow icon={<LocationOnOutlinedIcon />} label="Living in" value={displayUser?.communityName ?? null} />
+        <DetailRow icon={<BadgeOutlinedIcon />} label="Designation" value={displayUser?.designation ?? null} />
+        <DetailRow icon={<SchoolOutlinedIcon />} label="Institution" value={displayUser?.institute ?? null} />
+      </Box>
+
+      {/* ── Friends ── */}
+      {first8.length > 0 && (
+        <Box className={classes.friendsCard}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography className={classes.sectionTitle}>Friends</Typography>
+            <Box
+              component="button"
+              onClick={() => navigate(PATHS.circle)}
+              sx={{
+                border: 'none', backgroundColor: 'transparent',
+                color: colors.moss, fontWeight: 600, fontSize: '0.78rem',
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              See all
+            </Box>
           </Box>
-          <Divider />
-          <Box className={classes.friendsGrid}>
-            {first8Friends.map((f) => (
+          <Box className={classes.friendsRow}>
+            {first8.map(f => (
               <Box key={f.id} className={classes.friendItem}>
-                <Avatar className={classes.friendAvatar}>{getInitials(f.name)}</Avatar>
+                <Avatar
+                  className={classes.friendAvatar}
+                  sx={{ background: avatarGrad(f.name), color: avatarColor(f.name) }}
+                >
+                  {getInitials(f.name)}
+                </Avatar>
                 <Typography className={classes.friendName}>{f.name.split(' ')[0]}</Typography>
               </Box>
             ))}
@@ -506,36 +784,17 @@ const ProfilePage: React.FC = () => {
         </Box>
       )}
 
-      {/* Navigation rows */}
-      <Box className={classes.navCard}>
-        <Box className={classes.navRow} onClick={() => navigate(PATHS.myListings)}>
-          <Box className={classes.iconWrap}>
-            <FormatListBulletedIcon sx={{ fontSize: '1.1rem', color: colors.primary }} />
-          </Box>
-          <Typography className={classes.navLabel}>My Listings</Typography>
-          <ChevronRightIcon sx={{ fontSize: '1.2rem', color: colors.ink3 }} />
-        </Box>
-      </Box>
-
-      {/* Sign out */}
-      <Box className={classes.logoutArea}>
-        <Button
-          variant="outlined" fullWidth className={classes.logoutBtn}
-          startIcon={<LogoutIcon />} onClick={handleLogout}
-        >
-          Sign Out
-        </Button>
-      </Box>
-
-      {/* Edit profile dialog */}
-      <EditProfileDialog
+      {/* ── Edit Profile sheet ── */}
+      <EditProfileSheet
         open={editOpen}
         onClose={() => setEditOpen(false)}
-        current={{
+        user={{
           name: displayUser?.name ?? '',
-          designation: displayUser?.designation ?? '',
-          phone: displayUser?.phone ?? '',
-          institute: displayUser?.institute ?? '',
+          email: displayUser?.email ?? null,
+          phone: displayUser?.phone ?? null,
+          gender: displayUser?.gender ?? null,
+          designation: displayUser?.designation ?? null,
+          institute: displayUser?.institute ?? null,
         }}
       />
     </Box>

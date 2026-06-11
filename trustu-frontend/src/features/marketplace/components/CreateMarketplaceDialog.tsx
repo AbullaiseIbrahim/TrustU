@@ -1,9 +1,10 @@
 import React from 'react'
 import {
   Dialog, DialogTitle, DialogContent, IconButton, Typography,
-  Box, Grid, TextField, MenuItem, Button, CircularProgress,
+  Box, Grid, TextField, Button, CircularProgress,
   FormControlLabel, Checkbox, InputAdornment,
 } from '@mui/material'
+import SelectField from '@/components/SelectField'
 import CloseIcon from '@mui/icons-material/Close'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
@@ -75,12 +76,14 @@ const CreateMarketplaceDialog: React.FC<CreateMarketplaceDialogProps> = ({ open,
             {/* Item Type */}
             <Grid item xs={12} sm={6}>
               <Controller name="itemType" control={control} render={({ field }) => (
-                <TextField
-                  {...field} select fullWidth label="Item Type"
-                  error={!!errors.itemType} helperText={errors.itemType?.message}
-                >
-                  {ITEM_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-                </TextField>
+                <SelectField
+                  label="Item Type"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  options={ITEM_TYPES.map(t => ({ value: t, label: t }))}
+                  error={!!errors.itemType}
+                  helperText={errors.itemType?.message}
+                />
               )} />
             </Grid>
 
