@@ -698,6 +698,7 @@ const ProfilePage: React.FC = () => {
         <Box className={classes.avatarWrap}>
           <Avatar
             className={classes.avatar}
+            src={displayUser?.avatarUrl ?? undefined}
             sx={{ background: avatarGrad(name), color: avatarColor(name) }}
           >
             {getInitials(name)}
@@ -773,6 +774,7 @@ const ProfilePage: React.FC = () => {
               <Box key={f.id} className={classes.friendItem}>
                 <Avatar
                   className={classes.friendAvatar}
+                  src={f.avatarUrl ?? undefined}
                   sx={{ background: avatarGrad(f.name), color: avatarColor(f.name) }}
                 >
                   {getInitials(f.name)}

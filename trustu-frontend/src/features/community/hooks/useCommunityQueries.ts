@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { communityApi } from '@/services/community.api'
 
 export const COMMUNITY_QUERY_KEYS = {
-  list:       ['community', 'list']                                   as const,
-  detail:     (id: string) => ['community', 'detail', id]            as const,
-  members:    (id: string) => ['community', 'members', id]           as const,
-  subMembers: (id: string) => ['community', 'sub-members', id]       as const,
+  list:       ['community', 'list']                                              as const,
+  detail:     (id: string) => ['community', 'detail', id]                       as const,
+  members:    (id: string, page: number) => ['community', 'members', id, page]  as const,
+  subMembers: (id: string, page: number) => ['community', 'sub-members', id, page] as const,
 }
 
 /** All communities (created by super admin) */
@@ -25,20 +25,20 @@ export const useCommunity = (communityId: string | null | undefined) =>
     staleTime: 5 * 60_000,
   })
 
-/** Members of a community */
-export const useCommunityMembers = (communityId: string | null | undefined) =>
+/** Members of a community (paginated) */
+export const useCommunityMembers = (communityId: string | null | undefined, page = 1) =>
   useQuery({
-    queryKey: COMMUNITY_QUERY_KEYS.members(communityId ?? ''),
-    queryFn:  () => communityApi.members(communityId!),
+    queryKey: COMMUNITY_QUERY_KEYS.members(communityId ?? '', page),
+    queryFn:  () => communityApi.members(communityId!, page),
     enabled:  !!communityId,
     staleTime: 60_000,
   })
 
-/** Members of a sub-community */
-export const useSubCommunityMembers = (subCommunityId: string | null | undefined) =>
+/** Members of a sub-community (paginated) */
+export const useSubCommunityMembers = (subCommunityId: string | null | undefined, page = 1) =>
   useQuery({
-    queryKey: COMMUNITY_QUERY_KEYS.subMembers(subCommunityId ?? ''),
-    queryFn:  () => communityApi.subMembers(subCommunityId!),
+    queryKey: COMMUNITY_QUERY_KEYS.subMembers(subCommunityId ?? '', page),
+    queryFn:  () => communityApi.subMembers(subCommunityId!, page),
     enabled:  !!subCommunityId,
     staleTime: 60_000,
   })

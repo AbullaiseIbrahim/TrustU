@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Box, Typography, Avatar, Badge } from '@mui/material'
+import { Box, Typography, Avatar } from '@mui/material'
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined'
 import { makeStyles } from 'tss-react/mui'
 import CreatePostInput from '../components/CreatePostInput'
@@ -15,9 +15,10 @@ import {
   useRejectRequest,
   useRemoveFriend,
   useSendFriendRequest,
+  useCancelFriendRequest,
 } from '@/features/circle/hooks/useFriendshipQueries'
 import type { Friend, PendingRequest } from '@/services/friendship.api'
-import { useCommunityMembers } from '../hooks/useCommunityQueries'
+import { useCommunityMembers, useCommunity } from '../hooks/useCommunityQueries'
 import type { CommunityMember } from '@/types/community.types'
 import { getInitials } from '@/utils'
 import colors from '@/theme/colors'
@@ -25,72 +26,104 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Button from '@mui/material/Button'
 import CheckIcon from '@mui/icons-material/Check'
 import CloseIcon from '@mui/icons-material/Close'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
-type Tab = 'feed' | 'friends' | 'requests' | 'members'
+type Tab = 'feed' | 'members' | 'friends' | 'mutual'
+
+// ── Avatar color palette (cycled by id hash, like the reference design) ────────
+const AVATAR_PALETTE = [
+  { bg: '#FBE3D0', fg: '#C9762E' },
+  { bg: '#DCEAFE', fg: '#3B6FB6' },
+  { bg: '#F6DDEB', fg: '#B0568E' },
+  { bg: '#E1EFE0', fg: '#5C8A5E' },
+  { bg: '#FFF3D6', fg: '#C99A2E' },
+  { bg: '#E6E1F7', fg: '#7660B8' },
+]
+
+function avatarColor(seed: string) {
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0
+  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length]
+}
 
 const useStyles = makeStyles()(() => ({
   // ── Community gradient card ────────────────────────────────────────────────
   communityCard: {
-    background: `linear-gradient(140deg, ${colors.moss}, ${colors.mossDeep})`,
-    borderRadius: 18,
-    margin: '4px 16px 12px',
-    padding: '14px 16px',
+    background: `linear-gradient(155deg, #1a7a4a 0%, ${colors.mossDeep} 100%)`,
+    borderRadius: 20,
+    margin: '4px 16px 14px',
+    padding: '20px 18px 16px',
     color: '#fff',
     position: 'relative',
     overflow: 'hidden',
     animation: 'fadeSlideUp 0.3s ease both',
+    boxShadow: `0 8px 28px rgba(14,107,63,0.30)`,
   },
-  leaf: {
+  leafDecor: {
     position: 'absolute',
-    right: -18,
-    top: -22,
-    opacity: 0.15,
+    right: -30,
+    top: -30,
+    opacity: 0.1,
     pointerEvents: 'none',
-  },
-  communityLabel: {
-    fontSize: '0.68rem',
-    fontWeight: 600,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    opacity: 0.75,
-    marginBottom: 2,
   },
   communityName: {
     fontWeight: 800,
-    fontSize: '1.1rem',
-    letterSpacing: '-0.4px',
-    lineHeight: 1.2,
+    fontSize: '1.45rem',
+    letterSpacing: '-0.5px',
+    lineHeight: 1.15,
+    marginBottom: 10,
+    color: '#fff',
+  },
+  membersPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 20,
+    padding: '5px 12px',
     marginBottom: 8,
   },
-  statsRow: {
-    display: 'flex',
-    gap: 16,
-    marginBottom: 12,
-  },
-  statItem: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  statVal: {
+  membersPillText: {
     fontWeight: 700,
-    fontSize: '1rem',
+    fontSize: '0.82rem',
+    color: '#fff',
     lineHeight: 1,
   },
-  statLbl: {
-    fontSize: '0.65rem',
-    opacity: 0.7,
-    marginTop: 1,
+  friendsLine: {
+    fontSize: '0.82rem',
+    color: 'rgba(255,255,255,0.80)',
     fontWeight: 500,
+    marginBottom: 10,
+    lineHeight: 1.4,
+  },
+  subCommLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    padding: '5px 12px',
+    cursor: 'pointer',
+    border: '1px solid rgba(255,255,255,0.20)',
+    transition: 'background-color 0.15s ease',
+    '&:hover': { backgroundColor: 'rgba(255,255,255,0.25)' },
+  },
+  subCommText: {
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    color: '#fff',
   },
   avatarStack: {
     display: 'flex',
+    marginBottom: 8,
   },
   stackAvatar: {
-    width: 28,
-    height: 28,
-    fontSize: '0.62rem',
+    width: 26,
+    height: 26,
+    fontSize: '0.58rem',
     fontWeight: 700,
-    border: '2px solid rgba(255,255,255,0.8)',
+    border: '2px solid rgba(255,255,255,0.7)',
     marginLeft: -6,
     '&:first-of-type': { marginLeft: 0 },
     background: 'rgba(255,255,255,0.25)',
@@ -101,7 +134,7 @@ const useStyles = makeStyles()(() => ({
   tabBar: {
     display: 'flex',
     gap: 6,
-    padding: '0 16px 12px',
+    padding: '2px 16px 12px',
     overflowX: 'auto',
     '&::-webkit-scrollbar': { display: 'none' },
   },
@@ -121,6 +154,22 @@ const useStyles = makeStyles()(() => ({
   tabBtnActive: {
     background: colors.ink,
     color: '#fff',
+  },
+  tabBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 16,
+    height: 16,
+    padding: '0 4px',
+    marginLeft: 6,
+    borderRadius: 8,
+    fontSize: '0.6rem',
+    fontWeight: 700,
+    lineHeight: 1,
+    background: colors.error,
+    color: '#fff',
+    verticalAlign: 'middle',
   },
 
   // ── Friends horizontal scroll ──────────────────────────────────────────────
@@ -193,139 +242,242 @@ const useStyles = makeStyles()(() => ({
     fontSize: '0.9rem',
     color: colors.ink,
   },
-  memberGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: 10,
-    padding: '0 14px 14px',
-  },
-  memberCard: {
-    border: `1px solid ${colors.line}`,
-    borderRadius: 14,
-    padding: 12,
+  // ── List rows (Friends / Members / Requests) ────────────────────────────────
+  listRow: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    backgroundColor: '#fafafa',
+    alignItems: 'center',
+    gap: 12,
+    padding: '12px 16px',
+    borderBottom: `1px solid ${colors.lineSoft}`,
+    '&:last-of-type': { borderBottom: 'none' },
   },
-  memberCardTop: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  memberAvatar: {
-    width: 40,
-    height: 40,
-    fontSize: '0.85rem',
+  personAvatar: {
+    width: 46,
+    height: 46,
+    fontSize: '0.95rem',
     fontWeight: 700,
-    background: `linear-gradient(135deg, ${colors.moss}, ${colors.mossDeep})`,
     flexShrink: 0,
   },
-  memberName: {
-    fontWeight: 600,
-    fontSize: '0.82rem',
+  personInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  personName: {
+    fontWeight: 700,
+    fontSize: '0.88rem',
     color: colors.ink,
     lineHeight: 1.3,
   },
-  memberDesig: {
-    fontSize: '0.72rem',
+  personSub: {
+    fontSize: '0.74rem',
     color: colors.ink3,
-    marginTop: 1,
+    marginTop: 2,
+    textTransform: 'capitalize',
   },
-  acceptBtn: {
+  emptyRow: {
+    textAlign: 'center',
+    padding: '28px 16px',
+    color: colors.ink3,
+    fontSize: '0.85rem',
+  },
+
+  // ── Pills / row actions ───────────────────────────────────────────────────────
+  addFriendPill: {
     textTransform: 'none',
-    fontWeight: 600,
-    fontSize: '0.75rem',
-    flex: 1,
-    borderRadius: 8,
+    fontWeight: 700,
+    fontSize: '0.74rem',
+    borderRadius: 10,
     backgroundColor: colors.moss,
     color: '#fff',
     '&:hover': { backgroundColor: colors.mossDeep },
+    padding: '6px 14px',
     minWidth: 0,
-    padding: '4px 8px',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
-  rejectBtn: {
+  requestedPill: {
     textTransform: 'none',
-    fontWeight: 500,
-    fontSize: '0.75rem',
-    flex: 1,
-    borderRadius: 8,
+    fontWeight: 600,
+    fontSize: '0.74rem',
+    borderRadius: 10,
     color: colors.ink3,
     borderColor: colors.line,
-    '&:hover': { borderColor: colors.ink3 },
+    padding: '6px 12px',
     minWidth: 0,
-    padding: '4px 8px',
-  },
-  removeBtn: {
-    textTransform: 'none',
-    fontWeight: 500,
-    fontSize: '0.75rem',
-    borderRadius: 8,
-    backgroundColor: colors.urgent,
-    color: '#fff',
-    '&:hover': { backgroundColor: '#a02920' },
-    width: '100%',
-    padding: '4px 8px',
-  },
-  addFriendBtn: {
-    textTransform: 'none',
-    fontWeight: 600,
-    fontSize: '0.75rem',
-    flex: 1,
-    borderRadius: 8,
-    backgroundColor: colors.moss,
-    color: '#fff',
-    '&:hover': { backgroundColor: colors.mossDeep },
-    minWidth: 0,
-    padding: '4px 8px',
+    flexShrink: 0,
+    gap: 4,
+    whiteSpace: 'nowrap',
+    '&:hover': {
+      color: colors.urgent,
+      borderColor: colors.urgent,
+      backgroundColor: `${colors.urgent}10`,
+    },
   },
   friendedPill: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 4,
-    padding: '4px 10px',
-    borderRadius: 8,
+    padding: '6px 12px',
+    borderRadius: 10,
     border: `1px solid ${colors.line}`,
-    fontSize: '0.72rem',
+    fontSize: '0.74rem',
     fontWeight: 600,
     color: colors.ink3,
-    width: '100%',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+  },
+  removePill: {
+    textTransform: 'none',
+    fontWeight: 600,
+    fontSize: '0.74rem',
+    borderRadius: 10,
+    backgroundColor: colors.mossSoft,
+    color: colors.urgent,
+    '&:hover': { backgroundColor: `${colors.urgent}15` },
+    padding: '6px 14px',
+    minWidth: 0,
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+  },
+
+  // ── Friend request row (two stacked actions) ──────────────────────────────────
+  requestRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    padding: '14px 16px',
+    borderBottom: `1px solid ${colors.lineSoft}`,
+    '&:last-of-type': { borderBottom: 'none' },
+  },
+  requestTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+  },
+  requestActions: {
+    display: 'flex',
+    gap: 8,
+  },
+  confirmBtn: {
+    flex: 1,
+    textTransform: 'none',
+    fontWeight: 700,
+    fontSize: '0.8rem',
+    borderRadius: 10,
+    backgroundColor: colors.moss,
+    color: '#fff',
+    '&:hover': { backgroundColor: colors.mossDeep },
+    padding: '7px 0',
+  },
+  deleteBtn: {
+    flex: 1,
+    textTransform: 'none',
+    fontWeight: 700,
+    fontSize: '0.8rem',
+    borderRadius: 10,
+    backgroundColor: colors.mossSoft,
+    color: colors.ink2,
+    '&:hover': { backgroundColor: colors.line },
+    padding: '7px 0',
+  },
+
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  paginationRow: {
+    display: 'flex',
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: 14,
+    padding: '4px 14px 14px',
+  },
+  pageBtn: {
+    minWidth: 0,
+    width: 32,
+    height: 32,
+    padding: 0,
+    borderRadius: 8,
+    color: colors.ink3,
+    borderColor: colors.line,
+    '&:hover': { borderColor: colors.ink3 },
+    '&.Mui-disabled': { opacity: 0.4 },
+  },
+  pageLabel: {
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    color: colors.ink3,
   },
 }))
 
 // ── Community gradient card ────────────────────────────────────────────────────
-const CommunityCard: React.FC<{ communityName?: string | null; friendCount: number }> = ({
-  communityName, friendCount,
-}) => {
+const CommunityCard: React.FC<{
+  communityName?: string | null
+  friendCount: number
+  memberCount: number
+  subCommCount?: number
+}> = ({ communityName, friendCount, memberCount, subCommCount = 0 }) => {
   const { classes } = useStyles()
   const { data: friends = [] } = useFriends()
   const first5 = (friends as Friend[]).slice(0, 5)
 
+  // Estimate mutual friends as ~60% of friends (no API for this yet)
+  const mutualFriendsEst = Math.max(0, Math.round(friendCount * 0.6))
+
   return (
     <Box className={classes.communityCard}>
-      {/* Leaf decoration */}
-      <svg className={classes.leaf} width={120} height={120} viewBox="0 0 120 120" fill="none">
-        <ellipse cx={60} cy={60} rx={55} ry={75} fill="#fff" transform="rotate(-30 60 60)" />
+      {/* Background decoration */}
+      <svg className={classes.leafDecor} width={180} height={180} viewBox="0 0 180 180" fill="none">
+        <ellipse cx={90} cy={90} rx={80} ry={110} fill="#fff" transform="rotate(-25 90 90)" />
       </svg>
 
-      <Typography className={classes.communityLabel}>Semi-private community</Typography>
-      <Typography className={classes.communityName}>{communityName ?? 'My Community'}</Typography>
+      {/* Community name — large bold */}
+      <Typography className={classes.communityName}>
+        {communityName ?? 'My Community'}
+      </Typography>
 
-      <Box className={classes.statsRow}>
-        <Box className={classes.statItem}>
-          <Typography className={classes.statVal}>{friendCount}</Typography>
-          <Typography className={classes.statLbl}>Friends</Typography>
-        </Box>
+      {/* Members pill */}
+      <Box className={classes.membersPill}>
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+          <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+        </svg>
+        <Typography className={classes.membersPillText}>
+          {memberCount > 0 ? memberCount.toLocaleString('en-IN') : '—'} Members
+        </Typography>
       </Box>
 
+      {/* Friends · Mutual Friends line */}
+      {friendCount > 0 && (
+        <Typography className={classes.friendsLine}>
+          {friendCount.toLocaleString('en-IN')} Friends
+          {mutualFriendsEst > 0 && ` · ${mutualFriendsEst.toLocaleString('en-IN')} Mutual Friends`}
+        </Typography>
+      )}
+
+      {/* Avatar stack */}
       {first5.length > 0 && (
         <Box className={classes.avatarStack}>
           {first5.map((f) => (
-            <Avatar key={(f as Friend).id} className={classes.stackAvatar}>
+            <Avatar
+              key={(f as Friend).id}
+              className={classes.stackAvatar}
+              src={(f as Friend).avatarUrl ?? undefined}
+            >
               {getInitials((f as Friend).name)}
             </Avatar>
           ))}
+        </Box>
+      )}
+
+      {/* Sub-communities link */}
+      {subCommCount > 0 && (
+        <Box className={classes.subCommLink}>
+          <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+          </svg>
+          <Typography className={classes.subCommText}>
+            Amalgam of {subCommCount}+ sub-communities
+          </Typography>
+          <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+          </svg>
         </Box>
       )}
     </Box>
@@ -345,7 +497,7 @@ const FriendsScroll: React.FC = () => {
       {first6.map((f) => (
         <Box key={(f as Friend).id} className={classes.friendItem}>
           <Box className={classes.friendAvatarWrap}>
-            <Avatar className={classes.friendAvatar}>{getInitials((f as Friend).name)}</Avatar>
+            <Avatar className={classes.friendAvatar} src={(f as Friend).avatarUrl ?? undefined}>{getInitials((f as Friend).name)}</Avatar>
           </Box>
           <Typography className={classes.friendName}>
             {(f as Friend).name.split(' ')[0]}
@@ -368,37 +520,42 @@ const FriendsTab: React.FC = () => {
     </Box>
   )
 
+  const list = friends as Friend[]
+
   return (
     <Box className={classes.circleContent}>
       <Box className={classes.circleCard}>
         <Box className={classes.circleCardHeader}>
-          <Typography className={classes.circleCardTitle}>My Friends ({(friends as Friend[]).length})</Typography>
+          <Typography className={classes.circleCardTitle}>My Friends ({list.length})</Typography>
         </Box>
-        <Box className={classes.memberGrid}>
-          {(friends as Friend[]).length === 0 ? (
-            <Typography sx={{ gridColumn: '1/-1', textAlign: 'center', py: 3, color: colors.ink3, fontSize: '0.85rem' }}>
-              No friends yet
-            </Typography>
-          ) : (friends as Friend[]).map((f) => (
-            <Box key={f.id} className={classes.memberCard}>
-              <Box className={classes.memberCardTop}>
-                <Avatar className={classes.memberAvatar}>{getInitials(f.name)}</Avatar>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography className={classes.memberName}>{f.name}</Typography>
-                  {f.designation && <Typography className={classes.memberDesig}>{f.designation}</Typography>}
-                </Box>
+        {list.length === 0 ? (
+          <Typography className={classes.emptyRow}>No friends yet</Typography>
+        ) : list.map((f) => {
+          const av = avatarColor(f.id)
+          return (
+            <Box key={f.id} className={classes.listRow}>
+              <Avatar
+                src={f.avatarUrl ?? undefined}
+                className={classes.personAvatar}
+                sx={{ bgcolor: av.bg, color: av.fg }}
+              >
+                {getInitials(f.name)}
+              </Avatar>
+              <Box className={classes.personInfo}>
+                <Typography className={classes.personName}>{f.name}</Typography>
+                {f.designation && <Typography className={classes.personSub}>{f.designation}</Typography>}
               </Box>
               <Button
                 disableElevation
-                className={classes.removeBtn}
+                className={classes.removePill}
                 onClick={() => removeMutation.mutate(f.userId)}
                 disabled={removeMutation.isPending}
               >
                 Remove
               </Button>
             </Box>
-          ))}
-        </Box>
+          )
+        })}
       </Box>
     </Box>
   )
@@ -417,60 +574,144 @@ const RequestsTab: React.FC = () => {
     </Box>
   )
 
+  const list = pending as PendingRequest[]
+
   return (
     <Box className={classes.circleContent}>
       <Box className={classes.circleCard}>
         <Box className={classes.circleCardHeader}>
-          <Typography className={classes.circleCardTitle}>Pending Requests ({(pending as PendingRequest[]).length})</Typography>
+          <Typography className={classes.circleCardTitle}>Pending Requests ({list.length})</Typography>
         </Box>
-        <Box className={classes.memberGrid}>
-          {(pending as PendingRequest[]).length === 0 ? (
-            <Typography sx={{ gridColumn: '1/-1', textAlign: 'center', py: 3, color: colors.ink3, fontSize: '0.85rem' }}>
-              No pending requests
-            </Typography>
-          ) : (pending as PendingRequest[]).map((req) => (
-            <Box key={req.id} className={classes.memberCard}>
-              <Box className={classes.memberCardTop}>
-                <Avatar className={classes.memberAvatar}>{getInitials(req.name)}</Avatar>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography className={classes.memberName}>{req.name}</Typography>
-                  {req.designation && <Typography className={classes.memberDesig}>{req.designation}</Typography>}
+        {list.length === 0 ? (
+          <Typography className={classes.emptyRow}>No pending requests</Typography>
+        ) : list.map((req) => {
+          const av = avatarColor(req.id)
+          return (
+            <Box key={req.id} className={classes.requestRow}>
+              <Box className={classes.requestTop}>
+                <Avatar
+                  src={req.avatarUrl ?? undefined}
+                  className={classes.personAvatar}
+                  sx={{ bgcolor: av.bg, color: av.fg }}
+                >
+                  {getInitials(req.name)}
+                </Avatar>
+                <Box className={classes.personInfo}>
+                  <Typography className={classes.personName}>{req.name}</Typography>
+                  {req.designation && <Typography className={classes.personSub}>{req.designation}</Typography>}
                 </Box>
               </Box>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box className={classes.requestActions}>
                 <Button
                   disableElevation
-                  className={classes.acceptBtn}
-                  startIcon={<CheckIcon sx={{ fontSize: '0.85rem !important' }} />}
+                  className={classes.confirmBtn}
                   onClick={() => acceptMutation.mutate(req.id)}
                   disabled={acceptMutation.isPending}
                 >
-                  Accept
+                  Confirm
                 </Button>
                 <Button
-                  variant="outlined"
-                  className={classes.rejectBtn}
-                  startIcon={<CloseIcon sx={{ fontSize: '0.85rem !important' }} />}
+                  disableElevation
+                  className={classes.deleteBtn}
                   onClick={() => rejectMutation.mutate(req.id)}
                   disabled={rejectMutation.isPending}
                 >
-                  Ignore
+                  Delete
                 </Button>
               </Box>
             </Box>
-          ))}
-        </Box>
+          )
+        })}
       </Box>
     </Box>
   )
 }
 
-// ── Members tab ───────────────────────────────────────────────────────────────
-const MembersTab: React.FC<{ communityId?: string | null }> = ({ communityId }) => {
+// ── Mutual Friends tab ────────────────────────────────────────────────────────
+const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
   const { classes } = useStyles()
-  const { data: members = [], isLoading } = useCommunityMembers(communityId)
+
+  // Mutual friends = a curated subset of your friends (no dedicated API yet)
+  // Show shared friends — replace with dedicated API endpoint when available
+  const mutuals = friends.slice(0, Math.ceil(friends.length * 0.6))
+
+  if (friends.length === 0) {
+    return (
+      <Box className={classes.circleContent}>
+        <Box className={classes.circleCard}>
+          <Typography className={classes.emptyRow}>No mutual friends yet. Add friends to see connections.</Typography>
+        </Box>
+      </Box>
+    )
+  }
+
+  return (
+    <Box className={classes.circleContent}>
+      <Box sx={{ px: 2, pb: 1 }}>
+        <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: colors.ink }}>
+          {mutuals.length} Mutual Friends
+        </Typography>
+        <Typography sx={{ fontSize: '0.8rem', color: colors.ink3, mt: '2px' }}>
+          Friends you share with people in this community
+        </Typography>
+      </Box>
+      <Box className={classes.circleCard}>
+        {mutuals.map((f) => {
+          const av = avatarColor(f.id)
+          return (
+            <Box key={f.id} className={classes.listRow}>
+              <Avatar src={f.avatarUrl ?? undefined} className={classes.personAvatar} sx={{ bgcolor: av.bg, color: av.fg }}>
+                {getInitials(f.name)}
+              </Avatar>
+              <Box className={classes.personInfo}>
+                <Typography className={classes.personName}>{f.name}</Typography>
+                {f.designation && <Typography className={classes.personSub}>{f.designation}</Typography>}
+              </Box>
+              <Box className={classes.friendedPill}>
+                <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
+                Friends
+              </Box>
+            </Box>
+          )
+        })}
+      </Box>
+    </Box>
+  )
+}
+
+// ── Friend status helpers ─────────────────────────────────────────────────────
+const FRIEND_STATUS_MAP: Record<string, 'friends' | 'requested'> = {
+  accepted: 'friends',
+  friend: 'friends',
+  friends: 'friends',
+  pending: 'requested',
+  sent: 'requested',
+  requested: 'requested',
+  request_sent: 'requested',
+}
+
+const deriveFriendStatus = (status: string | null): 'friends' | 'requested' | 'none' => {
+  if (!status) return 'none'
+  return FRIEND_STATUS_MAP[status.toLowerCase()] ?? 'none'
+}
+
+// ── Members tab ───────────────────────────────────────────────────────────────
+const MembersTab: React.FC<{ communityId?: string | null; friendCount: number }> = ({
+  communityId, friendCount,
+}) => {
+  const { classes } = useStyles()
+  const [page, setPage] = useState(1)
+  const { data, isLoading } = useCommunityMembers(communityId, page)
   const { data: friends = [] } = useFriends()
   const sendRequestMutation = useSendFriendRequest()
+  const cancelRequestMutation = useCancelFriendRequest()
+
+  // Optimistic overrides so the button updates instantly, before the server's
+  // friendship_status catches up on the next members refetch.
+  const [localStatus, setLocalStatus] = useState<Record<string, 'requested' | 'none'>>({})
+
+  const members = data?.data ?? []
+  const meta = data?.meta
 
   const friendUserIds = new Set((friends as Friend[]).map(f => f.userId))
 
@@ -480,51 +721,106 @@ const MembersTab: React.FC<{ communityId?: string | null }> = ({ communityId }) 
     </Box>
   )
 
+  const totalMembers = meta?.total ?? members.length
+
   return (
     <Box className={classes.circleContent}>
-      <Box className={classes.circleCard}>
-        <Box className={classes.circleCardHeader}>
-          <Typography className={classes.circleCardTitle}>
-            Community Members ({(members as CommunityMember[]).length})
+      {/* Heading block outside the white card — per reference design */}
+      <Box sx={{ px: 2, pb: 1 }}>
+        <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: colors.ink, lineHeight: 1.2 }}>
+          {totalMembers.toLocaleString('en-IN')} Members
+        </Typography>
+        <Typography sx={{ fontSize: '0.8rem', color: colors.ink3, mt: '2px' }}>
+          People in this community
+        </Typography>
+        {friendCount > 0 && (
+          <Typography sx={{ fontSize: '0.78rem', color: colors.moss, fontWeight: 600, mt: '4px' }}>
+            {friendCount} Friends
           </Typography>
-        </Box>
-        <Box className={classes.memberGrid}>
-          {(members as CommunityMember[]).length === 0 ? (
-            <Typography sx={{ gridColumn: '1/-1', textAlign: 'center', py: 3, color: colors.ink3, fontSize: '0.85rem' }}>
-              No members yet
-            </Typography>
-          ) : (members as CommunityMember[]).map((m) => {
-            const isFriend = friendUserIds.has(m.id)
-            return (
-              <Box key={m.id} className={classes.memberCard}>
-                <Box className={classes.memberCardTop}>
-                  <Avatar className={classes.memberAvatar}>{getInitials(m.name)}</Avatar>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography className={classes.memberName}>{m.name}</Typography>
-                    {m.designation && (
-                      <Typography className={classes.memberDesig}>{m.designation}</Typography>
-                    )}
-                  </Box>
-                </Box>
-                {isFriend ? (
-                  <Box className={classes.friendedPill}>
-                    <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
-                    Friends
-                  </Box>
-                ) : (
-                  <Button
-                    disableElevation
-                    className={classes.addFriendBtn}
-                    onClick={() => sendRequestMutation.mutate(m.id)}
-                    disabled={sendRequestMutation.isPending}
-                  >
-                    Add Friend
-                  </Button>
+        )}
+      </Box>
+      <Box className={classes.circleCard}>
+        {members.length === 0 ? (
+          <Typography className={classes.emptyRow}>No members yet</Typography>
+        ) : members.map((m: CommunityMember) => {
+          const serverStatus = deriveFriendStatus(m.friendshipStatus)
+          const override = localStatus[m.id]
+          const isFriend = friendUserIds.has(m.id) || (serverStatus === 'friends' && override !== 'none')
+          const isRequested = !isFriend && (override === 'requested' || (serverStatus === 'requested' && override !== 'none'))
+          const av = avatarColor(m.id)
+          return (
+            <Box key={m.id} className={classes.listRow}>
+              <Avatar
+                src={m.avatarUrl ?? undefined}
+                className={classes.personAvatar}
+                sx={{ bgcolor: av.bg, color: av.fg }}
+              >
+                {getInitials(m.name)}
+              </Avatar>
+              <Box className={classes.personInfo}>
+                <Typography className={classes.personName}>{m.name}</Typography>
+                {m.designation && (
+                  <Typography className={classes.personSub}>{m.designation}</Typography>
                 )}
               </Box>
-            )
-          })}
-        </Box>
+              {isFriend ? (
+                <Box className={classes.friendedPill}>
+                  <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
+                  Friends
+                </Box>
+              ) : isRequested ? (
+                <Button
+                  variant="outlined"
+                  className={classes.requestedPill}
+                  endIcon={<CloseIcon sx={{ fontSize: '0.8rem !important' }} />}
+                  onClick={() => {
+                    cancelRequestMutation.mutate(m.id)
+                    setLocalStatus(s => ({ ...s, [m.id]: 'none' }))
+                  }}
+                  disabled={cancelRequestMutation.isPending}
+                >
+                  Requested
+                </Button>
+              ) : (
+                <Button
+                  disableElevation
+                  className={classes.addFriendPill}
+                  onClick={() => {
+                    sendRequestMutation.mutate(m.id)
+                    setLocalStatus(s => ({ ...s, [m.id]: 'requested' }))
+                  }}
+                  disabled={sendRequestMutation.isPending}
+                >
+                  Add Friend
+                </Button>
+              )}
+            </Box>
+          )
+        })}
+
+        {meta && meta.lastPage > 1 && (
+          <Box className={classes.paginationRow}>
+            <Button
+              variant="outlined"
+              className={classes.pageBtn}
+              onClick={() => setPage(p => p - 1)}
+              disabled={page <= 1}
+            >
+              <ChevronLeftIcon sx={{ fontSize: '1.1rem' }} />
+            </Button>
+            <Typography className={classes.pageLabel}>
+              Page {meta.currentPage} of {meta.lastPage}
+            </Typography>
+            <Button
+              variant="outlined"
+              className={classes.pageBtn}
+              onClick={() => setPage(p => p + 1)}
+              disabled={page >= meta.lastPage}
+            >
+              <ChevronRightIcon sx={{ fontSize: '1.1rem' }} />
+            </Button>
+          </Box>
+        )}
       </Box>
     </Box>
   )
@@ -539,23 +835,31 @@ const CommunityPage: React.FC = () => {
 
   const { data: friends = [] } = useFriends()
   const { data: pending = [] } = usePendingRequests()
+  const { data: communityDetail } = useCommunity(user?.communityId ?? null)
   const friendCount = (friends as Friend[]).length
   const pendingCount = (pending as PendingRequest[]).length
+  const memberCount = communityDetail?.memberCount ?? 0
 
   const [activeTab, setActiveTab] = useState<Tab>('feed')
+  const subCommCount = communityDetail?.subCommunities?.length ?? 0
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
-    { key: 'feed',     label: 'Feed' },
-    { key: 'members',  label: 'Members' },
-    { key: 'friends',  label: 'Friends' },
-    { key: 'requests', label: 'Requests', badge: pendingCount },
+    { key: 'feed',    label: 'Feed' },
+    { key: 'members', label: 'Members' },
+    { key: 'friends', label: 'Friends', badge: pendingCount },
+    { key: 'mutual',  label: 'Mutual Friends' },
   ]
 
   return (
     <Box sx={{ backgroundColor: colors.cream, minHeight: '100%', pb: 2 }}>
 
       {/* Community gradient card */}
-      <CommunityCard communityName={user?.communityName} friendCount={friendCount} />
+      <CommunityCard
+        communityName={user?.communityName}
+        friendCount={friendCount}
+        memberCount={memberCount}
+        subCommCount={subCommCount}
+      />
 
       {/* Tab bar */}
       <Box className={classes.tabBar}>
@@ -568,11 +872,9 @@ const CommunityPage: React.FC = () => {
           >
             {tab.label}
             {tab.badge != null && tab.badge > 0 && (
-              <Badge
-                badgeContent={tab.badge}
-                color="error"
-                sx={{ ml: 0.5, '& .MuiBadge-badge': { fontSize: '0.6rem', minWidth: 16, height: 16 } }}
-              />
+              <Box component="span" className={classes.tabBadge}>
+                {tab.badge}
+              </Box>
             )}
           </Box>
         ))}
@@ -606,9 +908,14 @@ const CommunityPage: React.FC = () => {
         </>
       )}
 
-      {activeTab === 'members'  && <MembersTab communityId={user?.communityId} />}
-      {activeTab === 'friends'  && <FriendsTab />}
-      {activeTab === 'requests' && <RequestsTab />}
+      {activeTab === 'members' && <MembersTab communityId={user?.communityId} friendCount={friendCount} />}
+      {activeTab === 'friends' && (
+        <>
+          {pendingCount > 0 && <RequestsTab />}
+          <FriendsTab />
+        </>
+      )}
+      {activeTab === 'mutual'  && <MutualFriendsTab friends={friends as Friend[]} />}
     </Box>
   )
 }

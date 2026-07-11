@@ -3,12 +3,10 @@ import {
   Box, Typography, Avatar, TextField, Button,
   Collapse, IconButton, Menu, MenuItem, ListItemIcon,
 } from '@mui/material'
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
-import FavoriteIcon from '@mui/icons-material/Favorite'
 import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined'
 import ThumbUpIcon from '@mui/icons-material/ThumbUp'
-import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
+import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { makeStyles } from 'tss-react/mui'
@@ -22,12 +20,27 @@ interface PostCardProps {
   post: Post
 }
 
+// Deterministic avatar color from user id
+const PALETTE = [
+  { bg: '#FBE3D0', fg: '#C9762E' },
+  { bg: '#DCEAFE', fg: '#3B6FB6' },
+  { bg: '#F6DDEB', fg: '#B0568E' },
+  { bg: '#E1EFE0', fg: '#5C8A5E' },
+  { bg: '#FFF3D6', fg: '#C99A2E' },
+  { bg: '#E6E1F7', fg: '#7660B8' },
+]
+function avatarColor(seed: string) {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+  return PALETTE[h % PALETTE.length]
+}
+
 const useStyles = makeStyles()(() => ({
   root: {
     backgroundColor: colors.white,
     borderRadius: 18,
     margin: '0 0 10px',
-    padding: '16px',
+    padding: '16px 16px 12px',
     boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 6px 22px rgba(20,20,15,0.05)',
     animation: 'fadeSlideUp 0.3s ease both',
     transition: 'box-shadow 0.2s ease',
@@ -45,55 +58,67 @@ const useStyles = makeStyles()(() => ({
     gap: 10,
   },
   avatar: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     fontSize: '0.875rem',
-    background: `linear-gradient(135deg, ${colors.moss} 0%, ${colors.mossDeep} 100%)`,
     flexShrink: 0,
     fontWeight: 700,
-    boxShadow: `0 2px 8px rgba(14,107,63,0.22)`,
+  },
+  userInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
   },
   userName: {
     fontWeight: 700,
-    fontSize: '0.875rem',
+    fontSize: '0.9rem',
     color: colors.ink,
+    lineHeight: 1.25,
+  },
+  userSub: {
+    fontSize: '0.72rem',
+    color: colors.ink3,
+    fontWeight: 500,
     lineHeight: 1.3,
   },
-  meta: {
-    fontSize: '0.7rem',
-    color: colors.ink3,
-    marginTop: 1,
-    fontWeight: 500,
-  },
-  postTitle: {
-    fontWeight: 700,
-    fontSize: '0.95rem',
-    color: colors.ink,
-    lineHeight: 1.4,
-    marginBottom: 5,
-    letterSpacing: '-0.2px',
+  mutualChip: {
+    display: 'inline-block',
+    fontSize: '0.68rem',
+    fontWeight: 600,
+    color: colors.mossDeep,
+    backgroundColor: colors.mossSoft,
+    borderRadius: 8,
+    padding: '1px 7px',
+    marginTop: 2,
   },
   content: {
-    fontSize: '0.845rem',
+    fontSize: '0.9rem',
     lineHeight: 1.65,
     color: colors.ink,
     marginBottom: '14px',
+    whiteSpace: 'pre-wrap',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.lineSoft,
+    margin: '0 -2px 2px',
   },
   actions: {
     display: 'flex',
     alignItems: 'center',
-    gap: 5,
-    marginTop: 4,
+    marginTop: 2,
   },
   actionBtn: {
+    flex: 1,
     display: 'flex',
     alignItems: 'center',
-    gap: 4,
-    fontSize: '0.76rem',
+    justifyContent: 'center',
+    gap: 5,
+    fontSize: '0.78rem',
     fontWeight: 600,
     color: colors.ink3,
     cursor: 'pointer',
-    padding: '5px 10px',
+    padding: '7px 4px',
     borderRadius: 10,
     userSelect: 'none',
     transition: 'all 0.18s ease',
@@ -105,14 +130,19 @@ const useStyles = makeStyles()(() => ({
   },
   actionBtnActive: {
     color: colors.moss,
-    backgroundColor: colors.mossSoft,
   },
   actionIcon: {
-    fontSize: '0.9rem !important',
+    fontSize: '1rem !important',
   },
-  shareBtn: {
-    marginLeft: 'auto',
+  moreBtn: {
+    color: colors.ink4,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    transition: 'all 0.15s ease',
+    '&:hover': { backgroundColor: colors.lineSoft, color: colors.ink },
   },
+  // Reply section
   replySection: {
     marginTop: '14px',
     paddingTop: '14px',
@@ -178,14 +208,6 @@ const useStyles = makeStyles()(() => ({
     color: colors.ink,
     lineHeight: 1.5,
   },
-  moreBtn: {
-    color: colors.ink4,
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    transition: 'all 0.15s ease',
-    '&:hover': { backgroundColor: colors.lineSoft, color: colors.ink },
-  },
 }))
 
 const PostCard: React.FC<PostCardProps> = ({ post }) => {
@@ -205,6 +227,15 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   )
 
   const isOwnPost = user?.id === post.userId
+  const av = avatarColor(post.userId || post.id)
+
+  // Combine title + description as single readable content
+  const contentText = post.title && post.description
+    ? `${post.title}\n\n${post.description}`
+    : post.title || post.description || ''
+
+  // Parse designation: "Location · Institution" format
+  const designation = post.userDesignation ?? ''
 
   const handleComment = () => {
     const trimmed = replyText.trim()
@@ -225,12 +256,25 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       {/* Header */}
       <Box className={classes.header}>
         <Box className={classes.headerLeft}>
-          <Avatar className={classes.avatar}>{getInitials(post.userName)}</Avatar>
-          <Box>
+          <Avatar
+            className={classes.avatar}
+            src={post.userAvatarUrl ?? undefined}
+            sx={{ bgcolor: av.bg, color: av.fg }}
+          >
+            {getInitials(post.userName)}
+          </Avatar>
+          <Box className={classes.userInfo}>
             <Typography className={classes.userName}>{post.userName}</Typography>
-            <Typography className={classes.meta}>
-              {post.userDesignation} · {formatRelativeTime(post.createdAt)}
-            </Typography>
+            {designation ? (
+              <Typography className={classes.userSub}>{designation}</Typography>
+            ) : (
+              <Typography className={classes.userSub}>{formatRelativeTime(post.createdAt)}</Typography>
+            )}
+            {post.mutualCount != null && post.mutualCount > 0 && (
+              <Box component="span" className={classes.mutualChip}>
+                {post.mutualCount} Mutuals
+              </Box>
+            )}
           </Box>
         </Box>
 
@@ -269,11 +313,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         )}
       </Box>
 
-      {/* Title + Description */}
-      <Typography className={classes.postTitle}>{post.title}</Typography>
-      <Typography className={classes.content}>{post.description}</Typography>
+      {/* Content — combined title + description as single readable block */}
+      <Typography className={classes.content}>{contentText}</Typography>
 
-      {/* Actions: heart | comment | upvote | share */}
+      {/* Divider */}
+      <Box className={classes.divider} />
+
+      {/* Action row: Like | Comment | Upvote */}
       <Box className={classes.actions}>
 
         {/* Like */}
@@ -284,38 +330,31 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           aria-label="like"
         >
           {post.hasLiked
-            ? <FavoriteIcon className={classes.actionIcon} />
-            : <FavoriteBorderIcon className={classes.actionIcon} />}
-          <span>{post.likes > 0 ? post.likes : ''}</span>
+            ? <ThumbUpIcon className={classes.actionIcon} />
+            : <ThumbUpOutlinedIcon className={classes.actionIcon} />}
+          <span>{post.likes > 0 ? `Like ${post.likes}` : 'Like'}</span>
         </Box>
 
-        {/* Comments */}
+        {/* Comment */}
         <Box
           className={classes.actionBtn}
           onClick={() => setShowReplies((prev) => !prev)}
           role="button"
-          aria-label="comments"
+          aria-label="comment"
         >
           <ChatBubbleOutlineIcon className={classes.actionIcon} />
-          <span>{post.commentCount > 0 ? post.commentCount : ''}</span>
+          <span>{post.commentCount > 0 ? `Comment ${post.commentCount}` : 'Comment'}</span>
         </Box>
 
-        {/* Helpful (thumbs up — also maps to like) */}
+        {/* Upvote */}
         <Box
           className={cx(classes.actionBtn, { [classes.actionBtnActive]: post.hasLiked })}
           onClick={handleLike}
           role="button"
-          aria-label="helpful"
+          aria-label="upvote"
         >
-          {post.hasLiked
-            ? <ThumbUpIcon className={classes.actionIcon} />
-            : <ThumbUpOutlinedIcon className={classes.actionIcon} />}
-          <span>{post.likes > 0 ? post.likes : 'Helpful'}</span>
-        </Box>
-
-        {/* Share (non-functional) */}
-        <Box className={cx(classes.actionBtn, classes.shareBtn)} role="button" aria-label="share">
-          <ShareOutlinedIcon className={classes.actionIcon} />
+          <KeyboardDoubleArrowUpIcon className={classes.actionIcon} />
+          <span>{post.likes > 0 ? `Upvote ${post.likes}` : 'Upvote'}</span>
         </Box>
       </Box>
 
@@ -323,7 +362,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       <Collapse in={showReplies}>
         <Box className={classes.replySection}>
           <Box className={classes.replyInputRow}>
-            <Avatar className={classes.replyAvatar}>{getInitials(user?.name ?? 'U')}</Avatar>
+            <Avatar className={classes.replyAvatar} src={user?.avatarUrl ?? undefined}>{getInitials(user?.name ?? 'U')}</Avatar>
             <TextField
               className={classes.replyInput}
               placeholder="Write a reply..."
@@ -352,25 +391,34 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               Loading…
             </Typography>
           ) : (
-            comments.map((comment) => (
-              <Box key={comment.id} className={classes.replyItem}>
-                <Avatar className={classes.replyAvatar}>{getInitials(comment.userName)}</Avatar>
-                <Box className={classes.replyBubble}>
-                  <Typography className={classes.replyMeta}>
-                    <strong>{comment.userName}</strong> · {formatRelativeTime(comment.createdAt)}
-                  </Typography>
-                  <Typography className={classes.replyContent}>{comment.content}</Typography>
-                  {comment.userId === user?.id && (
-                    <Typography
-                      onClick={() => deleteCommentMutation.mutate(comment.id)}
-                      sx={{ fontSize: '0.68rem', color: colors.urgent, cursor: 'pointer', mt: '4px', display: 'inline-block' }}
-                    >
-                      Delete
+            comments.map((comment) => {
+              const cav = avatarColor(comment.userId || comment.id)
+              return (
+                <Box key={comment.id} className={classes.replyItem}>
+                  <Avatar
+                    className={classes.replyAvatar}
+                    src={comment.userAvatarUrl ?? undefined}
+                    sx={{ bgcolor: cav.bg, color: cav.fg }}
+                  >
+                    {getInitials(comment.userName)}
+                  </Avatar>
+                  <Box className={classes.replyBubble}>
+                    <Typography className={classes.replyMeta}>
+                      <strong>{comment.userName}</strong> · {formatRelativeTime(comment.createdAt)}
                     </Typography>
-                  )}
+                    <Typography className={classes.replyContent}>{comment.content}</Typography>
+                    {comment.userId === user?.id && (
+                      <Typography
+                        onClick={() => deleteCommentMutation.mutate(comment.id)}
+                        sx={{ fontSize: '0.68rem', color: colors.urgent, cursor: 'pointer', mt: '4px', display: 'inline-block' }}
+                      >
+                        Delete
+                      </Typography>
+                    )}
+                  </Box>
                 </Box>
-              </Box>
-            ))
+              )
+            })
           )}
         </Box>
       </Collapse>

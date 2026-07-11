@@ -26,27 +26,31 @@ export interface PendingRequest {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeFriend(raw: any): Friend {
+  const profile = raw?.profile ?? {}
   return {
     id:            String(raw?.id            ?? raw?.friendship_id ?? ''),
     userId:        String(raw?.user_id       ?? raw?.userId        ?? raw?.id ?? ''),
-    name:          raw?.name                 ?? '',
-    designation:   raw?.designation          ?? raw?.profile_type  ?? null,
-    avatarUrl:     raw?.avatar_url           ?? raw?.avatarUrl     ?? null,
-    communityName: raw?.community_name       ?? raw?.communityName ?? null,
+    name:          raw?.name                 ?? profile.name ?? '',
+    designation:   profile.designation       ?? profile.profile_type ?? raw?.designation ?? raw?.profile_type ?? null,
+    avatarUrl:     profile.profile_image     ?? raw?.avatar_url ?? raw?.avatarUrl ?? null,
+    communityName: profile.community_name    ?? raw?.community_name ?? raw?.communityName ?? null,
     connectedAt:   raw?.connected_at         ?? raw?.connectedAt   ?? raw?.created_at ?? null,
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizePending(raw: any): PendingRequest {
+  // The sender's user info comes back nested: { id, status, sender: { id, name, profile: {...} }, created_at }
+  const sender = raw?.sender ?? {}
+  const profile = sender.profile ?? {}
   return {
-    id:            String(raw?.id            ?? ''),
-    userId:        String(raw?.sender_id     ?? raw?.user_id ?? raw?.userId ?? ''),
-    name:          raw?.name                 ?? raw?.sender_name ?? '',
-    designation:   raw?.designation          ?? raw?.profile_type ?? null,
-    avatarUrl:     raw?.avatar_url           ?? raw?.avatarUrl ?? null,
-    communityName: raw?.community_name       ?? raw?.communityName ?? null,
-    sentAt:        raw?.sent_at              ?? raw?.sentAt ?? raw?.created_at ?? null,
+    id:            String(raw?.id ?? ''),
+    userId:        String(sender.id ?? raw?.sender_id ?? raw?.user_id ?? raw?.userId ?? ''),
+    name:          sender.name ?? raw?.name ?? raw?.sender_name ?? '',
+    designation:   profile.designation ?? profile.profile_type ?? raw?.designation ?? null,
+    avatarUrl:     profile.profile_image ?? sender.avatar_url ?? raw?.avatar_url ?? null,
+    communityName: profile.community_name ?? raw?.community_name ?? null,
+    sentAt:        raw?.created_at ?? raw?.sent_at ?? null,
   }
 }
 

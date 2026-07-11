@@ -37,9 +37,25 @@ export const useSendFriendRequest = () => {
     mutationFn: (userId: string) => friendshipApi.sendRequest(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: FRIENDSHIP_KEYS.friends })
+      queryClient.invalidateQueries({ queryKey: ['community', 'members'] })
       showSuccess('Friend request sent!')
     },
     onError: () => showError('Could not send friend request.'),
+  })
+}
+
+/** Cancel a friend request that was previously sent (before it's accepted) */
+export const useCancelFriendRequest = () => {
+  const { showInfo, showError } = useSnackbar()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => friendshipApi.remove(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: FRIENDSHIP_KEYS.friends })
+      queryClient.invalidateQueries({ queryKey: ['community', 'members'] })
+      showInfo('Friend request canceled.')
+    },
+    onError: () => showError('Could not cancel friend request.'),
   })
 }
 
@@ -76,6 +92,7 @@ export const useRemoveFriend = () => {
     mutationFn: (userId: string) => friendshipApi.remove(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: FRIENDSHIP_KEYS.friends })
+      queryClient.invalidateQueries({ queryKey: ['community', 'members'] })
       showInfo('Removed from friends.')
     },
     onError: () => showError('Could not remove friend.'),

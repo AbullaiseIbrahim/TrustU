@@ -64,6 +64,8 @@ export interface Accommodation {
   isConnected: boolean
   mutualFriends: number
   createdAt: string
+  /** Poster's WhatsApp / phone number (raw string from API, may be empty) */
+  phone: string
 }
 
 export interface CreateAccommodationPayload {
@@ -93,6 +95,8 @@ export interface CreateAccommodationPayload {
   people_allowed?: number
   amenity_ids?: number[]
   photos?: File[]
+  /** WhatsApp / contact number for interested users to reach the poster */
+  phone?: string
 }
 
 export interface UpdateAccommodationPayload {
@@ -139,6 +143,18 @@ function normalize(raw: any): Accommodation {
     isConnected:    Boolean(raw.is_connected   ?? raw.isConnected   ?? false),
     mutualFriends:  Number(raw.mutual_friends  ?? raw.mutualFriends  ?? 0),
     createdAt:      String(raw.created_at      ?? raw.createdAt      ?? ''),
+    phone:          String(
+      raw.phone            ??
+      raw.phone_number     ??
+      raw.whatsapp         ??
+      raw.whatsapp_number  ??
+      raw.mobile           ??
+      raw.contact          ??
+      raw.contact_number   ??
+      post.user?.phone     ??
+      post.user?.mobile    ??
+      '',
+    ),
   }
 }
 
@@ -200,6 +216,7 @@ export const accommodationApi = {
 
     payload.amenity_ids?.forEach(id => fd.append('amenity_ids[]', String(id)))
     payload.photos?.forEach(photo   => fd.append('photos[]',      photo))
+    if (payload.phone) fd.append('phone', payload.phone)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await apiClient.post<ApiResponse<any>>(

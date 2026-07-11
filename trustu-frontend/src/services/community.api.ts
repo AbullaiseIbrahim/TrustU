@@ -1,6 +1,6 @@
 import apiClient from './apiClient'
 import { ENDPOINTS } from './endpoints'
-import type { ApiResponse } from '@/types/api.types'
+import type { ApiResponse, PaginatedResponse } from '@/types/api.types'
 import type { Community, SubCommunity, CommunityMember } from '@/types/community.types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,12 +27,34 @@ function normalizeSubCommunity(raw: any): SubCommunity {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeMember(raw: any): CommunityMember {
+  const profile = raw?.profile ?? {}
   return {
     id:          String(raw?.id ?? raw?.user_id ?? ''),
-    name:        raw?.name ?? raw?.user_name ?? '',
-    designation: raw?.designation ?? raw?.profile_type ?? null,
-    avatarUrl:   raw?.avatar_url ?? raw?.avatarUrl ?? null,
+    name:        raw?.name ?? raw?.user_name ?? profile.name ?? '',
+    designation: profile.designation ?? profile.profile_type ?? raw?.designation ?? raw?.profile_type ?? null,
+    avatarUrl:   profile.profile_image ?? raw?.avatar_url ?? raw?.avatarUrl ?? null,
     joinedAt:    raw?.joined_at ?? raw?.joinedAt ?? raw?.created_at ?? null,
+    friendshipStatus: raw?.friendship_status ?? raw?.friendshipStatus ?? null,
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeMembersPage(data: any): PaginatedResponse<CommunityMember> {
+  const paginated = data.data ?? {}
+  const items: unknown[] = Array.isArray(paginated) ? paginated : (paginated.data ?? [])
+  const meta = paginated.meta ?? {}
+  return {
+    data: items.map(normalizeMember),
+    meta: {
+      currentPage: meta.current_page ?? 1,
+      lastPage:    meta.last_page    ?? 1,
+      perPage:     meta.per_page     ?? items.length,
+      total:       meta.total        ?? items.length,
+      from:        meta.from         ?? 0,
+      to:          meta.to           ?? 0,
+    },
+    message: data.message ?? '',
+    success: data.success ?? true,
   }
 }
 
@@ -53,20 +75,18 @@ export const communityApi = {
     return normalizeCommunity(data.data ?? data)
   },
 
-  /** GET /communities/{id}/members */
-  members: async (communityId: string | number): Promise<CommunityMember[]> => {
+  /** GET /communities/{id}/members — paginated */
+  members: async (communityId: string | number, page = 1): Promise<PaginatedResponse<CommunityMember>> => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await apiClient.get<ApiResponse<any>>(ENDPOINTS.community.members(communityId))
-    const items = data.data ?? data ?? []
-    return (Array.isArray(items) ? items : []).map(normalizeMember)
+    const { data } = await apiClient.get<ApiResponse<any>>(ENDPOINTS.community.members(communityId), { params: { page } })
+    return normalizeMembersPage(data)
   },
 
-  /** GET /communities/sub/{id}/members */
-  subMembers: async (subCommunityId: string | number): Promise<CommunityMember[]> => {
+  /** GET /communities/sub/{id}/members — paginated */
+  subMembers: async (subCommunityId: string | number, page = 1): Promise<PaginatedResponse<CommunityMember>> => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await apiClient.get<ApiResponse<any>>(ENDPOINTS.community.subMembers(subCommunityId))
-    const items = data.data ?? data ?? []
-    return (Array.isArray(items) ? items : []).map(normalizeMember)
+    const { data } = await apiClient.get<ApiResponse<any>>(ENDPOINTS.community.subMembers(subCommunityId), { params: { page } })
+    return normalizeMembersPage(data)
   },
 
   /** POST /communities/{id}/join */

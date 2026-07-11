@@ -1,7 +1,9 @@
-import React from 'react'
-import { Box, Typography, IconButton, Badge } from '@mui/material'
+import React, { useState } from 'react'
+import { Box, Typography, IconButton, Badge, Menu, MenuItem, ListItemText } from '@mui/material'
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined'
+import FilterListIcon from '@mui/icons-material/FilterList'
 import { makeStyles } from 'tss-react/mui'
+import { useAuth } from '@/app/AuthProvider'
 import colors from '@/theme/colors'
 
 const useStyles = makeStyles()(() => ({
@@ -38,7 +40,30 @@ const useStyles = makeStyles()(() => ({
   actions: {
     display: 'flex',
     alignItems: 'center',
-    gap: 2,
+    gap: 6,
+  },
+  communityPill: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.moss,
+    color: '#fff',
+    borderRadius: 20,
+    padding: '5px 12px 5px 9px',
+    cursor: 'pointer',
+    border: 'none',
+    fontFamily: 'inherit',
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    WebkitTapHighlightColor: 'transparent',
+    transition: 'all 0.18s ease',
+    flexShrink: 0,
+    '&:hover': {
+      backgroundColor: colors.mossDeep,
+    },
+    '&:active': {
+      transform: 'scale(0.96)',
+    },
   },
   iconBtn: {
     color: colors.ink3,
@@ -55,6 +80,15 @@ const useStyles = makeStyles()(() => ({
 
 const AppTopBar: React.FC = () => {
   const { classes } = useStyles()
+  const { user } = useAuth()
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
+
+  // Community name — truncate to 12 chars for the pill
+  const communityLabel = user?.communityName
+    ? user.communityName.length > 14
+      ? user.communityName.slice(0, 13) + '…'
+      : user.communityName
+    : 'Community'
 
   return (
     <Box className={classes.root}>
@@ -70,12 +104,41 @@ const AppTopBar: React.FC = () => {
       </Box>
 
       <Box className={classes.actions}>
+        {/* Community switcher pill */}
+        <Box
+          component="button"
+          className={classes.communityPill}
+          onClick={(e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget)}
+          aria-label="Switch community"
+        >
+          <FilterListIcon sx={{ fontSize: '0.95rem', color: '#fff' }} />
+          {communityLabel}
+        </Box>
+
+        {/* Notifications */}
         <IconButton size="small" className={classes.iconBtn} aria-label="Notifications">
           <Badge variant="dot" color="error" invisible>
             <NotificationsNoneOutlinedIcon sx={{ fontSize: '1.3rem' }} />
           </Badge>
         </IconButton>
       </Box>
+
+      {/* Community menu (placeholder — only shows current) */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => setMenuAnchor(null)}
+        PaperProps={{ sx: { borderRadius: 2, minWidth: 200, mt: 0.5 } }}
+      >
+        <MenuItem dense onClick={() => setMenuAnchor(null)}>
+          <ListItemText
+            primary={user?.communityName ?? 'My Community'}
+            secondary="Current community"
+            primaryTypographyProps={{ fontWeight: 700, fontSize: '0.88rem' }}
+            secondaryTypographyProps={{ fontSize: '0.72rem', color: colors.moss }}
+          />
+        </MenuItem>
+      </Menu>
     </Box>
   )
 }

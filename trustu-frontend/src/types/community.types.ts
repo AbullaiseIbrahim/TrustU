@@ -18,4 +18,6 @@ export interface CommunityMember {
   designation: string | null
   avatarUrl: string | null
   joinedAt: string | null
+  /** Raw status from the API, e.g. null, 'pending', 'accepted' */
+  friendshipStatus: string | null
 }

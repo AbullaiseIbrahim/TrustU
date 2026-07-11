@@ -5,29 +5,34 @@ import type { Post, Comment, CreatePostPayload, CreateCommentPayload } from '@/t
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizePost(raw: any): Post {
+  const userProfile = raw.user?.profile ?? {}
   return {
     id:              String(raw.id ?? ''),
     userId:          String(raw.user_id   ?? raw.userId          ?? ''),
     userName:        String(raw.user?.name ?? raw.user_name      ?? raw.userName      ?? ''),
-    userDesignation: String(raw.user?.designation ?? raw.user_designation ?? raw.userDesignation ?? ''),
+    userDesignation: String(userProfile.designation ?? userProfile.profile_type ?? raw.user?.designation ?? raw.user_designation ?? raw.userDesignation ?? ''),
+    userAvatarUrl:   userProfile.profile_image ?? raw.user?.avatar_url ?? raw.user_avatar_url ?? null,
     title:           String(raw.title       ?? ''),
     description:     String(raw.description ?? raw.body          ?? ''),
     likes:           Number(raw.likes_count ?? raw.upvotes       ?? raw.likes         ?? 0),
     commentCount:    Number(raw.comments_count ?? raw.reply_count ?? raw.commentCount ?? 0),
     hasLiked:        Boolean(raw.has_liked  ?? raw.has_upvoted   ?? raw.hasLiked      ?? false),
     createdAt:       String(raw.created_at  ?? raw.createdAt     ?? ''),
+    mutualCount:     raw.mutual_count != null ? Number(raw.mutual_count) : (raw.mutualCount != null ? Number(raw.mutualCount) : undefined),
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeComment(raw: any): Comment {
+  const userProfile = raw.user?.profile ?? {}
   return {
-    id:        String(raw.id ?? ''),
-    postId:    String(raw.post_id ?? raw.postId ?? ''),
-    userId:    String(raw.user_id ?? raw.userId ?? ''),
-    userName:  String(raw.user?.name ?? raw.user_name ?? raw.userName ?? ''),
-    content:   String(raw.content ?? raw.body ?? ''),
-    createdAt: String(raw.created_at ?? raw.createdAt ?? ''),
+    id:           String(raw.id ?? ''),
+    postId:       String(raw.post_id ?? raw.postId ?? ''),
+    userId:       String(raw.user_id ?? raw.userId ?? ''),
+    userName:     String(raw.user?.name ?? raw.user_name ?? raw.userName ?? ''),
+    userAvatarUrl: userProfile.profile_image ?? raw.user?.avatar_url ?? null,
+    content:      String(raw.content ?? raw.body ?? ''),
+    createdAt:    String(raw.created_at ?? raw.createdAt ?? ''),
   }
 }
 

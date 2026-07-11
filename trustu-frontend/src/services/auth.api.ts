@@ -9,16 +9,19 @@ import type { AuthResponse, LoginRequest, RegisterRequest, User } from '@/types/
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalizeUser(raw: any): User {
+  // Laravel can nest profile fields under a `profile` object (same shape used
+  // for community members / friends) — fall back to it for every field below.
+  const profile = raw?.profile ?? {}
   return {
     id:              String(raw?.id ?? ''),
-    name:            raw?.name ?? '',
-    email:           raw?.email ?? null,
-    phone:           raw?.phone ?? raw?.phone_number ?? null,
-    gender:          raw?.gender ?? null,
+    name:            raw?.name ?? profile.name ?? '',
+    email:           raw?.email ?? profile.email ?? null,
+    phone:           raw?.phone ?? raw?.phone_number ?? profile.phone ?? null,
+    gender:          raw?.gender ?? profile.gender ?? null,
     // Laravel sends profile_type; frontend calls it designation
-    designation:     raw?.designation ?? raw?.profile_type ?? null,
-    institute:       raw?.institute ?? raw?.institution ?? raw?.college ?? null,
-    avatarUrl:       raw?.avatar_url ?? raw?.avatarUrl ?? raw?.avatar ?? null,
+    designation:     raw?.designation ?? raw?.profile_type ?? profile.designation ?? profile.profile_type ?? null,
+    institute:       raw?.institute ?? raw?.institution ?? raw?.college ?? profile.institute ?? null,
+    avatarUrl:       profile.profile_image ?? raw?.avatar_url ?? raw?.avatarUrl ?? raw?.avatar ?? null,
     profileComplete: Boolean(raw?.profile_complete ?? raw?.profileComplete ?? false),
     communityJoined: Boolean(raw?.community_joined ?? raw?.communityJoined ?? false),
     communityId:     raw?.community_id   != null ? String(raw.community_id)   : (raw?.communityId   ?? null),

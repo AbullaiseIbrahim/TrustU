@@ -20,6 +20,7 @@ import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined'
 import HolidayVillageOutlinedIcon from '@mui/icons-material/HolidayVillageOutlined'
 import HotelOutlinedIcon from '@mui/icons-material/HotelOutlined'
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
+import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined'
 import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
@@ -587,6 +588,7 @@ interface ListingForm {
   depositAmount: string
   amenities: string[]
   visibleTo: string
+  phone: string
 }
 
 const EMPTY_FORM: ListingForm = {
@@ -606,6 +608,7 @@ const EMPTY_FORM: ListingForm = {
   depositAmount: '',
   amenities: [],
   visibleTo: 'friends-mutuals',
+  phone: '',
 }
 
 // ── Stepper control ───────────────────────────────────────────────────────────
@@ -745,6 +748,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
           ? form.amenities.map(v => Number(v)).filter(Boolean)
           : [],
         photos:          form.photoFiles,
+        phone:           form.phone.trim() || undefined,
       },
       { onSuccess: handleClose },
     )
@@ -1047,6 +1051,27 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
             />
           </Box>
+        </Box>
+
+        {/* WhatsApp / Contact number */}
+        <Box className={classes.fBlock}>
+          <Typography className={classes.fLabel}>WhatsApp Number</Typography>
+          <TextField
+            fullWidth size="small"
+            placeholder="e.g. 9876543210"
+            value={form.phone}
+            onChange={e => setF({ phone: e.target.value.replace(/\D/g, '').slice(0, 15) })}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <WhatsAppIcon sx={{ fontSize: '1rem', color: '#25D366' }} />
+                </InputAdornment>
+              ),
+            }}
+            inputProps={{ inputMode: 'tel', maxLength: 15 }}
+            helperText="Interested people will contact you directly via WhatsApp"
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+          />
         </Box>
 
         {/* Amenities — from API when available, hardcoded fallback otherwise */}
