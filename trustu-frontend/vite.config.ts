@@ -33,7 +33,7 @@ export default defineConfig({
       // All /api requests are forwarded to the backend server.
       // This avoids CORS in development — the browser only ever talks to localhost:3000.
       '/api': {
-        target: 'https://rosybrown-goat-692345.hostingersite.com',
+        target: 'https://lemonchiffon-hedgehog-419125.hostingersite.com',
         changeOrigin: true,
         secure: true,
       },
