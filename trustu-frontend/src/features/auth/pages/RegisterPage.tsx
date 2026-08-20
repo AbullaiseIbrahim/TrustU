@@ -26,7 +26,7 @@ import { authApi } from '@/services/auth.api'
 import { useAuth } from '@/app/AuthProvider'
 import { useSnackbar } from '@/app/SnackbarProvider'
 import { PATHS } from '@/routes/paths'
-import { INDIA_STATES } from '@/constants/states'
+import { SIGNUP_ENABLED_STATES } from '@/constants/states'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const GENDER_OPTIONS = [
@@ -265,7 +265,7 @@ function LocationStep({ onSubmit, onBack, isPending }: Step2Props) {
                 <InputLabel shrink>Home State *</InputLabel>
                 <Select {...field} label="Home State *" displayEmpty notched>
                   <MenuItem value=""><em>Select your home state</em></MenuItem>
-                  {INDIA_STATES.map(s => (
+                  {SIGNUP_ENABLED_STATES.map(s => (
                     <MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>
                   ))}
                 </Select>
@@ -284,7 +284,7 @@ function LocationStep({ onSubmit, onBack, isPending }: Step2Props) {
                 <InputLabel shrink>Current State *</InputLabel>
                 <Select {...field} label="Current State *" displayEmpty notched>
                   <MenuItem value=""><em>Select your current state</em></MenuItem>
-                  {INDIA_STATES.map(s => (
+                  {SIGNUP_ENABLED_STATES.map(s => (
                     <MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>
                   ))}
                 </Select>

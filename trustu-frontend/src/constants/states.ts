@@ -37,3 +37,8 @@ export const INDIA_STATES: { id: number; name: string }[] = [
   { id: 35, name: 'Lakshadweep' },
   { id: 36, name: 'Puducherry' },
 ]
+
+/** States enabled for sign-up during initial rollout. Expand as coverage grows. */
+export const SIGNUP_ENABLED_STATES = INDIA_STATES.filter(s =>
+  s.name === 'Kerala' || s.name === 'Delhi'
+)
