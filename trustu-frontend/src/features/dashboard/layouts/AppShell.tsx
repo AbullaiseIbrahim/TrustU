@@ -11,8 +11,10 @@ import BottomNav from '../components/BottomNav'
 const AppShell: React.FC = () => (
   <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
     <AppTopBar />
-    {/* paddingTop matches AppTopBar height (52px), paddingBottom matches BottomNav (64px) */}
-    <Box sx={{ pt: '56px', pb: '64px', minHeight: '100vh' }}>
+    {/* paddingTop matches AppTopBar height (52px), paddingBottom matches BottomNav (64px).
+        maxWidth keeps the phone-frame layout centered instead of full-bleed-stretching
+        on tablets/desktop browsers. */}
+    <Box sx={{ pt: '56px', pb: '64px', minHeight: '100vh', maxWidth: 480, mx: 'auto' }}>
       <Outlet />
     </Box>
     <BottomNav />

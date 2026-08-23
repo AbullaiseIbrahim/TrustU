@@ -6,18 +6,21 @@ import { AuthProvider } from '@/app/AuthProvider'
 import QueryProvider from '@/app/QueryProvider'
 import { SnackbarProvider } from '@/app/SnackbarProvider'
 import AppRouter from '@/routes/index'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 const App: React.FC = () => (
   <BrowserRouter>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <QueryProvider>
-        <AuthProvider>
-          <SnackbarProvider>
-            <AppRouter />
-          </SnackbarProvider>
-        </AuthProvider>
-      </QueryProvider>
+      <ErrorBoundary>
+        <QueryProvider>
+          <AuthProvider>
+            <SnackbarProvider>
+              <AppRouter />
+            </SnackbarProvider>
+          </AuthProvider>
+        </QueryProvider>
+      </ErrorBoundary>
     </ThemeProvider>
   </BrowserRouter>
 )

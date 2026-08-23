@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { CircularProgress, Box } from '@mui/material'
 import { PATHS } from './paths'
 import ProtectedRoute from './ProtectedRoute'
@@ -12,14 +12,12 @@ const RegisterPage   = lazy(() => import('../features/auth/pages/RegisterPage'))
 const AppShell       = lazy(() => import('../features/dashboard/layouts/AppShell'))
 const DashboardLayout = lazy(() => import('../features/dashboard/layouts/DashboardLayout'))
 const MyListingsPage = lazy(() => import('../features/profile/pages/MyListingsPage'))
+const OnboardingCommunityPage = lazy(() => import('../features/onboarding/pages/OnboardingCommunityPage'))
 const NotFoundPage   = lazy(() => import('../components/NotFoundPage'))
 
 // ── Eager imports (tab pages + profile — prevents full-page Suspense flash) ────
 import CommunityPage     from '../features/community/pages/CommunityPage'
 import AccommodationPage from '../features/accommodation/pages/AccommodationPage'
-import ProxyPage         from '../features/proxy/pages/ProxyPage'
-import MarketplacePage   from '../features/marketplace/pages/MarketplacePage'
-import CirclePage        from '../features/circle/pages/CirclePage'
 import ProfilePage       from '../features/profile/pages/ProfilePage'
 
 const PageLoader = () => (
@@ -40,6 +38,11 @@ export default function AppRoutes() {
           <Route path={PATHS.auth.register} element={<RegisterPage />} />
         </Route>
 
+        {/* ── Onboarding — full-screen, no top bar / bottom nav ─────────────── */}
+        <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+          <Route path={PATHS.onboarding} element={<OnboardingCommunityPage />} />
+        </Route>
+
         {/* ── All authenticated routes share AppShell (top bar + bottom nav) ─ */}
         <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
 
@@ -48,12 +51,9 @@ export default function AppRoutes() {
             <Route index element={<Navigate to={PATHS.dashboard.community} replace />} />
             <Route path="community"     element={<CommunityPage />} />
             <Route path="accommodation" element={<AccommodationPage />} />
-            <Route path="proxy"         element={<ProxyPage />} />
-            <Route path="marketplace"   element={<MarketplacePage />} />
           </Route>
 
           {/* Standalone authenticated pages */}
-          <Route path={PATHS.circle}      element={<CirclePage />} />
           <Route path={PATHS.profile}     element={<ProfilePage />} />
           <Route path={PATHS.myListings}  element={<MyListingsPage />} />
 

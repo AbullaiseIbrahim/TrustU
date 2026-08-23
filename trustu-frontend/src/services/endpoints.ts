@@ -55,19 +55,4 @@ export const ENDPOINTS = {
   amenities: {
     list: () => '/amenities',
   },
-  proxy: {
-    list: () => '/proxy',
-    userList: () => '/proxy/user',
-    detail: (id: string | number) => `/proxy/${id}`,
-    create: () => '/proxy',
-    delete: (id: string | number) => `/proxy/${id}`,
-  },
-  marketplace: {
-    list: () => '/marketplace',
-    userList: () => '/marketplace/user',
-    detail: (id: string | number) => `/marketplace/${id}`,
-    create: () => '/marketplace',
-    update: (id: string | number) => `/marketplace/${id}`,
-    delete: (id: string | number) => `/marketplace/${id}`,
-  },
 } as const;

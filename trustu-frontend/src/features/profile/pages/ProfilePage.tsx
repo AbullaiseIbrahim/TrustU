@@ -14,6 +14,8 @@ import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined'
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined'
+import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined'
 import { makeStyles } from 'tss-react/mui'
 import SelectField from '@/components/SelectField'
 import { useNavigate } from 'react-router-dom'
@@ -24,7 +26,7 @@ import { getInitials } from '@/utils'
 import { PATHS } from '@/routes/paths'
 import colors from '@/theme/colors'
 import type { Designation, Gender } from '@/types/auth.types'
-import { useFriends } from '@/features/circle/hooks/useFriendshipQueries'
+import { useFriends, useMutualFriendsAggregate } from '@/features/circle/hooks/useFriendshipQueries'
 import type { Friend } from '@/services/friendship.api'
 
 const DESIGNATION_OPTIONS: Designation[] = ['Student', 'Faculty', 'Staff', 'Alumni', 'Other']
@@ -504,22 +506,35 @@ const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => 
         designation: user.designation ?? '',
         institute: user.institute ?? '',
       })
+      setSaveError(null)
     }
   }, [open])
 
   const set = (key: keyof EditForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(prev => ({ ...prev, [key]: e.target.value }))
 
+  const [saveError, setSaveError] = React.useState<string | null>(null)
+
   const handleSave = () => {
+    setSaveError(null)
     const fullName = [form.firstName.trim(), form.lastName.trim()].filter(Boolean).join(' ')
     updateProfile.mutate(
       {
         name:        fullName || undefined,
-        designation: (form.designation as never) || undefined,
+        // Sent lowercase to match what registration originally submits
+        // ('male', 'student', ...) — the backend's validation may be case-sensitive.
+        designation: form.designation ? form.designation.toLowerCase() : undefined,
+        gender:      form.gender ? form.gender.toLowerCase() : undefined,
         phone:       form.phone.trim() || undefined,
         institute:   form.institute.trim() || undefined,
       },
-      { onSuccess: onClose },
+      {
+        onSuccess: onClose,
+        // The global snackbar also fires on error, but it's easy to miss at the
+        // bottom of the viewport while sitting inside a full-screen sheet — show
+        // an impossible-to-miss inline banner right under the header too.
+        onError: (err) => setSaveError((err as Error)?.message || 'Could not save changes. Please try again.'),
+      },
     )
   }
 
@@ -548,6 +563,17 @@ const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => 
           {updateProfile.isPending ? 'Saving…' : 'Save'}
         </Box>
       </Box>
+
+      {saveError && (
+        <Box sx={{
+          mx: '16px', mt: '14px', p: '12px 14px', borderRadius: '12px',
+          backgroundColor: `${colors.urgent}12`, border: `1px solid ${colors.urgent}40`,
+        }}>
+          <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: colors.urgent }}>
+            {saveError}
+          </Typography>
+        </Box>
+      )}
 
       <DialogContent className={classes.sheetBody} sx={{ p: 0 }}>
 
@@ -662,6 +688,8 @@ const ProfilePage: React.FC = () => {
   const name = displayUser?.name ?? 'Unknown'
   const first8 = (friends as Friend[]).slice(0, 8)
   const friendCount = (friends as Friend[]).length
+  const { people: mutualPeople } = useMutualFriendsAggregate((friends as Friend[]).map(f => f.userId))
+  const mutualCount = mutualPeople.length
 
   const handleLogout = async () => {
     try { await authApi.logout() } catch { /* ignore */ } finally {
@@ -712,7 +740,7 @@ const ProfilePage: React.FC = () => {
 
         <Box className={classes.userLocation}>
           <LocationOnOutlinedIcon sx={{ fontSize: '0.85rem' }} />
-          {displayUser?.institute ? `${displayUser.institute}` : 'Location not set'}
+          {displayUser?.nativeStateName ? `From ${displayUser.nativeStateName}` : 'Home state not set'}
           {displayUser?.communityName && ` · Living in ${displayUser.communityName}`}
         </Box>
       </Box>
@@ -723,15 +751,9 @@ const ProfilePage: React.FC = () => {
           <Typography className={classes.statNum}>{friendCount.toLocaleString('en-IN')}</Typography>
           <Typography className={classes.statLabel}>Friends</Typography>
         </Box>
-        <Box className={classes.statCard}>
-          <Typography className={classes.statNum}>{(displayUser as unknown as { mutualCount?: number })?.mutualCount?.toLocaleString('en-IN') ?? '0'}</Typography>
-          <Typography className={classes.statLabel}>Mutuals</Typography>
-        </Box>
         <Box className={cx(classes.statCard, classes.statCardGreen)}>
-          <Typography className={cx(classes.statNum, classes.statNumGreen)}>
-            {(displayUser as unknown as { inCommon?: number })?.inCommon?.toLocaleString('en-IN') ?? '0'}
-          </Typography>
-          <Typography className={cx(classes.statLabel, classes.statLabelGreen)}>In common</Typography>
+          <Typography className={cx(classes.statNum, classes.statNumGreen)}>{mutualCount.toLocaleString('en-IN')}</Typography>
+          <Typography className={cx(classes.statLabel, classes.statLabelGreen)}>Mutuals</Typography>
         </Box>
       </Box>
 
@@ -746,10 +768,31 @@ const ProfilePage: React.FC = () => {
 
       <Box className={classes.detailCard}>
         <DetailRow icon={genderIcon} label="Gender" value={displayUser?.gender ?? null} />
-        <DetailRow icon={<FlagOutlinedIcon />} label="From" value={displayUser?.institute ?? null} />
+        <DetailRow icon={<FlagOutlinedIcon />} label="From" value={displayUser?.nativeStateName ?? null} />
         <DetailRow icon={<LocationOnOutlinedIcon />} label="Living in" value={displayUser?.communityName ?? null} />
         <DetailRow icon={<BadgeOutlinedIcon />} label="Designation" value={displayUser?.designation ?? null} />
         <DetailRow icon={<SchoolOutlinedIcon />} label="Institution" value={displayUser?.institute ?? null} />
+        <DetailRow icon={<PhoneOutlinedIcon />} label="Phone" value={displayUser?.phone ?? null} />
+      </Box>
+
+      {/* ── My Listings ── */}
+      <Box
+        className={classes.detailCard}
+        sx={{ mt: '12px', cursor: 'pointer' }}
+        onClick={() => navigate(PATHS.myListings)}
+      >
+        <Box className={classes.detailRow}>
+          <Box className={classes.detailIcon}>
+            <HomeWorkOutlinedIcon />
+          </Box>
+          <Box className={classes.detailText}>
+            <Typography className={classes.detailValue}>My Listings</Typography>
+            <Typography className={classes.detailLabel} sx={{ textTransform: 'none', mt: '2px' }}>
+              View, edit, or delete your accommodation listings
+            </Typography>
+          </Box>
+          <ChevronRightIcon sx={{ fontSize: '1.1rem', color: colors.ink3, flexShrink: 0 }} />
+        </Box>
       </Box>
 
       {/* ── Friends ── */}
@@ -759,7 +802,7 @@ const ProfilePage: React.FC = () => {
             <Typography className={classes.sectionTitle}>Friends</Typography>
             <Box
               component="button"
-              onClick={() => navigate(PATHS.circle)}
+              onClick={() => navigate(`${PATHS.dashboard.community}?tab=friends`)}
               sx={{
                 border: 'none', backgroundColor: 'transparent',
                 color: colors.moss, fontWeight: 600, fontSize: '0.78rem',

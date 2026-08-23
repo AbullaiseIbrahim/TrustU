@@ -22,6 +22,8 @@ const useStyles = makeStyles()(() => ({
     left: 0,
     right: 0,
     zIndex: 1200,
+    maxWidth: 480,
+    margin: '0 auto',
     backgroundColor: 'rgba(255,255,255,0.95)',
     backdropFilter: 'blur(16px)',
     WebkitBackdropFilter: 'blur(16px)',

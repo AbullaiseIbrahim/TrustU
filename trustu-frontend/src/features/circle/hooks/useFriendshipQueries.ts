@@ -1,5 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { friendshipApi } from '@/services/friendship.api'
+import type { Friend } from '@/services/friendship.api'
 import { useSnackbar } from '@/app/SnackbarProvider'
 
 export const FRIENDSHIP_KEYS = {
@@ -29,6 +30,38 @@ export const useMutualFriends = (userId: string) =>
     enabled:  !!userId,
     staleTime: 60_000,
   })
+
+/**
+ * Real "mutual friends" aggregate — the API only exposes mutual friends relative
+ * to one other user (`GET /friends/mutual/{userId}`), not a flat "my mutuals"
+ * list. We approximate the flat list by unioning mutual-friend results across
+ * the current user's own friends (capped to avoid an unbounded N+1 fan-out).
+ */
+const MUTUAL_AGGREGATE_CAP = 20
+
+export const useMutualFriendsAggregate = (friendUserIds: string[]) => {
+  const capped = friendUserIds.slice(0, MUTUAL_AGGREGATE_CAP)
+
+  const results = useQueries({
+    queries: capped.map((userId) => ({
+      queryKey: FRIENDSHIP_KEYS.mutual(userId),
+      queryFn: () => friendshipApi.mutual(userId),
+      enabled: !!userId,
+      staleTime: 60_000,
+    })),
+  })
+
+  const isLoading = capped.length > 0 && results.some((r) => r.isLoading)
+
+  const byId = new Map<string, Friend>()
+  results.forEach((r) => {
+    (r.data ?? []).forEach((f) => {
+      if (!byId.has(f.userId)) byId.set(f.userId, f)
+    })
+  })
+
+  return { people: Array.from(byId.values()), isLoading }
+}
 
 export const useSendFriendRequest = () => {
   const { showSuccess, showError } = useSnackbar()

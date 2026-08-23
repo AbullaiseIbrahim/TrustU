@@ -14,6 +14,8 @@ const useStyles = makeStyles()(() => ({
     right: 0,
     zIndex: 1100,
     height: 56,
+    maxWidth: 480,
+    margin: '0 auto',
     backgroundColor: colors.white,
     borderBottom: `1px solid ${colors.line}`,
     display: 'flex',

@@ -1,25 +1,19 @@
 import React, { useState } from 'react'
 import {
   Box, Typography, Skeleton, IconButton, Menu, MenuItem,
-  ListItemIcon, Chip, Divider,
+  ListItemIcon, Chip,
 } from '@mui/material'
 import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined'
-import DeliveryDiningOutlinedIcon from '@mui/icons-material/DeliveryDiningOutlined'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
 import { makeStyles } from 'tss-react/mui'
 import { useUserAccommodations, useDeleteAccommodation } from '@/features/accommodation/hooks/useAccommodationQueries'
-import { useUserProxyListings, useDeleteProxy } from '@/features/proxy/hooks/useProxyQueries'
-import { useUserMarketplaceListings, useDeleteMarketplaceListing } from '@/features/marketplace/hooks/useMarketplaceQueries'
 import { accommodationTypeLabel, accommodationGenderLabel } from '@/services/accommodation.api'
 import { formatINR, formatDate } from '@/utils'
 import colors from '@/theme/colors'
 import type { Accommodation } from '@/services/accommodation.api'
-import type { ProxyListing } from '@/types/proxy.types'
-import type { MarketplaceListing } from '@/types/marketplace.types'
 
 const useStyles = makeStyles()(() => ({
   page: {
@@ -213,7 +207,7 @@ const AccommodationSection: React.FC = () => {
         <Box className={classes.sectionIcon}>
           <HomeWorkOutlinedIcon sx={{ fontSize: '1.1rem', color: colors.primary }} />
         </Box>
-        <Typography className={classes.sectionTitle}>Accommodation</Typography>
+        <Typography className={classes.sectionTitle}>My Listings</Typography>
         {!isLoading && <span className={classes.sectionCount}>{listings.length}</span>}
       </Box>
 
@@ -256,122 +250,6 @@ const AccommodationSection: React.FC = () => {
           </Box>
         </Box>
       ))}
-
-      <Divider sx={{ mx: 2, mt: 4, mb: 0, borderColor: '#EBEBEB' }} />
-    </Box>
-  )
-}
-
-// ── Proxy section ─────────────────────────────────────────────────────────────
-const ProxySection: React.FC = () => {
-  const { classes } = useStyles()
-  const { data, isLoading } = useUserProxyListings()
-  const deleteMutation = useDeleteProxy()
-  const listings: ProxyListing[] = data?.data ?? []
-
-  return (
-    <Box>
-      <Box className={classes.sectionHeader}>
-        <Box className={classes.sectionIcon}>
-          <DeliveryDiningOutlinedIcon sx={{ fontSize: '1.1rem', color: colors.primary }} />
-        </Box>
-        <Typography className={classes.sectionTitle}>Proxy Services</Typography>
-        {!isLoading && <span className={classes.sectionCount}>{listings.length}</span>}
-      </Box>
-
-      {isLoading && [1].map(i => <SkeletonCard key={i} />)}
-
-      {!isLoading && listings.length === 0 && (
-        <Box className={classes.emptyBox}>
-          <Typography className={classes.emptyText}>No proxy services listed yet.</Typography>
-        </Box>
-      )}
-
-      {!isLoading && listings.map(item => (
-        <Box key={item.id} className={classes.card}>
-          <Box className={classes.cardHeader}>
-            <Box sx={{ flex: 1 }}>
-              <Typography className={classes.cardTitle}>{item.serviceType}</Typography>
-              <Box className={classes.cardMeta}>
-                {item.location && (
-                  <Typography className={classes.metaText}>
-                    <LocationOnOutlinedIcon />{item.location}
-                  </Typography>
-                )}
-              </Box>
-              {item.chargePerTask != null && (
-                <Typography className={classes.priceText}>{formatINR(item.chargePerTask)}/task</Typography>
-              )}
-              {item.chargeRange && (
-                <Typography className={classes.priceText}>{item.chargeRange}</Typography>
-              )}
-              {item.availableUntil && (
-                <Typography sx={{ fontSize: '0.75rem', color: colors.textSecondary, mt: 0.5 }}>
-                  Available until {formatDate(item.availableUntil)}
-                </Typography>
-              )}
-            </Box>
-            <CardMenu
-              onDelete={() => deleteMutation.mutate(item.id)}
-              isDeleting={deleteMutation.isPending}
-            />
-          </Box>
-        </Box>
-      ))}
-
-      <Divider sx={{ mx: 2, mt: 4, mb: 0, borderColor: '#EBEBEB' }} />
-    </Box>
-  )
-}
-
-// ── Marketplace section ───────────────────────────────────────────────────────
-const MarketplaceSection: React.FC = () => {
-  const { classes } = useStyles()
-  const { data, isLoading } = useUserMarketplaceListings()
-  const deleteMutation = useDeleteMarketplaceListing()
-  const listings: MarketplaceListing[] = data?.data ?? []
-
-  return (
-    <Box>
-      <Box className={classes.sectionHeader}>
-        <Box className={classes.sectionIcon}>
-          <StorefrontOutlinedIcon sx={{ fontSize: '1.1rem', color: colors.primary }} />
-        </Box>
-        <Typography className={classes.sectionTitle}>Buy &amp; Sell</Typography>
-        {!isLoading && <span className={classes.sectionCount}>{listings.length}</span>}
-      </Box>
-
-      {isLoading && [1].map(i => <SkeletonCard key={i} />)}
-
-      {!isLoading && listings.length === 0 && (
-        <Box className={classes.emptyBox}>
-          <Typography className={classes.emptyText}>No items listed for sale yet.</Typography>
-        </Box>
-      )}
-
-      {!isLoading && listings.map(item => (
-        <Box key={item.id} className={classes.card}>
-          <Box className={classes.cardHeader}>
-            <Box sx={{ flex: 1 }}>
-              <Typography className={classes.cardTitle}>{item.itemName}</Typography>
-              <Box className={classes.cardMeta}>
-                <Chip label={item.itemType} size="small" className={classes.chip} />
-                {item.priceNegotiable && <Chip label="Negotiable" size="small" className={classes.chip} />}
-              </Box>
-              {item.location && (
-                <Typography className={classes.metaText} sx={{ mt: 0.5 }}>
-                  <LocationOnOutlinedIcon sx={{ fontSize: '0.82rem' }} />{item.location}
-                </Typography>
-              )}
-              <Typography className={classes.priceText}>{formatINR(item.price)}</Typography>
-            </Box>
-            <CardMenu
-              onDelete={() => deleteMutation.mutate(item.id)}
-              isDeleting={deleteMutation.isPending}
-            />
-          </Box>
-        </Box>
-      ))}
     </Box>
   )
 }
@@ -382,8 +260,6 @@ const MyListingsPage: React.FC = () => {
   return (
     <Box className={classes.page}>
       <AccommodationSection />
-      <ProxySection />
-      <MarketplaceSection />
     </Box>
   )
 }

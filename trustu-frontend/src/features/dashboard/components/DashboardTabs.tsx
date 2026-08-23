@@ -2,7 +2,6 @@ import React from 'react'
 import { Tabs, Tab, Box, Typography } from '@mui/material'
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined'
 import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import { makeStyles } from 'tss-react/mui'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { PATHS } from '@/routes/paths'
@@ -77,8 +76,7 @@ const DashboardTabs: React.FC = () => {
 
   const TAB_ITEMS: TabItem[] = [
     { label: 'Community',     icon: <ForumOutlinedIcon />,     path: PATHS.dashboard.community },
-    { label: 'Accommodation', icon: <HomeWorkOutlinedIcon />,   path: PATHS.dashboard.accommodation, count: accommodationCount },
-    { label: 'Buy & Sell',    icon: <StorefrontOutlinedIcon />, path: PATHS.dashboard.marketplace,   count: 0 },
+    { label: 'Accommodation', icon: <HomeWorkOutlinedIcon />,  path: PATHS.dashboard.accommodation, count: accommodationCount },
   ]
 
   const currentTabIndex = TAB_ITEMS.findIndex((item) =>

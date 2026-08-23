@@ -342,7 +342,7 @@ const RegisterPage: React.FC = () => {
       login({ ...data.user, profileComplete: true }, data.token)
       // Fetch full profile — backend has assigned community based on native_state_id
       await syncProfile()
-      navigate(PATHS.dashboard.community)
+      navigate(PATHS.onboarding)
     },
     onError: (error: Error & { errors?: Record<string, string[]> }) => {
       showError(error.message ?? 'Registration failed. Please try again.')

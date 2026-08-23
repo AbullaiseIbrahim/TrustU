@@ -9,6 +9,8 @@ export interface User {
   gender: Gender | null
   designation: Designation | null
   institute: string | null
+  /** Home/native state name, e.g. "Kerala" — resolved from native_state_id if the API only returns an ID */
+  nativeStateName: string | null
   avatarUrl: string | null
   profileComplete: boolean
   communityJoined: boolean

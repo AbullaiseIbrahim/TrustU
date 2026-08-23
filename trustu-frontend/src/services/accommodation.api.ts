@@ -61,11 +61,16 @@ export interface Accommodation {
   furnishing: number
   availableSpots: number
   peopleAllowed: number
+  currentRoommates: number | null
+  /** 1=Students · 2=Working pros · 3=Family */
+  roommatePreference: number | null
   isConnected: boolean
   mutualFriends: number
   createdAt: string
   /** Poster's WhatsApp / phone number (raw string from API, may be empty) */
   phone: string
+  amenities: { id: number; name: string }[]
+  photoUrls: string[]
 }
 
 export interface CreateAccommodationPayload {
@@ -93,6 +98,9 @@ export interface CreateAccommodationPayload {
   furnishing?: number
   available_spots?: number
   people_allowed?: number
+  current_roommates?: number
+  /** 1=Students · 2=Working pros · 3=Family */
+  roommate_preference?: number
   amenity_ids?: number[]
   photos?: File[]
   /** WhatsApp / contact number for interested users to reach the poster */
@@ -114,6 +122,29 @@ export interface UpdateAccommodationPayload {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeAmenities(raw: any): { id: number; name: string }[] {
+  const list = raw.amenities ?? raw.amenity_list ?? raw.amenityList ?? []
+  if (!Array.isArray(list)) return []
+  return list
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((a: any) => ({
+      id: Number(a?.id ?? a?.amenity_id ?? 0),
+      name: String(a?.name ?? a?.amenity_name ?? (typeof a === 'string' ? a : '')),
+    }))
+    .filter(a => a.name)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizePhotoUrls(raw: any): string[] {
+  const list = raw.photos ?? raw.photo_urls ?? raw.photoUrls ?? raw.images ?? raw.media ?? []
+  if (!Array.isArray(list)) return []
+  return list
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((p: any) => (typeof p === 'string' ? p : p?.url ?? p?.path ?? p?.image_url ?? p?.file_path ?? ''))
+    .filter((url: string) => Boolean(url))
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalize(raw: any): Accommodation {
@@ -140,6 +171,8 @@ function normalize(raw: any): Accommodation {
     furnishing:     Number(raw.furnishing    ?? 0),
     availableSpots: Number(raw.available_spots ?? raw.availableSpots ?? 0),
     peopleAllowed:  Number(raw.people_allowed  ?? raw.peopleAllowed  ?? 0),
+    currentRoommates: raw.current_roommates != null ? Number(raw.current_roommates) : (raw.currentRoommates != null ? Number(raw.currentRoommates) : null),
+    roommatePreference: raw.roommate_preference != null ? Number(raw.roommate_preference) : (raw.roommatePreference != null ? Number(raw.roommatePreference) : null),
     isConnected:    Boolean(raw.is_connected   ?? raw.isConnected   ?? false),
     mutualFriends:  Number(raw.mutual_friends  ?? raw.mutualFriends  ?? 0),
     createdAt:      String(raw.created_at      ?? raw.createdAt      ?? ''),
@@ -155,6 +188,8 @@ function normalize(raw: any): Accommodation {
       post.user?.mobile    ??
       '',
     ),
+    amenities: normalizeAmenities(raw),
+    photoUrls: normalizePhotoUrls(raw),
   }
 }
 
@@ -213,6 +248,8 @@ export const accommodationApi = {
     if (payload.furnishing       != null) fd.append('furnishing',       String(payload.furnishing))
     if (payload.available_spots  != null) fd.append('available_spots',  String(payload.available_spots))
     if (payload.people_allowed   != null) fd.append('people_allowed',   String(payload.people_allowed))
+    if (payload.current_roommates   != null) fd.append('current_roommates',   String(payload.current_roommates))
+    if (payload.roommate_preference != null) fd.append('roommate_preference', String(payload.roommate_preference))
 
     payload.amenity_ids?.forEach(id => fd.append('amenity_ids[]', String(id)))
     payload.photos?.forEach(photo   => fd.append('photos[]',      photo))

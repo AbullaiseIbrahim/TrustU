@@ -163,7 +163,7 @@ const DashboardNavbar: React.FC = () => {
                 <Button
                   className={classes.navBtn}
                   startIcon={<PeopleAltOutlinedIcon className={classes.navBtnIcon} />}
-                  onClick={() => navigate(PATHS.circle)}
+                  onClick={() => navigate(`${PATHS.dashboard.community}?tab=friends`)}
                   disableRipple={false}
                 >
                   My Circle

@@ -17,7 +17,7 @@ import colors from '@/theme/colors'
 export interface SharedRoomFilters {
   budgetMin: string
   budgetMax: string
-  postedBy: string        // '' | 'friends' | 'mutuals' | 'community'
+  location: string         // free-text match against listing address
   gender: string          // '' | 'male' | 'female' | 'any'
   currentRoommates: string // '' | 'any' | '1' | '2' | '3+'
   roommatePref: string[]   // multi-select
@@ -26,7 +26,7 @@ export interface SharedRoomFilters {
 export const EMPTY_SHARED_FILTERS: SharedRoomFilters = {
   budgetMin: '',
   budgetMax: '',
-  postedBy: '',
+  location: '',
   gender: '',
   currentRoommates: '',
   roommatePref: [],
@@ -35,7 +35,7 @@ export const EMPTY_SHARED_FILTERS: SharedRoomFilters = {
 export function countActiveFilters(f: SharedRoomFilters): number {
   let n = 0
   if (f.budgetMin || f.budgetMax) n++
-  if (f.postedBy) n++
+  if (f.location.trim()) n++
   if (f.gender) n++
   if (f.currentRoommates && f.currentRoommates !== 'any') n++
   if (f.roommatePref.length) n++
@@ -51,8 +51,7 @@ export function getActiveChips(f: SharedRoomFilters): string[] {
     const hi = f.budgetMax ? `₹${Math.round(Number(f.budgetMax) / 1000)}k` : '+'
     chips.push(`${lo}–${hi}`)
   }
-  if (f.postedBy === 'friends')   chips.push('Friends only')
-  if (f.postedBy === 'mutuals')   chips.push('Mutual friends')
+  if (f.location.trim()) chips.push(f.location.trim())
   if (f.currentRoommates && f.currentRoommates !== 'any' && f.currentRoommates !== '')
     chips.push(`${f.currentRoommates} roommate${f.currentRoommates === '1' ? '' : 's'}`)
   if (f.roommatePref.length)
@@ -249,12 +248,6 @@ const useStyles = makeStyles()(() => ({
 
 // ── Posted By options ─────────────────────────────────────────────────────────
 
-const POSTED_BY = [
-  { value: 'friends',   label: 'Friends' },
-  { value: 'mutuals',   label: 'Mutual friends' },
-  { value: 'community', label: 'Anyone in community' },
-]
-
 const ROOMMATE_COUNTS = [
   { value: 'any', label: 'Any' },
   { value: '1',   label: '1' },
@@ -297,9 +290,6 @@ const SharedRoomFilterSheet: React.FC<Props> = ({
 
   const set = (patch: Partial<SharedRoomFilters>) =>
     setDraft(prev => ({ ...prev, ...patch }))
-
-  const togglePostedBy = (val: string) =>
-    set({ postedBy: draft.postedBy === val ? '' : val })
 
   const toggleGender = (val: string) =>
     set({ gender: draft.gender === val ? '' : val })
@@ -390,25 +380,16 @@ const SharedRoomFilterSheet: React.FC<Props> = ({
           />
         </Box>
 
-        {/* Posted By */}
+        {/* Location */}
         <Box className={classes.section}>
-          <Box className={classes.sectionRow}>
-            <Typography className={classes.sectionTitle}>Posted By</Typography>
-            <Typography className={classes.trustLabel}>Trust filter</Typography>
-          </Box>
-          <Box className={classes.chipsWrap}>
-            {POSTED_BY.map(o => (
-              <Box
-                key={o.value}
-                component="button"
-                className={cx(classes.chip, { [classes.chipActive]: draft.postedBy === o.value })}
-                onClick={() => togglePostedBy(o.value)}
-              >
-                {draft.postedBy === o.value && '✓ '}
-                {o.label}
-              </Box>
-            ))}
-          </Box>
+          <Typography className={classes.sectionTitle} sx={{ mb: 1.5 }}>Location</Typography>
+          <TextField
+            fullWidth size="small"
+            placeholder="e.g. Batla House, Okhla…"
+            value={draft.location}
+            onChange={e => set({ location: e.target.value })}
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+          />
         </Box>
 
         {/* Gender Preference */}

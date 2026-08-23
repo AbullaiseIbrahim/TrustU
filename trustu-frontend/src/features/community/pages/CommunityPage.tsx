@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
-import { Box, Typography, Avatar } from '@mui/material'
+import { Box, Typography, Avatar, TextField, InputAdornment } from '@mui/material'
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined'
+import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
 import { makeStyles } from 'tss-react/mui'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { PATHS } from '@/routes/paths'
 import CreatePostInput from '../components/CreatePostInput'
 import PostCard from '../components/PostCard'
 import { usePosts } from '../hooks/usePostQueries'
@@ -16,8 +19,10 @@ import {
   useRemoveFriend,
   useSendFriendRequest,
   useCancelFriendRequest,
+  useMutualFriendsAggregate,
 } from '@/features/circle/hooks/useFriendshipQueries'
 import type { Friend, PendingRequest } from '@/services/friendship.api'
+import UserProfileSheet, { type ProfileSheetUser } from '../components/UserProfileSheet'
 import { useCommunityMembers, useCommunity } from '../hooks/useCommunityQueries'
 import type { CommunityMember } from '@/types/community.types'
 import { getInitials } from '@/utils'
@@ -415,11 +420,14 @@ const CommunityCard: React.FC<{
   subCommCount?: number
 }> = ({ communityName, friendCount, memberCount, subCommCount = 0 }) => {
   const { classes } = useStyles()
+  const navigate = useNavigate()
   const { data: friends = [] } = useFriends()
   const first5 = (friends as Friend[]).slice(0, 5)
 
-  // Estimate mutual friends as ~60% of friends (no API for this yet)
-  const mutualFriendsEst = Math.max(0, Math.round(friendCount * 0.6))
+  // Real mutual-friends count — aggregated via GET /friends/mutual/{userId}
+  // across the current user's own friends (see useMutualFriendsAggregate).
+  const { people: mutualPeople } = useMutualFriendsAggregate((friends as Friend[]).map(f => f.userId))
+  const mutualFriendsCount = mutualPeople.length
 
   return (
     <Box className={classes.communityCard}>
@@ -439,7 +447,7 @@ const CommunityCard: React.FC<{
           <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
         </svg>
         <Typography className={classes.membersPillText}>
-          {memberCount > 0 ? memberCount.toLocaleString('en-IN') : '—'} Members
+          {memberCount.toLocaleString('en-IN')} Members
         </Typography>
       </Box>
 
@@ -447,7 +455,7 @@ const CommunityCard: React.FC<{
       {friendCount > 0 && (
         <Typography className={classes.friendsLine}>
           {friendCount.toLocaleString('en-IN')} Friends
-          {mutualFriendsEst > 0 && ` · ${mutualFriendsEst.toLocaleString('en-IN')} Mutual Friends`}
+          {mutualFriendsCount > 0 && ` · ${mutualFriendsCount.toLocaleString('en-IN')} Mutual Friends`}
         </Typography>
       )}
 
@@ -468,7 +476,7 @@ const CommunityCard: React.FC<{
 
       {/* Sub-communities link */}
       {subCommCount > 0 && (
-        <Box className={classes.subCommLink}>
+        <Box className={classes.subCommLink} onClick={() => navigate(PATHS.onboarding, { state: { revisit: true } })}>
           <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
             <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
           </svg>
@@ -513,6 +521,7 @@ const FriendsTab: React.FC = () => {
   const { classes } = useStyles()
   const { data: friends = [], isLoading } = useFriends()
   const removeMutation = useRemoveFriend()
+  const [viewingUser, setViewingUser] = useState<ProfileSheetUser | null>(null)
 
   if (isLoading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -533,7 +542,12 @@ const FriendsTab: React.FC = () => {
         ) : list.map((f) => {
           const av = avatarColor(f.id)
           return (
-            <Box key={f.id} className={classes.listRow}>
+            <Box
+              key={f.id}
+              className={classes.listRow}
+              sx={{ cursor: 'pointer' }}
+              onClick={() => setViewingUser({ userId: f.userId, name: f.name, designation: f.designation, avatarUrl: f.avatarUrl, communityName: f.communityName })}
+            >
               <Avatar
                 src={f.avatarUrl ?? undefined}
                 className={classes.personAvatar}
@@ -548,7 +562,7 @@ const FriendsTab: React.FC = () => {
               <Button
                 disableElevation
                 className={classes.removePill}
-                onClick={() => removeMutation.mutate(f.userId)}
+                onClick={(e) => { e.stopPropagation(); removeMutation.mutate(f.userId) }}
                 disabled={removeMutation.isPending}
               >
                 Remove
@@ -556,6 +570,62 @@ const FriendsTab: React.FC = () => {
             </Box>
           )
         })}
+      </Box>
+
+      <AddFriendByIdCard />
+
+      <UserProfileSheet
+        open={!!viewingUser}
+        onClose={() => setViewingUser(null)}
+        user={viewingUser}
+        friendStatus="friends"
+      />
+    </Box>
+  )
+}
+
+// ── Add friend by user ID ──────────────────────────────────────────────────────
+const AddFriendByIdCard: React.FC = () => {
+  const { classes } = useStyles()
+  const [userId, setUserId] = useState('')
+  const sendRequestMutation = useSendFriendRequest()
+
+  const handleSend = () => {
+    const trimmed = userId.trim()
+    if (!trimmed) return
+    sendRequestMutation.mutate(trimmed)
+    setUserId('')
+  }
+
+  return (
+    <Box className={classes.circleCard}>
+      <Box className={classes.circleCardHeader}>
+        <Typography className={classes.circleCardTitle}>Add a Friend</Typography>
+      </Box>
+      <Box sx={{ display: 'flex', gap: 1, px: 2, pb: 2 }}>
+        <TextField
+          size="small" fullWidth
+          placeholder="Enter their user ID"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <PersonAddOutlinedIcon sx={{ fontSize: '1rem', color: colors.ink3 }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '0.85rem' } }}
+        />
+        <Button
+          disableElevation
+          className={classes.addFriendPill}
+          onClick={handleSend}
+          disabled={!userId.trim() || sendRequestMutation.isPending}
+        >
+          Send
+        </Button>
       </Box>
     </Box>
   )
@@ -567,6 +637,7 @@ const RequestsTab: React.FC = () => {
   const { data: pending = [], isLoading } = usePendingRequests()
   const acceptMutation = useAcceptRequest()
   const rejectMutation = useRejectRequest()
+  const [viewingUser, setViewingUser] = useState<ProfileSheetUser | null>(null)
 
   if (isLoading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -588,7 +659,11 @@ const RequestsTab: React.FC = () => {
           const av = avatarColor(req.id)
           return (
             <Box key={req.id} className={classes.requestRow}>
-              <Box className={classes.requestTop}>
+              <Box
+                className={classes.requestTop}
+                sx={{ cursor: 'pointer' }}
+                onClick={() => setViewingUser({ userId: req.userId, name: req.name, designation: req.designation, avatarUrl: req.avatarUrl, communityName: req.communityName })}
+              >
                 <Avatar
                   src={req.avatarUrl ?? undefined}
                   className={classes.personAvatar}
@@ -623,7 +698,44 @@ const RequestsTab: React.FC = () => {
           )
         })}
       </Box>
+
+      <UserProfileSheet
+        open={!!viewingUser}
+        onClose={() => setViewingUser(null)}
+        user={viewingUser}
+        friendStatus="requested"
+      />
     </Box>
+  )
+}
+
+// ── Small "Add Friend" pill used for mutual connections who aren't friends yet ─
+const MutualAddFriendButton: React.FC<{ userId: string }> = ({ userId }) => {
+  const { classes } = useStyles()
+  const [requested, setRequested] = useState(false)
+  const sendRequestMutation = useSendFriendRequest()
+
+  if (requested) {
+    return (
+      <Box className={classes.friendedPill}>
+        <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
+        Requested
+      </Box>
+    )
+  }
+
+  return (
+    <Button
+      disableElevation
+      className={classes.addFriendPill}
+      onClick={() => {
+        sendRequestMutation.mutate(userId)
+        setRequested(true)
+      }}
+      disabled={sendRequestMutation.isPending}
+    >
+      Add Friend
+    </Button>
   )
 }
 
@@ -631,11 +743,23 @@ const RequestsTab: React.FC = () => {
 const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
   const { classes } = useStyles()
 
-  // Mutual friends = a curated subset of your friends (no dedicated API yet)
-  // Show shared friends — replace with dedicated API endpoint when available
-  const mutuals = friends.slice(0, Math.ceil(friends.length * 0.6))
+  // Real mutual friends — union of GET /friends/mutual/{userId} across your
+  // own friends. These are people you share a connection with, not
+  // necessarily your direct friends yet.
+  const friendUserIds = friends.map(f => f.userId)
+  const { people: mutuals, isLoading } = useMutualFriendsAggregate(friendUserIds)
+  const directFriendIds = new Set(friendUserIds)
+  const [viewingUser, setViewingUser] = useState<ProfileSheetUser | null>(null)
 
-  if (friends.length === 0) {
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+        <CircularProgress size={28} sx={{ color: colors.moss }} />
+      </Box>
+    )
+  }
+
+  if (friends.length === 0 || mutuals.length === 0) {
     return (
       <Box className={classes.circleContent}>
         <Box className={classes.circleCard}>
@@ -652,14 +776,20 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
           {mutuals.length} Mutual Friends
         </Typography>
         <Typography sx={{ fontSize: '0.8rem', color: colors.ink3, mt: '2px' }}>
-          Friends you share with people in this community
+          People you share a connection with through your friends
         </Typography>
       </Box>
       <Box className={classes.circleCard}>
         {mutuals.map((f) => {
           const av = avatarColor(f.id)
+          const isFriend = directFriendIds.has(f.userId)
           return (
-            <Box key={f.id} className={classes.listRow}>
+            <Box
+              key={f.id}
+              className={classes.listRow}
+              sx={{ cursor: 'pointer' }}
+              onClick={() => setViewingUser({ userId: f.userId, name: f.name, designation: f.designation, avatarUrl: f.avatarUrl })}
+            >
               <Avatar src={f.avatarUrl ?? undefined} className={classes.personAvatar} sx={{ bgcolor: av.bg, color: av.fg }}>
                 {getInitials(f.name)}
               </Avatar>
@@ -667,14 +797,27 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
                 <Typography className={classes.personName}>{f.name}</Typography>
                 {f.designation && <Typography className={classes.personSub}>{f.designation}</Typography>}
               </Box>
-              <Box className={classes.friendedPill}>
-                <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
-                Friends
-              </Box>
+              {isFriend ? (
+                <Box className={classes.friendedPill}>
+                  <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
+                  Friends
+                </Box>
+              ) : (
+                <Box onClick={(e) => e.stopPropagation()}>
+                  <MutualAddFriendButton userId={f.userId} />
+                </Box>
+              )}
             </Box>
           )
         })}
       </Box>
+
+      <UserProfileSheet
+        open={!!viewingUser}
+        onClose={() => setViewingUser(null)}
+        user={viewingUser}
+        friendStatus={viewingUser && directFriendIds.has(viewingUser.userId) ? 'friends' : 'none'}
+      />
     </Box>
   )
 }
@@ -709,6 +852,7 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number }>
   // Optimistic overrides so the button updates instantly, before the server's
   // friendship_status catches up on the next members refetch.
   const [localStatus, setLocalStatus] = useState<Record<string, 'requested' | 'none'>>({})
+  const [viewingMember, setViewingMember] = useState<{ user: ProfileSheetUser; status: 'friends' | 'requested' | 'none' } | null>(null)
 
   const members = data?.data ?? []
   const meta = data?.meta
@@ -749,7 +893,15 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number }>
           const isRequested = !isFriend && (override === 'requested' || (serverStatus === 'requested' && override !== 'none'))
           const av = avatarColor(m.id)
           return (
-            <Box key={m.id} className={classes.listRow}>
+            <Box
+              key={m.id}
+              className={classes.listRow}
+              sx={{ cursor: 'pointer' }}
+              onClick={() => setViewingMember({
+                user: { userId: m.id, name: m.name, designation: m.designation, avatarUrl: m.avatarUrl },
+                status: isFriend ? 'friends' : isRequested ? 'requested' : 'none',
+              })}
+            >
               <Avatar
                 src={m.avatarUrl ?? undefined}
                 className={classes.personAvatar}
@@ -773,7 +925,8 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number }>
                   variant="outlined"
                   className={classes.requestedPill}
                   endIcon={<CloseIcon sx={{ fontSize: '0.8rem !important' }} />}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     cancelRequestMutation.mutate(m.id)
                     setLocalStatus(s => ({ ...s, [m.id]: 'none' }))
                   }}
@@ -785,7 +938,8 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number }>
                 <Button
                   disableElevation
                   className={classes.addFriendPill}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     sendRequestMutation.mutate(m.id)
                     setLocalStatus(s => ({ ...s, [m.id]: 'requested' }))
                   }}
@@ -822,6 +976,20 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number }>
           </Box>
         )}
       </Box>
+
+      <UserProfileSheet
+        open={!!viewingMember}
+        onClose={() => setViewingMember(null)}
+        user={viewingMember?.user ?? null}
+        friendStatus={viewingMember?.status ?? 'none'}
+        isAdding={sendRequestMutation.isPending}
+        onAddFriend={() => {
+          if (!viewingMember) return
+          sendRequestMutation.mutate(viewingMember.user.userId)
+          setLocalStatus(s => ({ ...s, [viewingMember.user.userId]: 'requested' }))
+          setViewingMember(null)
+        }}
+      />
     </Box>
   )
 }
@@ -840,7 +1008,12 @@ const CommunityPage: React.FC = () => {
   const pendingCount = (pending as PendingRequest[]).length
   const memberCount = communityDetail?.memberCount ?? 0
 
-  const [activeTab, setActiveTab] = useState<Tab>('feed')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab') as Tab | null
+  const activeTab: Tab = (tabParam && ['feed', 'members', 'friends', 'mutual'].includes(tabParam))
+    ? tabParam
+    : 'feed'
+  const setActiveTab = (tab: Tab) => setSearchParams(tab === 'feed' ? {} : { tab }, { replace: true })
   const subCommCount = communityDetail?.subCommunities?.length ?? 0
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
@@ -911,7 +1084,10 @@ const CommunityPage: React.FC = () => {
       {activeTab === 'members' && <MembersTab communityId={user?.communityId} friendCount={friendCount} />}
       {activeTab === 'friends' && (
         <>
-          {pendingCount > 0 && <RequestsTab />}
+          {/* Always shown (not just when there are pending requests) so the
+              Requests section is discoverable — it already renders its own
+              "No pending requests" empty state. */}
+          <RequestsTab />
           <FriendsTab />
         </>
       )}

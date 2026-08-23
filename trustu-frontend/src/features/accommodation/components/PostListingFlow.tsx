@@ -32,7 +32,7 @@ import { useCreateAccommodation } from '../hooks/useAccommodationQueries'
 import { useAmenities } from '../hooks/useAmenityQueries'
 import { useAuth } from '@/app/AuthProvider'
 import { useSnackbar } from '@/app/SnackbarProvider'
-import { INDIA_STATES } from '@/constants/states'
+import { SIGNUP_ENABLED_STATES } from '@/constants/states'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -562,6 +562,12 @@ const GENDER_MAP: Record<string, number> = {
   any:    2,
 }
 
+const ROOMMATE_PREF_MAP: Record<string, number> = {
+  students: 1,
+  working:  2,
+  family:   3,
+}
+
 const FLAT_TYPE_MAP: Record<string, number> = {
   '1bhk': 1,
   '2bhk': 2,
@@ -579,8 +585,11 @@ interface ListingForm {
   availableSpots: number
   currentRoommates: number
   gender: string
-  roommatePref: string[]
+  /** Backend accepts a single value, not a set — see ROOMMATE_PREF_MAP */
+  roommatePref: string
   flatType: string
+  /** Required by the backend for Flat for Rent listings */
+  floor: string
   availableFrom: string
   cityId: string
   locality: string
@@ -599,8 +608,9 @@ const EMPTY_FORM: ListingForm = {
   availableSpots: 1,
   currentRoommates: 2,
   gender: 'any',
-  roommatePref: [],
+  roommatePref: '',
   flatType: '',
+  floor: '',
   availableFrom: '',
   cityId: '',
   locality: '',
@@ -685,7 +695,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
   const setF = (patch: Partial<ListingForm>) =>
     setForm(prev => ({ ...prev, ...patch }))
 
-  const toggleMulti = (key: 'roommatePref' | 'amenities', val: string) => {
+  const toggleMulti = (key: 'amenities', val: string) => {
     const arr = form[key]
     setF({ [key]: arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val] })
   }
@@ -725,6 +735,14 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
       showError('Please enter the address / locality.')
       return
     }
+    if (!form.roommatePref) {
+      showError('Please select a roommate preference.')
+      return
+    }
+    if (stayType === 'flat-for-rent' && !form.floor.trim()) {
+      showError('Please enter the floor number — it\'s required for Flat for Rent listings.')
+      return
+    }
     createMutation.mutate(
       {
         title:           form.title || `${typeLabel} — Listing`,
@@ -739,8 +757,11 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
         available_from:  form.availableFrom || new Date().toISOString().split('T')[0],
         gender:          GENDER_MAP[form.gender] ?? 2,
         flat_type:       FLAT_TYPE_MAP[form.flatType] ?? null,
+        floor:           form.floor.trim() ? Number(form.floor) : null,
         available_spots: form.availableSpots,
         people_allowed:  form.currentRoommates + form.availableSpots,
+        current_roommates:   form.currentRoommates,
+        roommate_preference: ROOMMATE_PREF_MAP[form.roommatePref],
         furnishing:      0,
         security_deposit: false,
         // When API amenities are loaded, values are numeric ID strings → convert back to numbers
@@ -776,7 +797,15 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
           <Box
             key={t.value}
             className={cx(classes.typeRow, { [classes.typeRowActive]: stayType === t.value })}
-            onClick={() => setStayType(t.value)}
+            onClick={() => {
+              // Switching category — clear the previous category's field values so
+              // e.g. a "Flat for Rent" title/BHK can't linger onto a Hostel/PG
+              // listing. Photos are kept since they aren't category-specific.
+              if (t.value !== stayType) {
+                setForm(prev => ({ ...EMPTY_FORM, photoFiles: prev.photoFiles, photos: prev.photos }))
+              }
+              setStayType(t.value)
+            }}
           >
             <Box className={cx(classes.typeIconTile, { [classes.typeIconTileActive]: stayType === t.value })}>
               {t.icon}
@@ -964,33 +993,44 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
               <Box
                 key={o.value}
                 component="button"
-                className={cx(classes.chip, { [classes.chipActive]: form.roommatePref.includes(o.value) })}
-                onClick={() => toggleMulti('roommatePref', o.value)}
+                className={cx(classes.chip, { [classes.chipActive]: form.roommatePref === o.value })}
+                onClick={() => setF({ roommatePref: form.roommatePref === o.value ? '' : o.value })}
               >
-                {form.roommatePref.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                {form.roommatePref === o.value && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
                 {o.label}
               </Box>
             ))}
           </Box>
         </Box>
 
-        {/* Type of Flat */}
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>Type of Flat</Typography>
-          <Box className={classes.chipsWrap}>
-            {FLAT_TYPE_OPTIONS.map(o => (
-              <Box
-                key={o.value}
-                component="button"
-                className={cx(classes.chip, { [classes.chipActive]: form.flatType === o.value })}
-                onClick={() => setF({ flatType: form.flatType === o.value ? '' : o.value })}
-              >
-                {form.flatType === o.value && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
-                {o.label}
-              </Box>
-            ))}
+        {/* Type of Flat + Floor — only relevant for Flat for Rent */}
+        {stayType === 'flat-for-rent' && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Type of Flat</Typography>
+            <Box className={classes.chipsWrap}>
+              {FLAT_TYPE_OPTIONS.map(o => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.chip, { [classes.chipActive]: form.flatType === o.value })}
+                  onClick={() => setF({ flatType: form.flatType === o.value ? '' : o.value })}
+                >
+                  {form.flatType === o.value && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+            <TextField
+              fullWidth size="small"
+              label="Floor"
+              placeholder="e.g. 2 (0 for ground floor)"
+              value={form.floor}
+              onChange={e => setF({ floor: e.target.value.replace(/\D/g, '') })}
+              inputProps={{ inputMode: 'numeric' }}
+              sx={{ mt: 1.25, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+            />
           </Box>
-        </Box>
+        )}
 
         {/* Available From */}
         <Box className={classes.fBlock}>
@@ -1010,7 +1050,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
               label="City / State"
               value={form.cityId}
               onChange={v => setF({ cityId: v })}
-              options={INDIA_STATES.map(s => ({ value: String(s.id), label: s.name }))}
+              options={SIGNUP_ENABLED_STATES.map(s => ({ value: String(s.id), label: s.name }))}
               placeholder="Select city / state"
             />
             <TextField

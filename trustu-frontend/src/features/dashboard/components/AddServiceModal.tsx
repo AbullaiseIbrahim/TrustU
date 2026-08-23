@@ -4,8 +4,6 @@ import type { TransitionProps } from '@mui/material/transitions'
 import CloseIcon from '@mui/icons-material/Close'
 import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined'
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined'
-import DeliveryDiningOutlinedIcon from '@mui/icons-material/DeliveryDiningOutlined'
-import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import { makeStyles } from 'tss-react/mui'
 import { useNavigate } from 'react-router-dom'
 import { PATHS } from '@/routes/paths'
@@ -83,7 +81,7 @@ const useStyles = makeStyles()(() => ({
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: '1fr',
     gap: 12,
     padding: '8px 20px 32px',
   },
@@ -154,24 +152,6 @@ const SERVICE_OPTIONS = [
     action: 'create-accommodation',
     iconBg: '#E3F2FD',
     iconColor: '#1565C0',
-  },
-  {
-    label: 'Offer a Service',
-    description: 'Errands, tutoring & more',
-    icon: <DeliveryDiningOutlinedIcon />,
-    path: PATHS.dashboard.proxy,
-    action: 'create-proxy',
-    iconBg: '#F3E5F5',
-    iconColor: '#7B1FA2',
-  },
-  {
-    label: 'Sell an Item',
-    description: 'Books, electronics & more',
-    icon: <StorefrontOutlinedIcon />,
-    path: PATHS.dashboard.marketplace,
-    action: 'create-marketplace',
-    iconBg: '#FFF3E0',
-    iconColor: '#E65100',
   },
 ]
 

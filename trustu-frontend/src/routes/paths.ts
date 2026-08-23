@@ -6,15 +6,13 @@ export const PATHS = {
     register: '/auth/register',
     otp: '/auth/otp',
   },
+  onboarding: '/onboarding',
   dashboard: {
     root: '/dashboard',
     community: '/dashboard/community',
     accommodation: '/dashboard/accommodation',
-    proxy: '/dashboard/proxy',
-    marketplace: '/dashboard/marketplace',
   },
   profile: '/profile',
   myListings: '/my-listings',
-  circle: '/circle',
   notFound: '/404',
 } as const

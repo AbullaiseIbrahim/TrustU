@@ -22,15 +22,25 @@ import LocalLaundryServiceIcon from '@mui/icons-material/LocalLaundryService'
 import KitchenIcon from '@mui/icons-material/Kitchen'
 import IronIcon from '@mui/icons-material/Iron'
 import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+import LocalParkingIcon from '@mui/icons-material/LocalParking'
+import PowerIcon from '@mui/icons-material/Power'
+import TvIcon from '@mui/icons-material/Tv'
+import SecurityIcon from '@mui/icons-material/Security'
+import LayersIcon from '@mui/icons-material/Layers'
 import { makeStyles } from 'tss-react/mui'
-import { useAccommodations } from '../hooks/useAccommodationQueries'
+import { useSearchParams } from 'react-router-dom'
+import { useAccommodations, useAccommodationDetail } from '../hooks/useAccommodationQueries'
 import type { Accommodation } from '@/services/accommodation.api'
 import { formatINR, formatDate, getInitials } from '@/utils'
 import colors from '@/theme/colors'
 import EmptyState from '@/components/EmptyState'
 import { useAuth } from '@/app/AuthProvider'
-import { useFriends } from '@/features/circle/hooks/useFriendshipQueries'
+import { useSnackbar } from '@/app/SnackbarProvider'
+import { PATHS } from '@/routes/paths'
+import { useFriends, useSendFriendRequest } from '@/features/circle/hooks/useFriendshipQueries'
 import type { Friend } from '@/services/friendship.api'
+import UserProfileSheet from '@/features/community/components/UserProfileSheet'
 import SharedRoomFilterSheet, {
   type SharedRoomFilters,
   EMPTY_SHARED_FILTERS,
@@ -371,13 +381,14 @@ const useStyles = makeStyles()(() => ({
     gap: 8,
     padding: '8px 16px 10px',
     overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch' as const,
     '&::-webkit-scrollbar': { display: 'none' },
   },
   filterPill: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
-    padding: '6px 14px',
+    padding: '9px 14px',
     borderRadius: 20,
     border: `1.5px solid ${colors.line}`,
     backgroundColor: colors.white,
@@ -440,6 +451,8 @@ const useStyles = makeStyles()(() => ({
     gap: 10,
     overflowX: 'auto',
     padding: '0 0 14px 0',
+    WebkitOverflowScrolling: 'touch' as const,
+    scrollSnapType: 'x proximity' as const,
     '&::-webkit-scrollbar': { display: 'none' },
     scrollbarWidth: 'none' as const,
   },
@@ -455,6 +468,7 @@ const useStyles = makeStyles()(() => ({
     animation: 'fadeSlideUp 0.28s ease both',
     flexShrink: 0,
     width: 160,
+    scrollSnapAlign: 'start' as const,
     '&:hover': {
       boxShadow: '0 6px 20px rgba(20,20,15,0.10)',
       transform: 'translateY(-2px)',
@@ -724,6 +738,7 @@ const useStyles = makeStyles()(() => ({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '14px 14px',
+    paddingTop: 'max(14px, env(safe-area-inset-top))',
   },
   detailHeroBtn: {
     width: 36,
@@ -981,6 +996,7 @@ const useStyles = makeStyles()(() => ({
   detailFooter: {
     flexShrink: 0,
     padding: '12px 18px 12px',
+    paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
     backgroundColor: colors.white,
     borderTop: `1px solid ${colors.lineSoft}`,
     boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
@@ -1005,16 +1021,24 @@ const useStyles = makeStyles()(() => ({
   },
 }))
 
-// ── Amenity tiles ─────────────────────────────────────────────────────────────
+// ── Amenity icon lookup ────────────────────────────────────────────────────────
+// Maps a real per-listing amenity name (from the API) to an icon by keyword.
+// Falls back to a generic check icon for anything unrecognized.
 
-const AMENITY_TILES = [
-  { icon: <WifiIcon />,                label: 'Wifi' },
-  { icon: <AcUnitIcon />,              label: 'AC' },
-  { icon: <SingleBedIcon />,           label: 'Bed & Cot' },
-  { icon: <LocalLaundryServiceIcon />, label: 'Washing Machine' },
-  { icon: <KitchenIcon />,             label: 'Fridge' },
-  { icon: <IronIcon />,                label: 'Iron Box' },
-]
+function amenityIcon(name: string): React.ReactNode {
+  const n = name.toLowerCase()
+  if (n.includes('wifi') || n.includes('internet'))            return <WifiIcon />
+  if (n.includes('ac') || n.includes('air condition'))         return <AcUnitIcon />
+  if (n.includes('bed') || n.includes('cot') || n.includes('furniture')) return <SingleBedIcon />
+  if (n.includes('wash') || n.includes('laundry'))              return <LocalLaundryServiceIcon />
+  if (n.includes('fridge') || n.includes('refrigerator'))       return <KitchenIcon />
+  if (n.includes('iron'))                                       return <IronIcon />
+  if (n.includes('park'))                                       return <LocalParkingIcon />
+  if (n.includes('power') || n.includes('backup') || n.includes('electric')) return <PowerIcon />
+  if (n.includes('tv') || n.includes('television'))             return <TvIcon />
+  if (n.includes('security') || n.includes('cctv') || n.includes('guard'))   return <SecurityIcon />
+  return <CheckCircleOutlineIcon />
+}
 
 // ── Connection chip helper ────────────────────────────────────────────────────
 
@@ -1049,6 +1073,110 @@ function flatLabel(type: number | null, peopleAllowed: number): string {
   return `${bhk}${people}`
 }
 
+// ── Category-specific detail chips ─────────────────────────────────────────────
+// Each accommodation type surfaces a different subset of the real fields
+// captured on the listing (see Accommodation type) rather than one generic set.
+
+interface DetailChip { icon?: React.ReactNode; label: string }
+
+function genderLabel(gender: number, boysGirls = false): string {
+  if (gender === 0) return boysGirls ? 'Boys' : 'Male'
+  if (gender === 1) return boysGirls ? 'Girls' : 'Female'
+  return boysGirls ? 'Co-ed' : 'Mixed / Any'
+}
+
+function furnishingLabel(furnishing: number): string {
+  return furnishing === 2 ? 'Fully Furnished' : furnishing === 1 ? 'Semi-Furnished' : 'Unfurnished'
+}
+
+function floorLabel(floor: number): string {
+  return floor === 0 ? 'Ground Floor' : `Floor ${floor}`
+}
+
+function buildDetailChips(acc: Accommodation): DetailChip[] {
+  const chips: DetailChip[] = []
+
+  switch (acc.type) {
+    case 2: // Flat for Rent
+      if (acc.flatType != null) {
+        chips.push({ label: acc.flatType === 4 ? '4 BHK' : acc.flatType === 3 ? '3 BHK' : acc.flatType === 2 ? '2 BHK' : '1 BHK' })
+      }
+      if (acc.floor != null) chips.push({ icon: <LayersIcon sx={{ fontSize: '0.85rem', mr: 0.5 }} />, label: floorLabel(acc.floor) })
+      chips.push({ label: furnishingLabel(acc.furnishing) })
+      chips.push({ label: genderLabel(acc.gender) })
+      if (acc.securityDeposit) chips.push({ label: 'Security Deposit Required' })
+      break
+
+    case 3: // Hostel / PG
+      chips.push({ label: genderLabel(acc.gender, true) })
+      chips.push({ label: furnishingLabel(acc.furnishing) })
+      if (acc.availableSpots > 0) {
+        chips.push({ icon: <PeopleOutlineIcon sx={{ fontSize: '0.85rem', mr: 0.5 }} />, label: `${acc.availableSpots} spots available` })
+      }
+      break
+
+    case 4: // Hotel
+      if (acc.availableSpots > 0) {
+        chips.push({ icon: <PeopleOutlineIcon sx={{ fontSize: '0.85rem', mr: 0.5 }} />, label: `${acc.availableSpots} rooms available` })
+      }
+      chips.push({ label: genderLabel(acc.gender) === 'Mixed / Any' ? 'All Guests Welcome' : `${genderLabel(acc.gender)} Guests` })
+      break
+
+    case 1: // Short Stay
+      if (acc.peopleAllowed > 0) {
+        chips.push({ icon: <PeopleOutlineIcon sx={{ fontSize: '0.85rem', mr: 0.5 }} />, label: `${acc.peopleAllowed} guests allowed` })
+      }
+      if (acc.availableSpots > 0) chips.push({ label: `${acc.availableSpots} spots left` })
+      chips.push({ label: genderLabel(acc.gender) })
+      break
+
+    default: // 0 — Flatmate Needs
+      if (acc.currentRoommates != null && acc.currentRoommates > 0) {
+        chips.push({ icon: <PeopleOutlineIcon sx={{ fontSize: '0.85rem', mr: 0.5 }} />, label: `${acc.currentRoommates} current roommates` })
+      }
+      if (acc.availableSpots > 0) chips.push({ label: `${acc.availableSpots} spots available` })
+      chips.push({ label: genderLabel(acc.gender) })
+      chips.push({ label: furnishingLabel(acc.furnishing) })
+  }
+
+  return chips
+}
+
+// Applies the shared SharedRoomFilters sheet fields — budget, gender, location,
+// current roommates, roommate preference — used by both the per-category view
+// and the unified "all listings" view.
+function applyFilters(list: Accommodation[], filters: SharedRoomFilters): Accommodation[] {
+  let out = list
+  if (filters.budgetMin) out = out.filter(a => a.amount >= Number(filters.budgetMin))
+  if (filters.budgetMax) out = out.filter(a => a.amount <= Number(filters.budgetMax))
+  if (filters.gender === 'male')   out = out.filter(a => a.gender === 0)
+  if (filters.gender === 'female') out = out.filter(a => a.gender === 1)
+  if (filters.location.trim()) {
+    const q = filters.location.trim().toLowerCase()
+    out = out.filter(a => a.address.toLowerCase().includes(q))
+  }
+  if (filters.currentRoommates && filters.currentRoommates !== 'any') {
+    out = out.filter(a => {
+      const n = a.currentRoommates
+      if (n == null) return false
+      return filters.currentRoommates === '3+' ? n >= 3 : String(n) === filters.currentRoommates
+    })
+  }
+  if (filters.roommatePref.length && !filters.roommatePref.includes('none')) {
+    const wanted = new Set(filters.roommatePref.map(p => ROOMMATE_PREF_LABEL_TO_VALUE[p]).filter(Boolean))
+    out = out.filter(a => a.roommatePreference != null && wanted.has(a.roommatePreference))
+  }
+  return out
+}
+
+// Mirrors PostListingFlow's ROOMMATE_PREF_MAP so the filter sheet's chip values
+// line up with the numeric value the backend actually stores.
+const ROOMMATE_PREF_LABEL_TO_VALUE: Record<string, number> = {
+  students: 1,
+  working: 2,
+  family: 3,
+}
+
 // WhatsApp deep-link helper
 // Strips non-digits, prepends India country code (91) if only 10 digits given.
 function whatsappUrl(raw: string, message?: string): string {
@@ -1066,6 +1194,11 @@ function heroGradient(type: number, gender: number): string {
   return `linear-gradient(155deg, oklch(82% 0.06 ${hue}), oklch(66% 0.09 ${hue + 30}))`
 }
 
+// Real photo when the listing has one, falling back to the type/gender gradient
+function photoBackground(acc: Accommodation, grad: string): string {
+  return acc.photoUrls[0] ? `url("${acc.photoUrls[0]}") center/cover no-repeat` : grad
+}
+
 // ── Grid card (2-column in category view) ─────────────────────────────────────
 
 const GridCard: React.FC<{
@@ -1080,7 +1213,7 @@ const GridCard: React.FC<{
 
   return (
     <Box className={classes.gridCard} onClick={onClick}>
-      <Box className={classes.gridPhoto} sx={{ background: grad }}>
+      <Box className={classes.gridPhoto} sx={{ background: photoBackground(acc, grad) }}>
         {acc.isNegotiable && <Box className={classes.urgentBadge}>Urgent</Box>}
         <Box
           component="button"
@@ -1128,20 +1261,39 @@ const DetailView: React.FC<{
   const av = avatarColor(acc.userId || acc.id)
   const grad = heroGradient(acc.type, acc.gender)
   const status = connectionStatus(acc)
+  const [posterOpen, setPosterOpen] = useState(false)
+  const sendRequestMutation = useSendFriendRequest()
+  const { showSuccess, showError } = useSnackbar()
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}${PATHS.dashboard.accommodation}?listing=${acc.id}`
+    const shareData = { title: acc.title || 'TrustU listing', text: `Check out this listing on TrustU: ${acc.title}`, url }
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(url)
+        showSuccess('Link copied to clipboard!')
+      }
+    } catch (err) {
+      // AbortError fires when the user just dismisses the native share sheet — not a real failure
+      if ((err as Error)?.name !== 'AbortError') showError('Could not share this listing.')
+    }
+  }
 
   return (
     <Box className={classes.detailPage}>
       {/* Scrollable area: hero + content */}
       <Box className={classes.detailScroll}>
       {/* Hero photo */}
-      <Box className={classes.detailHero} sx={{ background: grad }}>
+      <Box className={classes.detailHero} sx={{ background: photoBackground(acc, grad) }}>
         <Box className={classes.detailHeroOverlay} />
         <Box className={classes.detailHeroControls}>
           <Box component="button" className={classes.detailHeroBtn} onClick={onClose}>
             <ArrowBackIosNewIcon sx={{ fontSize: '0.9rem' }} />
           </Box>
           <Box className={classes.detailHeroBtnsRight}>
-            <Box component="button" className={classes.detailHeroBtn}>
+            <Box component="button" className={classes.detailHeroBtn} onClick={handleShare}>
               <ShareIcon sx={{ fontSize: '1rem' }} />
             </Box>
             <Box
@@ -1184,25 +1336,14 @@ const DetailView: React.FC<{
           )}
         </Box>
 
-        {/* Info chips */}
+        {/* Info chips — category-specific fields for this listing type */}
         <Box className={classes.detailChipsRow}>
-          {acc.flatType != null && (
-            <Box className={classes.detailChip}>
-              {acc.flatType === 4 ? '4 BHK' : acc.flatType === 3 ? '3 BHK' : acc.flatType === 2 ? '2 BHK' : '1 BHK'}
+          {buildDetailChips(acc).map((chip, i) => (
+            <Box key={i} className={classes.detailChip}>
+              {chip.icon}
+              {chip.label}
             </Box>
-          )}
-          {acc.peopleAllowed > 0 && (
-            <Box className={classes.detailChip}>
-              <PeopleOutlineIcon sx={{ fontSize: '0.85rem', mr: 0.5 }} />
-              {acc.peopleAllowed} persons
-            </Box>
-          )}
-          <Box className={classes.detailChip}>
-            {acc.gender === 0 ? 'Male' : acc.gender === 1 ? 'Female' : 'Mixed / Any'}
-          </Box>
-          <Box className={classes.detailChip}>
-            {acc.furnishing === 2 ? 'Fully Furnished' : acc.furnishing === 1 ? 'Semi-Furnished' : 'Unfurnished'}
-          </Box>
+          ))}
         </Box>
 
         {/* Location */}
@@ -1244,7 +1385,7 @@ const DetailView: React.FC<{
             </Box>
           )}
 
-          <Box className={classes.posterRow}>
+          <Box className={classes.posterRow} sx={{ cursor: 'pointer' }} onClick={() => setPosterOpen(true)}>
             <Avatar className={classes.posterAvatar} sx={{ bgcolor: av.bg, color: av.fg }}>
               {getInitials(acc.userName)}
             </Avatar>
@@ -1272,18 +1413,32 @@ const DetailView: React.FC<{
           </Box>
         </Box>
 
-        {/* Amenities */}
-        <Box className={classes.amenitiesCard}>
-          <Typography className={classes.amenitiesTitle}>Amenities Available</Typography>
-          <Box className={classes.amenitiesGrid}>
-            {AMENITY_TILES.map(a => (
-              <Box key={a.label} className={classes.amenityTile}>
-                {a.icon}
-                <Typography className={classes.amenityLabel}>{a.label}</Typography>
-              </Box>
-            ))}
+        <UserProfileSheet
+          open={posterOpen}
+          onClose={() => setPosterOpen(false)}
+          user={acc.userId ? { userId: acc.userId, name: acc.userName || 'Community Member' } : null}
+          friendStatus={status === 'friend' ? 'friends' : 'none'}
+          isAdding={sendRequestMutation.isPending}
+          onAddFriend={() => {
+            sendRequestMutation.mutate(acc.userId)
+            setPosterOpen(false)
+          }}
+        />
+
+        {/* Amenities — real per-listing amenities, not a fixed placeholder set */}
+        {acc.amenities.length > 0 && (
+          <Box className={classes.amenitiesCard}>
+            <Typography className={classes.amenitiesTitle}>Amenities Available</Typography>
+            <Box className={classes.amenitiesGrid}>
+              {acc.amenities.map(a => (
+                <Box key={a.id || a.name} className={classes.amenityTile}>
+                  {amenityIcon(a.name)}
+                  <Typography className={classes.amenityLabel}>{a.name}</Typography>
+                </Box>
+              ))}
+            </Box>
           </Box>
-        </Box>
+        )}
       </Box>
       {/* End scrollable area */}
       </Box>
@@ -1338,8 +1493,8 @@ const ListCard: React.FC<{
   return (
     <Box className={classes.listCard} onClick={onClick}>
       {/* Left photo */}
-      <Box className={classes.listPhoto} sx={{ background: grad }}>
-        <Box className={classes.listPhotoImg} sx={{ background: grad }} />
+      <Box className={classes.listPhoto} sx={{ background: photoBackground(acc, grad) }}>
+        <Box className={classes.listPhotoImg} sx={{ background: photoBackground(acc, grad) }} />
         {acc.isNegotiable && <Box className={classes.listUrgentBadge}>Urgent</Box>}
         <Box
           component="button"
@@ -1369,7 +1524,7 @@ const ListCard: React.FC<{
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-type View = 'landing' | 'category' | 'subgroup' | 'detail'
+type View = 'landing' | 'category' | 'subgroup' | 'all' | 'detail'
 
 const AccommodationPage: React.FC = () => {
   const { classes } = useStyles()
@@ -1378,17 +1533,37 @@ const AccommodationPage: React.FC = () => {
   const friendCount = (friends as Friend[]).length
 
   const [view, setView] = useState<View>('landing')
+  const [detailOrigin, setDetailOrigin] = useState<'category' | 'subgroup' | 'all'>('category')
   const [selectedType, setSelectedType] = useState<number>(0)
   const [selectedSubGroup, setSelectedSubGroup] = useState<SubGroup | null>(null)
   const [filterTab, setFilterTab] = useState<FilterTab>('all')
+  const [allFilterTab, setAllFilterTab] = useState<FilterTab>('all')
   const [filterOpen, setFilterOpen] = useState(false)
+  const [allFilterOpen, setAllFilterOpen] = useState(false)
   const [filters, setFilters] = useState<SharedRoomFilters>(EMPTY_SHARED_FILTERS)
+  const [allFilters, setAllFilters] = useState<SharedRoomFilters>(EMPTY_SHARED_FILTERS)
   const [selectedAcc, setSelectedAcc] = useState<Accommodation | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
 
   // Fetch all accommodations
   const { data, isLoading } = useAccommodations()
   const allAccommodations = data?.data ?? []
+
+  // Deep link — a shared listing URL looks like /dashboard/accommodation?listing=<id>.
+  // Fetch and open that specific listing directly on load.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const sharedListingId = searchParams.get('listing')
+  const { data: sharedListing } = useAccommodationDetail(sharedListingId ?? '')
+  React.useEffect(() => {
+    if (sharedListing && view === 'landing') {
+      setSelectedAcc(sharedListing)
+      setDetailOrigin('all')
+      setView('detail')
+      searchParams.delete('listing')
+      setSearchParams(searchParams, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedListing])
 
   // Count by type for landing cards
   const countByType = useMemo(() => {
@@ -1408,19 +1583,20 @@ const AccommodationPage: React.FC = () => {
     if (filterTab === 'mutual')    list = list.filter(a => a.mutualFriends > 0)
     if (filterTab === 'community') list = list.filter(a => !a.isConnected && a.mutualFriends === 0)
 
-    // Apply budget filters
-    if (filters.budgetMin) list = list.filter(a => a.amount >= Number(filters.budgetMin))
-    if (filters.budgetMax) list = list.filter(a => a.amount <= Number(filters.budgetMax))
-
-    // Apply gender filter
-    if (filters.gender === 'male')   list = list.filter(a => a.gender === 0)
-    if (filters.gender === 'female') list = list.filter(a => a.gender === 1)
-
-    return list
+    return applyFilters(list, filters)
   }, [allAccommodations, selectedType, filterTab, filters])
 
   const subGroups = getSubGroups(selectedType)
   const currentCategory = CATEGORIES.find(c => c.type === selectedType)
+
+  // Unified "all categories" feed — every listing, newest first, independent of selectedType
+  const allFilteredAccommodations = useMemo(() => {
+    let list = [...allAccommodations].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    if (allFilterTab === 'friends')   list = list.filter(a => a.isConnected)
+    if (allFilterTab === 'mutual')    list = list.filter(a => a.mutualFriends > 0)
+    if (allFilterTab === 'community') list = list.filter(a => !a.isConnected && a.mutualFriends === 0)
+    return applyFilters(list, allFilters)
+  }, [allAccommodations, allFilterTab, allFilters])
 
   const handleToggleSave = (id: string) =>
     setSavedIds(prev => {
@@ -1435,8 +1611,9 @@ const AccommodationPage: React.FC = () => {
     setView('category')
   }
 
-  const handleSelectAcc = (acc: Accommodation) => {
+  const handleSelectAcc = (acc: Accommodation, origin: 'category' | 'subgroup' | 'all') => {
     setSelectedAcc(acc)
+    setDetailOrigin(origin)
     setView('detail')
   }
 
@@ -1445,11 +1622,80 @@ const AccommodationPage: React.FC = () => {
     return (
       <DetailView
         acc={selectedAcc}
-        onClose={() => setView(selectedSubGroup ? 'subgroup' : 'category')}
+        onClose={() => setView(detailOrigin)}
         saved={savedIds.has(selectedAcc.id)}
         onToggleSave={handleToggleSave}
         classes={classes}
       />
+    )
+  }
+
+  // ── Unified "all categories" view ─────────────────────────────────────────────
+  if (view === 'all') {
+    return (
+      <Box sx={{ backgroundColor: colors.cream, minHeight: '100%', pb: 4 }}>
+        <Box className={classes.subgroupHeader}>
+          <Box className={classes.subgroupBackBtn} onClick={() => setView('landing')}>
+            <ArrowBackIosNewIcon sx={{ fontSize: '0.8rem' }} />
+          </Box>
+          <Typography className={classes.subgroupTitle} sx={{ flex: 1 }}>All Listings</Typography>
+          <Box className={classes.filterBtn} onClick={() => setAllFilterOpen(true)}>
+            <TuneIcon sx={{ fontSize: '1.1rem' }} />
+          </Box>
+        </Box>
+
+        <Box className={classes.filterPills}>
+          {[
+            { key: 'all' as FilterTab,       label: 'All',            dotColor: colors.ink4 },
+            { key: 'friends' as FilterTab,   label: 'Friends',        dotColor: colors.moss },
+            { key: 'mutual' as FilterTab,    label: 'Mutual Friends', dotColor: '#e8a430' },
+            { key: 'community' as FilterTab, label: 'Community',      dotColor: colors.ink3 },
+          ].map(pill => (
+            <Box
+              key={pill.key}
+              component="button"
+              className={`${classes.filterPill} ${allFilterTab === pill.key ? classes.filterPillActive : ''}`}
+              onClick={() => setAllFilterTab(pill.key)}
+            >
+              <Box
+                className={classes.pillDot}
+                sx={{ backgroundColor: allFilterTab === pill.key ? '#fff' : pill.dotColor }}
+              />
+              {pill.label}
+            </Box>
+          ))}
+        </Box>
+
+        <Box className={classes.subgroupList}>
+          {isLoading ? (
+            <ContentSkeleton count={4} variant="post" />
+          ) : allFilteredAccommodations.length === 0 ? (
+            <EmptyState
+              title="No listings found"
+              description="No accommodations match your filters yet."
+              icon={<HomeWorkOutlinedIcon />}
+            />
+          ) : (
+            allFilteredAccommodations.map((acc, idx) => (
+              <Box key={acc.id} sx={{ animationDelay: `${idx * 0.04}s` }}>
+                <ListCard
+                  acc={acc}
+                  onClick={() => handleSelectAcc(acc, 'all')}
+                  classes={classes}
+                />
+              </Box>
+            ))
+          )}
+        </Box>
+
+        <SharedRoomFilterSheet
+          open={allFilterOpen}
+          onClose={() => setAllFilterOpen(false)}
+          filters={allFilters}
+          onChange={setAllFilters}
+          listingCount={allFilteredAccommodations.length}
+        />
+      </Box>
     )
   }
 
@@ -1477,7 +1723,7 @@ const AccommodationPage: React.FC = () => {
               <Box key={acc.id} sx={{ animationDelay: `${idx * 0.04}s` }}>
                 <ListCard
                   acc={acc}
-                  onClick={() => handleSelectAcc(acc)}
+                  onClick={() => handleSelectAcc(acc, 'subgroup')}
                   classes={classes}
                 />
               </Box>
@@ -1501,6 +1747,19 @@ const AccommodationPage: React.FC = () => {
         <Typography className={classes.landingSub}>Pick a type of accommodation to explore.</Typography>
 
         <Box className={classes.categoryList}>
+          {!isLoading && (
+            <Box className={classes.categoryCard} onClick={() => setView('all')}>
+              <Box className={classes.categoryIcon} sx={{ background: `linear-gradient(140deg, ${colors.moss}, ${colors.mossDeep})` }}>
+                <HomeWorkOutlinedIcon sx={{ color: '#fff', fontSize: '1.4rem' }} />
+              </Box>
+              <Box className={classes.categoryInfo}>
+                <Typography className={classes.categoryLabel}>All Listings</Typography>
+                <Typography className={classes.categoryDesc}>Every category, in one place</Typography>
+                <Typography className={classes.categoryCount}>{allAccommodations.length} listings</Typography>
+              </Box>
+              <ChevronRightIcon className={classes.categoryArrow} sx={{ fontSize: '1.1rem' }} />
+            </Box>
+          )}
           {isLoading
             ? [0, 1, 2, 3, 4].map(i => (
                 <Box key={i} className={classes.categoryCard} sx={{ opacity: 0.5 }}>
@@ -1631,7 +1890,7 @@ const AccommodationPage: React.FC = () => {
                     acc={acc}
                     saved={savedIds.has(acc.id)}
                     onSave={handleToggleSave}
-                    onClick={() => handleSelectAcc(acc)}
+                    onClick={() => handleSelectAcc(acc, 'category')}
                     classes={classes}
                   />
                 ))}
