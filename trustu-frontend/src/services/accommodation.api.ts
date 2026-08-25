@@ -105,6 +105,12 @@ export interface CreateAccommodationPayload {
   photos?: File[]
   /** WhatsApp / contact number for interested users to reach the poster */
   phone?: string
+  /**
+   * 0=Private · 1=Public · 2=Friends · 3=Mutual Friends (per /accommodations/schema).
+   * The API validates this as an array (`visible_to[]=`) even though only one
+   * value is ever sent from this form.
+   */
+  visible_to?: number[]
 }
 
 export interface UpdateAccommodationPayload {
@@ -254,6 +260,7 @@ export const accommodationApi = {
     payload.amenity_ids?.forEach(id => fd.append('amenity_ids[]', String(id)))
     payload.photos?.forEach(photo   => fd.append('photos[]',      photo))
     if (payload.phone) fd.append('phone', payload.phone)
+    payload.visible_to?.forEach(v => fd.append('visible_to[]', String(v)))
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await apiClient.post<ApiResponse<any>>(

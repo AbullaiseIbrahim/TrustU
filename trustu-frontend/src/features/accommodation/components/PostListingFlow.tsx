@@ -575,6 +575,19 @@ const FLAT_TYPE_MAP: Record<string, number> = {
   '4bhk': 4,
 }
 
+/**
+ * Maps the UI's 4 visibility choices to the backend's actual `visible_to`
+ * enum (0=Private · 1=Public · 2=Friends · 3=Mutual Friends — see
+ * GET /accommodations/schema). The backend has no separate "community" vs
+ * "network" scope, so both collapse to Public until the backend adds one.
+ */
+const VISIBLE_TO_MAP: Record<string, number> = {
+  friends: 2,
+  'friends-mutuals': 3,
+  community: 1,
+  network: 1,
+}
+
 // ── Form state ────────────────────────────────────────────────────────────────
 
 interface ListingForm {
@@ -726,6 +739,11 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
     onClose()
   }
 
+  // Per GET /accommodations/schema: current_roommates only applies to Shared Room,
+  // and roommate_preference doesn't apply to Short Stay or Hotel at all.
+  const showCurrentRoommates = stayType === 'shared-room'
+  const showRoommatePref = stayType === 'shared-room' || stayType === 'flat-for-rent' || stayType === 'hostel-pg'
+
   const handlePost = () => {
     if (!form.cityId) {
       showError('Please select a city / state.')
@@ -735,7 +753,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
       showError('Please enter the address / locality.')
       return
     }
-    if (!form.roommatePref) {
+    if (showRoommatePref && stayType === 'shared-room' && !form.roommatePref) {
       showError('Please select a roommate preference.')
       return
     }
@@ -759,9 +777,9 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
         flat_type:       FLAT_TYPE_MAP[form.flatType] ?? null,
         floor:           form.floor.trim() ? Number(form.floor) : null,
         available_spots: form.availableSpots,
-        people_allowed:  form.currentRoommates + form.availableSpots,
-        current_roommates:   form.currentRoommates,
-        roommate_preference: ROOMMATE_PREF_MAP[form.roommatePref],
+        people_allowed:  (showCurrentRoommates ? form.currentRoommates : 0) + form.availableSpots,
+        current_roommates:   showCurrentRoommates ? form.currentRoommates : undefined,
+        roommate_preference: showRoommatePref ? ROOMMATE_PREF_MAP[form.roommatePref] : undefined,
         furnishing:      0,
         security_deposit: false,
         // When API amenities are loaded, values are numeric ID strings → convert back to numbers
@@ -770,6 +788,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
           : [],
         photos:          form.photoFiles,
         phone:           form.phone.trim() || undefined,
+        visible_to:      [VISIBLE_TO_MAP[form.visibleTo] ?? 1],
       },
       { onSuccess: handleClose },
     )
@@ -959,12 +978,14 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
             min={1} max={10}
             onChange={v => setF({ availableSpots: v })}
           />
-          <StepperField
-            label="Current roommates"
-            value={form.currentRoommates}
-            min={0} max={10}
-            onChange={v => setF({ currentRoommates: v })}
-          />
+          {showCurrentRoommates && (
+            <StepperField
+              label="Current roommates"
+              value={form.currentRoommates}
+              min={0} max={10}
+              onChange={v => setF({ currentRoommates: v })}
+            />
+          )}
         </Box>
 
         {/* Gender Preference */}
@@ -985,7 +1006,8 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
           </Box>
         </Box>
 
-        {/* Roommate Preference */}
+        {/* Roommate Preference — doesn't apply to Short Stay or Hotel */}
+        {showRoommatePref && (
         <Box className={classes.fBlock}>
           <Typography className={classes.fLabel}>Roommate Preference</Typography>
           <Box className={classes.chipsWrap}>
@@ -1002,6 +1024,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
             ))}
           </Box>
         </Box>
+        )}
 
         {/* Type of Flat + Floor — only relevant for Flat for Rent */}
         {stayType === 'flat-for-rent' && (

@@ -19,9 +19,9 @@ export const profileApi = {
     return normalizeUser(res.data.data ?? res.data)
   },
 
-  /** POST /user/profile — update editable fields */
+  /** PUT /user/profile — update editable fields */
   update: async (payload: UpdateProfilePayload): Promise<User> => {
-    const res = await apiClient.post<ApiResponse<User>>(ENDPOINTS.profile.update(), payload)
+    const res = await apiClient.put<ApiResponse<User>>(ENDPOINTS.profile.update(), payload)
     return normalizeUser(res.data.data ?? res.data)
   },
 }

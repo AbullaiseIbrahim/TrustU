@@ -11,6 +11,7 @@ import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
 import { makeStyles } from 'tss-react/mui'
 import { useUserAccommodations, useDeleteAccommodation } from '@/features/accommodation/hooks/useAccommodationQueries'
 import { accommodationTypeLabel, accommodationGenderLabel } from '@/services/accommodation.api'
+import EditListingDialog from '@/features/accommodation/components/EditListingDialog'
 import { formatINR, formatDate } from '@/utils'
 import colors from '@/theme/colors'
 import type { Accommodation } from '@/services/accommodation.api'
@@ -200,6 +201,7 @@ const AccommodationSection: React.FC = () => {
   const { data, isLoading } = useUserAccommodations()
   const deleteMutation = useDeleteAccommodation()
   const listings: Accommodation[] = data?.data ?? []
+  const [editingListing, setEditingListing] = useState<Accommodation | null>(null)
 
   return (
     <Box>
@@ -244,12 +246,19 @@ const AccommodationSection: React.FC = () => {
               )}
             </Box>
             <CardMenu
+              onEdit={() => setEditingListing(acc)}
               onDelete={() => deleteMutation.mutate(acc.id)}
               isDeleting={deleteMutation.isPending}
             />
           </Box>
         </Box>
       ))}
+
+      <EditListingDialog
+        open={!!editingListing}
+        onClose={() => setEditingListing(null)}
+        accommodation={editingListing}
+      />
     </Box>
   )
 }

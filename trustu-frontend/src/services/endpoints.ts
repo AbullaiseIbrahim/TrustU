@@ -13,7 +13,7 @@ export const ENDPOINTS = {
   },
   profile: {
     me: () => '/user/profile',
-    update: () => '/user/profile',   // POST — route only supports GET/POST, not PUT
+    update: () => '/user/profile',   // PUT — route only supports GET/PUT, not POST
   },
   accommodation: {
     list: () => '/accommodations',

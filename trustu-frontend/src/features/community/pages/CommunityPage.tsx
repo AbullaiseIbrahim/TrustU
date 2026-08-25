@@ -839,8 +839,8 @@ const deriveFriendStatus = (status: string | null): 'friends' | 'requested' | 'n
 }
 
 // ── Members tab ───────────────────────────────────────────────────────────────
-const MembersTab: React.FC<{ communityId?: string | null; friendCount: number }> = ({
-  communityId, friendCount,
+const MembersTab: React.FC<{ communityId?: string | null; friendCount: number; currentUserId?: string }> = ({
+  communityId, friendCount, currentUserId,
 }) => {
   const { classes } = useStyles()
   const [page, setPage] = useState(1)
@@ -891,6 +891,7 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number }>
           const override = localStatus[m.id]
           const isFriend = friendUserIds.has(m.id) || (serverStatus === 'friends' && override !== 'none')
           const isRequested = !isFriend && (override === 'requested' || (serverStatus === 'requested' && override !== 'none'))
+          const isSelf = !!currentUserId && m.id === currentUserId
           const av = avatarColor(m.id)
           return (
             <Box
@@ -915,7 +916,7 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number }>
                   <Typography className={classes.personSub}>{m.designation}</Typography>
                 )}
               </Box>
-              {isFriend ? (
+              {isSelf ? null : isFriend ? (
                 <Box className={classes.friendedPill}>
                   <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
                   Friends
@@ -1004,9 +1005,12 @@ const CommunityPage: React.FC = () => {
   const { data: friends = [] } = useFriends()
   const { data: pending = [] } = usePendingRequests()
   const { data: communityDetail } = useCommunity(user?.communityId ?? null)
+  // GET /communities/{id} doesn't return a member_count field — the real count
+  // only comes from the paginated members endpoint (same source MembersTab uses).
+  const { data: membersPageForCount } = useCommunityMembers(user?.communityId ?? null, 1)
   const friendCount = (friends as Friend[]).length
   const pendingCount = (pending as PendingRequest[]).length
-  const memberCount = communityDetail?.memberCount ?? 0
+  const memberCount = membersPageForCount?.meta?.total ?? 0
 
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab') as Tab | null
@@ -1081,7 +1085,7 @@ const CommunityPage: React.FC = () => {
         </>
       )}
 
-      {activeTab === 'members' && <MembersTab communityId={user?.communityId} friendCount={friendCount} />}
+      {activeTab === 'members' && <MembersTab communityId={user?.communityId} friendCount={friendCount} currentUserId={user?.id} />}
       {activeTab === 'friends' && (
         <>
           {/* Always shown (not just when there are pending requests) so the

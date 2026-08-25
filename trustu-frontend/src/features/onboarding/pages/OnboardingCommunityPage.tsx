@@ -13,6 +13,7 @@ import { useSnackbar } from '@/app/SnackbarProvider'
 import {
   useCommunities,
   useCommunity,
+  useCommunityMembers,
   useJoinCommunity,
 } from '@/features/community/hooks/useCommunityQueries'
 import { PATHS } from '@/routes/paths'
@@ -331,6 +332,9 @@ const OnboardingCommunityPage: React.FC = () => {
   const isRevisit = Boolean((location.state as { revisit?: boolean } | null)?.revisit)
 
   const { data: myCommunity, isLoading } = useCommunity(user?.communityId)
+  // GET /communities/{id} doesn't return a member_count field — the real count
+  // only comes from the paginated members endpoint (same source MembersTab uses).
+  const { data: membersPage } = useCommunityMembers(user?.communityId, 1)
 
   const handleContinue = () =>
     isRevisit ? navigate(-1) : navigate(PATHS.dashboard.community, { replace: true })
@@ -340,7 +344,7 @@ const OnboardingCommunityPage: React.FC = () => {
   }
 
   const communityName = myCommunity?.name ?? user?.communityName ?? 'Your Community'
-  const memberCount = myCommunity?.memberCount ?? 0
+  const memberCount = membersPage?.meta?.total ?? 0
   const subCommCount = myCommunity?.subCommunities?.length ?? 0
 
   return (

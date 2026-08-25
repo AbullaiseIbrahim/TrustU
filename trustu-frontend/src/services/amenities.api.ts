@@ -24,7 +24,14 @@ export const amenitiesApi = {
       ENDPOINTS.amenities.list(),
       category ? { params: { category } } : undefined,
     )
-    const items = data.data ?? data ?? []
-    return (Array.isArray(items) ? items : []).map(normalizeAmenity)
+    const payload = data.data ?? data ?? {}
+    // API returns amenities grouped by category — { amenities: { comfort: [...], safety: [...], ... } } —
+    // not a flat array, so it has to be flattened before use.
+    const grouped = payload.amenities ?? payload
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const items: any[] = Array.isArray(grouped)
+      ? grouped
+      : Object.values(grouped ?? {}).flat()
+    return items.map(normalizeAmenity)
   },
 }
