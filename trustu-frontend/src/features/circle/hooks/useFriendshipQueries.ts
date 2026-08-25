@@ -53,10 +53,14 @@ export const useMutualFriendsAggregate = (friendUserIds: string[]) => {
 
   const isLoading = capped.length > 0 && results.some((r) => r.isLoading)
 
+  // Once a friend group is fully interconnected, the union naturally includes
+  // people who are already direct friends — exclude them so this tab reads as
+  // "people you might know" rather than re-listing your friends list.
+  const directFriendIds = new Set(friendUserIds)
   const byId = new Map<string, Friend>()
   results.forEach((r) => {
     (r.data ?? []).forEach((f) => {
-      if (!byId.has(f.userId)) byId.set(f.userId, f)
+      if (!directFriendIds.has(f.userId) && !byId.has(f.userId)) byId.set(f.userId, f)
     })
   })
 

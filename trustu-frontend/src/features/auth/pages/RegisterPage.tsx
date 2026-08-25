@@ -344,8 +344,15 @@ const RegisterPage: React.FC = () => {
       await syncProfile()
       navigate(PATHS.onboarding)
     },
-    onError: (error: Error & { errors?: Record<string, string[]> }) => {
-      showError(error.message ?? 'Registration failed. Please try again.')
+    onError: (error: Error & { errors?: Record<string, string[]>; status?: number }) => {
+      // 422 = validation error — the backend's message is meant for the user
+      // (e.g. "The email has already been taken."). Anything else (405, 500, …)
+      // may be a raw exception message, so fall back to a generic one instead
+      // of relaying backend internals to the user.
+      const message = error.status === 422 && error.message
+        ? error.message
+        : 'Registration failed. Please try again.'
+      showError(message)
     },
   })
 

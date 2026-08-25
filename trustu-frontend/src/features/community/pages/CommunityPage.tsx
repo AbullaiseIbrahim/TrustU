@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
-import { Box, Typography, Avatar, TextField, InputAdornment } from '@mui/material'
+import { Box, Typography, Avatar } from '@mui/material'
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined'
-import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
 import { makeStyles } from 'tss-react/mui'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { PATHS } from '@/routes/paths'
@@ -572,7 +571,10 @@ const FriendsTab: React.FC = () => {
         })}
       </Box>
 
-      <AddFriendByIdCard />
+      {/* Standalone "Add friend by user ID" box was retired — the Members tab's
+          inline Add Friend buttons already cover this need with clearer,
+          name-based context, so a free-text numeric-ID box was redundant
+          surface area. */}
 
       <UserProfileSheet
         open={!!viewingUser}
@@ -580,53 +582,6 @@ const FriendsTab: React.FC = () => {
         user={viewingUser}
         friendStatus="friends"
       />
-    </Box>
-  )
-}
-
-// ── Add friend by user ID ──────────────────────────────────────────────────────
-const AddFriendByIdCard: React.FC = () => {
-  const { classes } = useStyles()
-  const [userId, setUserId] = useState('')
-  const sendRequestMutation = useSendFriendRequest()
-
-  const handleSend = () => {
-    const trimmed = userId.trim()
-    if (!trimmed) return
-    sendRequestMutation.mutate(trimmed)
-    setUserId('')
-  }
-
-  return (
-    <Box className={classes.circleCard}>
-      <Box className={classes.circleCardHeader}>
-        <Typography className={classes.circleCardTitle}>Add a Friend</Typography>
-      </Box>
-      <Box sx={{ display: 'flex', gap: 1, px: 2, pb: 2 }}>
-        <TextField
-          size="small" fullWidth
-          placeholder="Enter their user ID"
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <PersonAddOutlinedIcon sx={{ fontSize: '1rem', color: colors.ink3 }} />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '0.85rem' } }}
-        />
-        <Button
-          disableElevation
-          className={classes.addFriendPill}
-          onClick={handleSend}
-          disabled={!userId.trim() || sendRequestMutation.isPending}
-        >
-          Send
-        </Button>
-      </Box>
     </Box>
   )
 }
@@ -744,11 +699,11 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
   const { classes } = useStyles()
 
   // Real mutual friends — union of GET /friends/mutual/{userId} across your
-  // own friends. These are people you share a connection with, not
-  // necessarily your direct friends yet.
+  // own friends, minus anyone who's already a direct friend (useMutualFriendsAggregate
+  // excludes them) — so this reads as "people you might know", not a re-listing
+  // of your friends list.
   const friendUserIds = friends.map(f => f.userId)
   const { people: mutuals, isLoading } = useMutualFriendsAggregate(friendUserIds)
-  const directFriendIds = new Set(friendUserIds)
   const [viewingUser, setViewingUser] = useState<ProfileSheetUser | null>(null)
 
   if (isLoading) {
@@ -782,7 +737,6 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
       <Box className={classes.circleCard}>
         {mutuals.map((f) => {
           const av = avatarColor(f.id)
-          const isFriend = directFriendIds.has(f.userId)
           return (
             <Box
               key={f.id}
@@ -797,16 +751,9 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
                 <Typography className={classes.personName}>{f.name}</Typography>
                 {f.designation && <Typography className={classes.personSub}>{f.designation}</Typography>}
               </Box>
-              {isFriend ? (
-                <Box className={classes.friendedPill}>
-                  <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
-                  Friends
-                </Box>
-              ) : (
-                <Box onClick={(e) => e.stopPropagation()}>
-                  <MutualAddFriendButton userId={f.userId} />
-                </Box>
-              )}
+              <Box onClick={(e) => e.stopPropagation()}>
+                <MutualAddFriendButton userId={f.userId} />
+              </Box>
             </Box>
           )
         })}
@@ -816,7 +763,7 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
         open={!!viewingUser}
         onClose={() => setViewingUser(null)}
         user={viewingUser}
-        friendStatus={viewingUser && directFriendIds.has(viewingUser.userId) ? 'friends' : 'none'}
+        friendStatus="none"
       />
     </Box>
   )
@@ -888,18 +835,20 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number; c
           <Typography className={classes.emptyRow}>No members yet</Typography>
         ) : members.map((m: CommunityMember) => {
           const serverStatus = deriveFriendStatus(m.friendshipStatus)
-          const override = localStatus[m.id]
-          const isFriend = friendUserIds.has(m.id) || (serverStatus === 'friends' && override !== 'none')
+          const override = localStatus[m.userId]
+          const isFriend = friendUserIds.has(m.userId) || (serverStatus === 'friends' && override !== 'none')
           const isRequested = !isFriend && (override === 'requested' || (serverStatus === 'requested' && override !== 'none'))
-          const isSelf = !!currentUserId && m.id === currentUserId
-          const av = avatarColor(m.id)
+          // Compare real user ids (not the membership row's `id`) — coerce to
+          // string defensively in case either side ever comes back numeric.
+          const isSelf = !!currentUserId && String(m.userId) === String(currentUserId)
+          const av = avatarColor(m.userId)
           return (
             <Box
               key={m.id}
               className={classes.listRow}
               sx={{ cursor: 'pointer' }}
               onClick={() => setViewingMember({
-                user: { userId: m.id, name: m.name, designation: m.designation, avatarUrl: m.avatarUrl },
+                user: { userId: m.userId, name: m.name, designation: m.designation, avatarUrl: m.avatarUrl },
                 status: isFriend ? 'friends' : isRequested ? 'requested' : 'none',
               })}
             >
@@ -928,8 +877,8 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number; c
                   endIcon={<CloseIcon sx={{ fontSize: '0.8rem !important' }} />}
                   onClick={(e) => {
                     e.stopPropagation()
-                    cancelRequestMutation.mutate(m.id)
-                    setLocalStatus(s => ({ ...s, [m.id]: 'none' }))
+                    cancelRequestMutation.mutate(m.userId)
+                    setLocalStatus(s => ({ ...s, [m.userId]: 'none' }))
                   }}
                   disabled={cancelRequestMutation.isPending}
                 >
@@ -941,8 +890,8 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number; c
                   className={classes.addFriendPill}
                   onClick={(e) => {
                     e.stopPropagation()
-                    sendRequestMutation.mutate(m.id)
-                    setLocalStatus(s => ({ ...s, [m.id]: 'requested' }))
+                    sendRequestMutation.mutate(m.userId)
+                    setLocalStatus(s => ({ ...s, [m.userId]: 'requested' }))
                   }}
                   disabled={sendRequestMutation.isPending}
                 >

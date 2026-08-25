@@ -28,8 +28,13 @@ function normalizeSubCommunity(raw: any): SubCommunity {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeMember(raw: any): CommunityMember {
   const profile = raw?.profile ?? {}
+  // Membership list responses can be pivot-style records where `id` is the
+  // community_user row's own id and `user_id` is the actual member's id —
+  // same shape as the friends list (see friendship.api.ts normalizeFriend).
+  // Prioritize `user_id` for the real identity; `id` is kept only as a key.
   return {
     id:          String(raw?.id ?? raw?.user_id ?? ''),
+    userId:      String(raw?.user_id ?? raw?.id ?? ''),
     name:        raw?.name ?? raw?.user_name ?? profile.name ?? '',
     designation: profile.designation ?? profile.profile_type ?? raw?.designation ?? raw?.profile_type ?? null,
     avatarUrl:   profile.profile_image ?? raw?.avatar_url ?? raw?.avatarUrl ?? null,

@@ -331,10 +331,13 @@ const OnboardingCommunityPage: React.FC = () => {
   // rather than fresh off registration — show a way back out in that case.
   const isRevisit = Boolean((location.state as { revisit?: boolean } | null)?.revisit)
 
-  const { data: myCommunity, isLoading } = useCommunity(user?.communityId)
+  const { data: myCommunity, isLoading: isCommunityLoading } = useCommunity(user?.communityId)
   // GET /communities/{id} doesn't return a member_count field — the real count
-  // only comes from the paginated members endpoint (same source MembersTab uses).
-  const { data: membersPage } = useCommunityMembers(user?.communityId, 1)
+  // only comes from the paginated members endpoint (same source MembersTab/
+  // CommunityCard use). Wait on both queries before rendering the count so we
+  // never show a stale "0 → —" flash while membersPage is still in flight.
+  const { data: membersPage, isLoading: isMembersLoading } = useCommunityMembers(user?.communityId, 1)
+  const isLoading = isCommunityLoading || isMembersLoading
 
   const handleContinue = () =>
     isRevisit ? navigate(-1) : navigate(PATHS.dashboard.community, { replace: true })
@@ -378,7 +381,7 @@ const OnboardingCommunityPage: React.FC = () => {
             <Box className={classes.statsRow}>
               <Box className={classes.statBlock}>
                 <Typography className={classes.statValue}>
-                  {memberCount > 0 ? memberCount.toLocaleString('en-IN') : '—'}
+                  {memberCount.toLocaleString('en-IN')}
                 </Typography>
                 <Typography className={classes.statLabel}>MEMBERS</Typography>
               </Box>

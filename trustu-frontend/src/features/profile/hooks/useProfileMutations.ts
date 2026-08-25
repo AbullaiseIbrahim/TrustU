@@ -14,7 +14,7 @@ export function useProfileQuery() {
   })
 }
 
-/** Update profile fields via POST /user/profile */
+/** Update profile fields via PUT /user/profile */
 export function useUpdateProfile() {
   const queryClient = useQueryClient()
   const { showSuccess, showError } = useSnackbar()

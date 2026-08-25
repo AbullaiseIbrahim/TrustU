@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import {
   Box, Typography, Skeleton, IconButton, Menu, MenuItem,
-  ListItemIcon, Chip,
+  ListItemIcon, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Button,
 } from '@mui/material'
 import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
@@ -202,6 +202,7 @@ const AccommodationSection: React.FC = () => {
   const deleteMutation = useDeleteAccommodation()
   const listings: Accommodation[] = data?.data ?? []
   const [editingListing, setEditingListing] = useState<Accommodation | null>(null)
+  const [deletingListing, setDeletingListing] = useState<Accommodation | null>(null)
 
   return (
     <Box>
@@ -247,8 +248,8 @@ const AccommodationSection: React.FC = () => {
             </Box>
             <CardMenu
               onEdit={() => setEditingListing(acc)}
-              onDelete={() => deleteMutation.mutate(acc.id)}
-              isDeleting={deleteMutation.isPending}
+              onDelete={() => setDeletingListing(acc)}
+              isDeleting={deleteMutation.isPending && deletingListing?.id === acc.id}
             />
           </Box>
         </Box>
@@ -259,6 +260,29 @@ const AccommodationSection: React.FC = () => {
         onClose={() => setEditingListing(null)}
         accommodation={editingListing}
       />
+
+      <Dialog open={!!deletingListing} onClose={() => setDeletingListing(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.05rem' }}>Delete this listing?</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: '0.85rem', color: colors.textSecondary }}>
+            {deletingListing?.title || 'This listing'} will be removed permanently. This can't be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDeletingListing(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deleteMutation.isPending}
+            onClick={() => {
+              if (!deletingListing) return
+              deleteMutation.mutate(deletingListing.id, { onSuccess: () => setDeletingListing(null) })
+            }}
+          >
+            {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
