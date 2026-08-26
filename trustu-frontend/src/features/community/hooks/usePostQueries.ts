@@ -19,7 +19,7 @@ export const usePosts = (communityId?: string | null) =>
 
 /** Create a new post */
 export const useCreatePost = () => {
-  const { showSuccess, showError } = useSnackbar()
+  const { showSuccess } = useSnackbar()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -27,9 +27,6 @@ export const useCreatePost = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.list })
       showSuccess('Post created successfully!')
-    },
-    onError: () => {
-      showError('Failed to create post. Please try again.')
     },
   })
 }
@@ -49,7 +46,7 @@ export const useLikePost = () => {
 
 /** Delete a post */
 export const useDeletePost = () => {
-  const { showInfo, showError } = useSnackbar()
+  const { showInfo } = useSnackbar()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -57,9 +54,6 @@ export const useDeletePost = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.list })
       showInfo('Post deleted.')
-    },
-    onError: () => {
-      showError('Failed to delete post.')
     },
   })
 }
@@ -74,7 +68,7 @@ export const useComments = (postId: string) =>
 
 /** Create a comment on a post */
 export const useCreateComment = (postId: string) => {
-  const { showSuccess, showError } = useSnackbar()
+  const { showSuccess } = useSnackbar()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -84,15 +78,11 @@ export const useCreateComment = (postId: string) => {
       queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.list })
       showSuccess('Comment posted!')
     },
-    onError: () => {
-      showError('Failed to post comment.')
-    },
   })
 }
 
 /** Delete a comment */
 export const useDeleteComment = (postId: string) => {
-  const { showError } = useSnackbar()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -100,9 +90,6 @@ export const useDeleteComment = (postId: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.comments(postId) })
       queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.list })
-    },
-    onError: () => {
-      showError('Failed to delete comment.')
     },
   })
 }

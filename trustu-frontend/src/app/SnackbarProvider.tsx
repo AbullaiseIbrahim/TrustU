@@ -1,5 +1,6 @@
-import React, { createContext, useCallback, useContext, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { Alert, Snackbar, type AlertColor } from '@mui/material'
+import { setGlobalApiErrorHandler, setGlobalApiWarningHandler } from '@/utils/errorBus'
 
 interface SnackbarMsg { id: number; message: string; severity: AlertColor }
 interface SnackbarCtx {
@@ -25,6 +26,18 @@ export const SnackbarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const showError   = useCallback((msg: string) => push(msg, 'error'),   [push])
   const showInfo    = useCallback((msg: string) => push(msg, 'info'),    [push])
   const showWarning = useCallback((msg: string) => push(msg, 'warning'), [push])
+
+  // Register as the sink for QueryProvider's global query/mutation error handler
+  // (see src/utils/errorBus.ts) — guarantees every failed API call surfaces here,
+  // even from hooks/components that never call useSnackbar themselves.
+  useEffect(() => {
+    setGlobalApiErrorHandler(showError)
+    setGlobalApiWarningHandler(showWarning)
+    return () => {
+      setGlobalApiErrorHandler(null)
+      setGlobalApiWarningHandler(null)
+    }
+  }, [showError, showWarning])
 
   return (
     <SnackbarContext.Provider value={{ showSuccess, showError, showInfo, showWarning }}>

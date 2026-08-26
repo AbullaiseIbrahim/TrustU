@@ -33,8 +33,12 @@ export const useAccommodationDetail = (id: string) =>
     enabled: !!id,
   })
 
+// Note: none of these mutations set their own onError — a failure still reaches
+// the user via the global QueryCache/MutationCache handler in QueryProvider.tsx,
+// which shows the real backend error message rather than a hardcoded string.
+
 export const useCreateAccommodation = () => {
-  const { showSuccess, showError } = useSnackbar()
+  const { showSuccess } = useSnackbar()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -43,14 +47,11 @@ export const useCreateAccommodation = () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] })
       showSuccess('Accommodation listed successfully!')
     },
-    onError: () => {
-      showError('Failed to create listing. Please try again.')
-    },
   })
 }
 
 export const useUpdateAccommodation = () => {
-  const { showSuccess, showError } = useSnackbar()
+  const { showSuccess } = useSnackbar()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -59,14 +60,11 @@ export const useUpdateAccommodation = () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] })
       showSuccess('Accommodation updated successfully!')
     },
-    onError: () => {
-      showError('Failed to update listing.')
-    },
   })
 }
 
 export const useDeleteAccommodation = () => {
-  const { showInfo, showError } = useSnackbar()
+  const { showInfo } = useSnackbar()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -74,9 +72,6 @@ export const useDeleteAccommodation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] })
       showInfo('Listing removed.')
-    },
-    onError: () => {
-      showError('Failed to remove listing.')
     },
   })
 }

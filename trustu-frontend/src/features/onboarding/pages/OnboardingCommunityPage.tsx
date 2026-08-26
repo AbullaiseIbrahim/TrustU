@@ -240,7 +240,7 @@ const ExploreCommunities: React.FC<{ myCommunityId?: string | null; myCommunityN
   const { classes } = useStyles()
   const navigate = useNavigate()
   const { syncProfile } = useAuth()
-  const { showSuccess, showError } = useSnackbar()
+  const { showSuccess } = useSnackbar()
   const { data: communities = [], isLoading } = useCommunities()
   const [comingSoon, setComingSoon] = useState<string | null>(null)
   const [switchTarget, setSwitchTarget] = useState<Community | null>(null)
@@ -253,6 +253,8 @@ const ExploreCommunities: React.FC<{ myCommunityId?: string | null; myCommunityN
     else setComingSoon(c.name)
   }
 
+  // No onError here — a failure still reaches the user via the global
+  // QueryCache/MutationCache handler in QueryProvider.tsx.
   const handleConfirmSwitch = () => {
     if (!switchTarget) return
     joinMutation.mutate(switchTarget.id, {
@@ -261,7 +263,6 @@ const ExploreCommunities: React.FC<{ myCommunityId?: string | null; myCommunityN
         showSuccess(`Switched to ${switchTarget.name}`)
         navigate(PATHS.dashboard.community, { replace: true })
       },
-      onError: () => showError('Could not switch communities. Please try again.'),
     })
   }
 

@@ -9,7 +9,6 @@ import AuthCard from '../components/AuthCard'
 import { AuthField, AuthSelectField, StepPill, authInputSx } from '../components/AuthField'
 import { authApi } from '@/services/auth.api'
 import { useAuth } from '@/app/AuthProvider'
-import { useSnackbar } from '@/app/SnackbarProvider'
 import { PATHS } from '@/routes/paths'
 import { SIGNUP_ENABLED_STATES, DISTRICTS_BY_STATE } from '@/constants/states'
 import { getInitials, selfAvatarGradient } from '@/utils'
@@ -321,20 +320,16 @@ const RegisterPage: React.FC = () => {
   const step2Ref = useRef<Step2Values | null>(null)
 
   const { login, syncProfile } = useAuth()
-  const { showError } = useSnackbar()
 
+  // No onError here — a failure (including 422 validation messages, which the
+  // backend sends as .message) still reaches the user via the global
+  // QueryCache/MutationCache handler in QueryProvider.tsx.
   const registerMutation = useMutation({
     mutationFn: authApi.register,
     onSuccess: async (data) => {
       login({ ...data.user, profileComplete: true }, data.token)
       await syncProfile()
       navigate(PATHS.onboarding)
-    },
-    onError: (error: Error & { errors?: Record<string, string[]>; status?: number }) => {
-      const message = error.status === 422 && error.message
-        ? error.message
-        : 'Registration failed. Please try again.'
-      showError(message)
     },
   })
 

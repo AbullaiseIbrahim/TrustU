@@ -67,8 +67,11 @@ export const useMutualFriendsAggregate = (friendUserIds: string[]) => {
   return { people: Array.from(byId.values()), isLoading }
 }
 
+// Note: none of these mutations set their own onError — a failure still reaches
+// the user via the global QueryCache/MutationCache handler in QueryProvider.tsx.
+
 export const useSendFriendRequest = () => {
-  const { showSuccess, showError } = useSnackbar()
+  const { showSuccess } = useSnackbar()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (userId: string) => friendshipApi.sendRequest(userId),
@@ -77,13 +80,12 @@ export const useSendFriendRequest = () => {
       queryClient.invalidateQueries({ queryKey: ['community', 'members'] })
       showSuccess('Friend request sent!')
     },
-    onError: () => showError('Could not send friend request.'),
   })
 }
 
 /** Cancel a friend request that was previously sent (before it's accepted) */
 export const useCancelFriendRequest = () => {
-  const { showInfo, showError } = useSnackbar()
+  const { showInfo } = useSnackbar()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (userId: string) => friendshipApi.remove(userId),
@@ -92,12 +94,11 @@ export const useCancelFriendRequest = () => {
       queryClient.invalidateQueries({ queryKey: ['community', 'members'] })
       showInfo('Friend request canceled.')
     },
-    onError: () => showError('Could not cancel friend request.'),
   })
 }
 
 export const useAcceptRequest = () => {
-  const { showSuccess, showError } = useSnackbar()
+  const { showSuccess } = useSnackbar()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (requestId: string) => friendshipApi.accept(requestId),
@@ -106,24 +107,21 @@ export const useAcceptRequest = () => {
       queryClient.invalidateQueries({ queryKey: FRIENDSHIP_KEYS.pending })
       showSuccess('Friend request accepted!')
     },
-    onError: () => showError('Could not accept request.'),
   })
 }
 
 export const useRejectRequest = () => {
-  const { showError } = useSnackbar()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (requestId: string) => friendshipApi.reject(requestId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: FRIENDSHIP_KEYS.pending })
     },
-    onError: () => showError('Could not reject request.'),
   })
 }
 
 export const useRemoveFriend = () => {
-  const { showInfo, showError } = useSnackbar()
+  const { showInfo } = useSnackbar()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (userId: string) => friendshipApi.remove(userId),
@@ -132,6 +130,5 @@ export const useRemoveFriend = () => {
       queryClient.invalidateQueries({ queryKey: ['community', 'members'] })
       showInfo('Removed from friends.')
     },
-    onError: () => showError('Could not remove friend.'),
   })
 }

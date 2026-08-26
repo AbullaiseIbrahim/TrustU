@@ -1,7 +1,18 @@
 import React from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query'
+import { emitGlobalApiError, getApiErrorMessage } from '@/utils/errorBus'
 
 const queryClient = new QueryClient({
+  // Catch-all error surfacing: every failed query or mutation, anywhere in the
+  // app, gets routed to the global snackbar via the error bus — regardless of
+  // whether the hook that made the call has its own success/error handling.
+  // See src/utils/errorBus.ts for why this can't just call useSnackbar() here.
+  queryCache: new QueryCache({
+    onError: (error) => emitGlobalApiError(getApiErrorMessage(error)),
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => emitGlobalApiError(getApiErrorMessage(error)),
+  }),
   defaultOptions: {
     queries: {
       staleTime: 3 * 60 * 1000,

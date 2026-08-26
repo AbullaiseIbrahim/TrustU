@@ -17,9 +17,11 @@ export function useProfileQuery() {
 /** Update profile fields via PUT /user/profile */
 export function useUpdateProfile() {
   const queryClient = useQueryClient()
-  const { showSuccess, showError } = useSnackbar()
+  const { showSuccess } = useSnackbar()
   const { updateUser } = useAuth()
 
+  // No onError here — a failure still reaches the user via the global
+  // QueryCache/MutationCache handler in QueryProvider.tsx.
   return useMutation({
     mutationFn: (payload: UpdateProfilePayload) => profileApi.update(payload),
     onSuccess: (updatedUser) => {
@@ -30,6 +32,5 @@ export function useUpdateProfile() {
       updateUser(updatedUser)
       showSuccess('Profile updated!')
     },
-    onError: () => showError('Could not update profile. Please try again.'),
   })
 }

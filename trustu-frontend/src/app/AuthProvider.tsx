@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import type { AuthTokens, User } from '@/types/auth.types'
 import { profileApi } from '@/services/profile.api'
 import { queryClient } from './QueryProvider'
+import { emitGlobalApiWarning, getApiErrorMessage } from '@/utils/errorBus'
 
 const TOKEN_KEY = 'trustu_token'
 const USER_KEY = 'trustu_user'
@@ -87,8 +88,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem(USER_KEY, JSON.stringify(updated))
         return updated
       })
-    } catch {
-      // Non-fatal — user already has basic data from login/register response
+    } catch (err) {
+      // Non-fatal — user already has basic data from login/register response.
+      // Still surface it (as a warning, not an error) so a real backend outage
+      // doesn't go completely unnoticed.
+      emitGlobalApiWarning(`Signed in, but couldn't load your full profile: ${getApiErrorMessage(err)}`)
     }
   }, [])
 
