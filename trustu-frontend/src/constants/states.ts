@@ -42,3 +42,24 @@ export const INDIA_STATES: { id: number; name: string }[] = [
 export const SIGNUP_ENABLED_STATES = INDIA_STATES.filter(s =>
   s.name === 'Kerala' || s.name === 'Delhi'
 )
+
+/**
+ * District/area options shown under a selected state, for display purposes
+ * only — the backend only accepts a state id (native_state_id / current_state_id),
+ * so the chosen district is not currently submitted with the profile.
+ * Keyed by the state's id from INDIA_STATES.
+ */
+export const DISTRICTS_BY_STATE: Record<number, string[]> = {
+  // Kerala (id 12) — the 14 official revenue districts.
+  12: [
+    'Thiruvananthapuram', 'Kollam', 'Pathanamthitta', 'Alappuzha', 'Kottayam',
+    'Idukki', 'Ernakulam', 'Thrissur', 'Palakkad', 'Malappuram',
+    'Kozhikode', 'Wayanad', 'Kannur', 'Kasaragod',
+  ],
+  // Delhi (id 32) — the 11 official revenue districts.
+  32: [
+    'Central Delhi', 'East Delhi', 'New Delhi', 'North Delhi', 'North East Delhi',
+    'North West Delhi', 'Shahdara', 'South Delhi', 'South East Delhi',
+    'South West Delhi', 'West Delhi',
+  ],
+}

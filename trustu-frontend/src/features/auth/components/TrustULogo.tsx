@@ -1,61 +1,43 @@
 import React from 'react'
 import { Box } from '@mui/material'
+import colors from '@/theme/colors'
 
 interface TrustULogoProps {
   size?: number
 }
 
 /**
- * TrustU brand logo — green circle with community SVG icon.
- * Matches the mockup exactly.
+ * TrustU brand mark — rounded-square gradient tile with a shield-check icon.
+ * Pixel match to the approved prototype (44px base size, 14px radius).
  */
-const TrustULogo: React.FC<TrustULogoProps> = ({ size = 64 }) => {
+const TrustULogo: React.FC<TrustULogoProps> = ({ size = 44 }) => {
+  const radius = Math.round(size * (14 / 44))
   return (
     <Box
       sx={{
         width: size,
         height: size,
-        borderRadius: '50%',
-        backgroundColor: 'primary.main',
+        borderRadius: `${radius}px`,
+        background: `linear-gradient(150deg, ${colors.mossMid}, ${colors.mossDeep})`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        mx: 'auto',
-        mb: 2,
+        boxShadow: '0 6px 16px rgba(15,86,48,0.28)',
         flexShrink: 0,
       }}
     >
-      <svg
-        width={size * 0.55}
-        height={size * 0.55}
-        viewBox="0 0 36 28"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        {/* Left person */}
-        <circle cx="9" cy="8" r="5" fill="white" />
+      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
-          d="M0 26C0 21.029 4.029 17 9 17C11.09 17 13.02 17.716 14.55 18.92"
-          stroke="white"
-          strokeWidth="2.5"
-          strokeLinecap="round"
+          d="M5 7.5 12 4l7 3.5v4.2c0 4.4-3 7.5-7 8.8-4-1.3-7-4.4-7-8.8V7.5Z"
+          fill="#fff"
+          fillOpacity="0.16"
         />
-        {/* Right person */}
-        <circle cx="27" cy="8" r="5" fill="white" />
         <path
-          d="M36 26C36 21.029 31.971 17 27 17C24.91 17 22.98 17.716 21.45 18.92"
-          stroke="white"
-          strokeWidth="2.5"
+          d="M9 12.2l2.1 2.1L15.4 10"
+          stroke="#fff"
+          strokeWidth="2.2"
           strokeLinecap="round"
-        />
-        {/* Centre person */}
-        <circle cx="18" cy="7" r="5.5" fill="white" />
-        <path
-          d="M8 27C8 21.477 12.477 17 18 17C23.523 17 28 21.477 28 27"
-          stroke="white"
-          strokeWidth="2.5"
-          strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     </Box>

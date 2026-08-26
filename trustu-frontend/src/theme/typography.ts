@@ -1,7 +1,7 @@
 import type { TypographyOptions } from '@mui/material/styles/createTypography'
 
 export const typography: TypographyOptions = {
-  fontFamily: ['"DM Sans"', '-apple-system', 'Arial', 'sans-serif'].join(','),
+  fontFamily: ['"Plus Jakarta Sans"', '-apple-system', 'Arial', 'sans-serif'].join(','),
   h1: { fontSize: '2.25rem', fontWeight: 700, lineHeight: 1.2 },
   h2: { fontSize: '1.875rem', fontWeight: 700, lineHeight: 1.25 },
   h3: { fontSize: '1.5rem', fontWeight: 600, lineHeight: 1.3 },

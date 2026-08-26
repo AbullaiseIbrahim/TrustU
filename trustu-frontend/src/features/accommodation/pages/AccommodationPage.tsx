@@ -32,7 +32,7 @@ import { makeStyles } from 'tss-react/mui'
 import { useSearchParams } from 'react-router-dom'
 import { useAccommodations, useAccommodationDetail } from '../hooks/useAccommodationQueries'
 import type { Accommodation } from '@/services/accommodation.api'
-import { formatINR, formatDate, getInitials } from '@/utils'
+import { formatINR, formatDate, getInitials, avatarGradient } from '@/utils'
 import colors from '@/theme/colors'
 import EmptyState from '@/components/EmptyState'
 import { useAuth } from '@/app/AuthProvider'
@@ -44,7 +44,13 @@ import UserProfileSheet from '@/features/community/components/UserProfileSheet'
 import SharedRoomFilterSheet, {
   type SharedRoomFilters,
   EMPTY_SHARED_FILTERS,
+  countActiveFilters,
 } from '../components/SharedRoomFilterSheet'
+import ShortStayFilterSheet, {
+  type ShortStayFilters,
+  EMPTY_SHORT_STAY_FILTERS,
+  countShortStayFilters,
+} from '../components/ShortStayFilterSheet'
 import ContentSkeleton from '@/components/ContentSkeleton'
 
 // ── Category definitions ───────────────────────────────────────────────────────
@@ -62,35 +68,35 @@ const CATEGORIES: Category[] = [
     type: 0,
     label: 'Flatmate Needs',
     desc: 'Find someone to share a flat with',
-    iconBg: ['#1a7a4a', '#0a4d2d'],
+    iconBg: ['#5BA888', '#2E6B55'],
     iconFg: '#fff',
   },
   {
     type: 1,
     label: 'Short Stays',
     desc: 'Stay for a few days or weeks',
-    iconBg: ['#4aab72', '#2d8a50'],
+    iconBg: ['#A7C4A0', '#6E9268'],
     iconFg: '#fff',
   },
   {
     type: 2,
     label: 'Flats for Rent',
     desc: 'Rent a full flat, monthly',
-    iconBg: ['#c8705a', '#a0503c'],
+    iconBg: ['#D8A088', '#B06E50'],
     iconFg: '#fff',
   },
   {
     type: 3,
     label: 'Hostels',
     desc: 'Boys & girls hostels by the month',
-    iconBg: ['#c8a06a', '#a07848'],
+    iconBg: ['#D9C2A0', '#B6986C'],
     iconFg: '#fff',
   },
   {
     type: 4,
     label: 'Hotels',
     desc: 'Book hotel rooms by the night',
-    iconBg: ['#1a3a2a', '#0a2218'],
+    iconBg: ['#2F8F5B', '#0F5630'],
     iconFg: '#fff',
   },
 ]
@@ -174,22 +180,6 @@ function getSubGroups(type: number): SubGroup[] {
 // Friendship type for listings
 type FriendStatus = 'friend' | 'mutual' | 'community' | 'none'
 
-// ── Avatar color palette ───────────────────────────────────────────────────────
-
-const AVATAR_PALETTE = [
-  { bg: '#FBE3D0', fg: '#C9762E' },
-  { bg: '#DCEAFE', fg: '#3B6FB6' },
-  { bg: '#F6DDEB', fg: '#B0568E' },
-  { bg: '#E1EFE0', fg: '#5C8A5E' },
-  { bg: '#FFF3D6', fg: '#C99A2E' },
-  { bg: '#E6E1F7', fg: '#7660B8' },
-]
-function avatarColor(seed: string) {
-  let h = 0
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
-  return AVATAR_PALETTE[h % AVATAR_PALETTE.length]
-}
-
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const useStyles = makeStyles()(() => ({
@@ -217,22 +207,22 @@ const useStyles = makeStyles()(() => ({
     '&:hover': { backgroundColor: colors.lineSoft },
   },
   breadcrumbText: {
-    fontSize: '0.85rem',
+    fontSize: '13px',
     fontWeight: 600,
-    color: colors.ink3,
+    color: colors.ink4,
   },
   landingHeading: {
     fontWeight: 800,
-    fontSize: '1.6rem',
+    fontSize: '27px',
     color: colors.ink,
-    letterSpacing: '-0.6px',
-    lineHeight: 1.2,
-    padding: '14px 20px 6px',
+    letterSpacing: '-0.7px',
+    lineHeight: 1.12,
+    padding: '18px 20px 0',
   },
   landingSub: {
-    fontSize: '0.88rem',
-    color: colors.ink3,
-    padding: '0 20px 18px',
+    fontSize: '14px',
+    color: colors.ink4,
+    padding: '7px 20px 18px',
     fontWeight: 500,
   },
   categoryList: {
@@ -243,12 +233,13 @@ const useStyles = makeStyles()(() => ({
   },
   categoryCard: {
     backgroundColor: colors.white,
+    border: `1px solid ${colors.line2}`,
     borderRadius: 18,
-    padding: '14px 16px',
+    padding: 14,
     display: 'flex',
     alignItems: 'center',
-    gap: 14,
-    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 4px 14px rgba(20,20,15,0.05)',
+    gap: 15,
+    boxShadow: '0 3px 14px -8px rgba(26,29,26,0.16)',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     animation: 'fadeSlideUp 0.28s ease both',
@@ -259,9 +250,9 @@ const useStyles = makeStyles()(() => ({
     '&:active': { transform: 'translateY(0)' },
   },
   categoryIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 60,
+    height: 60,
+    borderRadius: 16,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1055,7 +1046,7 @@ const ConnectionChip: React.FC<{ status: FriendStatus; classes: ReturnType<typeo
     </Box>
   )
   if (status === 'mutual') return (
-    <Box className={classes.connectionChip} sx={{ color: '#a07a10', borderColor: '#e8a430', backgroundColor: '#FFF8E7' }}>
+    <Box className={classes.connectionChip} sx={{ color: '#a07a10', borderColor: colors.amber, backgroundColor: '#FFF8E7' }}>
       Mutual Friend
     </Box>
   )
@@ -1128,6 +1119,9 @@ function buildDetailChips(acc: Accommodation): DetailChip[] {
       }
       if (acc.availableSpots > 0) chips.push({ label: `${acc.availableSpots} spots left` })
       chips.push({ label: genderLabel(acc.gender) })
+      if (acc.guestPreference.length && !acc.guestPreference.includes('any')) {
+        chips.push({ label: `Prefers: ${acc.guestPreference.map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(', ')}` })
+      }
       break
 
     default: // 0 — Flatmate Needs
@@ -1140,6 +1134,27 @@ function buildDetailChips(acc: Accommodation): DetailChip[] {
   }
 
   return chips
+}
+
+// Applies the Short Stay-specific filter sheet fields — budget, availability
+// dates, guest count, poster relationship, gender. `flatType` isn't applied:
+// GET /accommodations/schema doesn't define a flat-type enum for Short Stay
+// listings, so there's no reliable value to match against yet.
+function applyShortStayFilters(list: Accommodation[], filters: ShortStayFilters): Accommodation[] {
+  let out = list
+  if (filters.budgetMin) out = out.filter(a => a.amount >= Number(filters.budgetMin))
+  if (filters.budgetMax) out = out.filter(a => a.amount <= Number(filters.budgetMax))
+  // Only listings already available by the requested check-in date qualify —
+  // there's no listing "available until" field to compare against dateTo.
+  if (filters.dateFrom) {
+    out = out.filter(a => !a.availableFrom || a.availableFrom <= filters.dateFrom)
+  }
+  if (filters.guests > 1) out = out.filter(a => a.peopleAllowed >= filters.guests)
+  if (filters.postedBy === 'friends') out = out.filter(a => a.isConnected)
+  if (filters.postedBy === 'mutuals') out = out.filter(a => a.mutualFriends > 0)
+  if (filters.gender === 'male')   out = out.filter(a => a.gender === 0)
+  if (filters.gender === 'female') out = out.filter(a => a.gender === 1)
+  return out
 }
 
 // Applies the shared SharedRoomFilters sheet fields — budget, gender, location,
@@ -1247,7 +1262,21 @@ const GridCard: React.FC<{
 
 // ── Category view ─────────────────────────────────────────────────────────────
 
-type FilterTab = 'all' | 'friends' | 'mutual' | 'community'
+type FilterTab = 'all' | 'friends' | 'mutual' | 'community' | 'saved'
+
+// Wishlist has no backend endpoint yet (no /wishlist or /favorites route) —
+// persist locally so saved listings survive reloads/navigation instead of
+// resetting on every mount.
+const SAVED_LISTINGS_KEY = 'trustu_saved_listing_ids'
+
+function loadSavedIds(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(SAVED_LISTINGS_KEY)
+    return raw ? new Set(JSON.parse(raw)) : new Set()
+  } catch {
+    return new Set()
+  }
+}
 
 // ── Detail view ───────────────────────────────────────────────────────────────
 
@@ -1258,7 +1287,7 @@ const DetailView: React.FC<{
   onToggleSave: (id: string) => void
   classes: ReturnType<typeof useStyles>['classes']
 }> = ({ acc, onClose, saved, onToggleSave, classes }) => {
-  const av = avatarColor(acc.userId || acc.id)
+  const avatarBg = avatarGradient(acc.userId || acc.id)
   const grad = heroGradient(acc.type, acc.gender)
   const status = connectionStatus(acc)
   const [posterOpen, setPosterOpen] = useState(false)
@@ -1302,7 +1331,7 @@ const DetailView: React.FC<{
               onClick={() => onToggleSave(acc.id)}
             >
               {saved
-                ? <FavoriteIcon sx={{ fontSize: '1rem', color: '#e74c3c' }} />
+                ? <FavoriteIcon sx={{ fontSize: '1rem', color: colors.urgent }} />
                 : <FavoriteBorderIcon sx={{ fontSize: '1rem' }} />}
             </Box>
           </Box>
@@ -1366,7 +1395,7 @@ const DetailView: React.FC<{
 
         {/* Reviews */}
         <Box className={classes.detailReviews}>
-          <StarIcon sx={{ fontSize: '0.95rem', color: '#e8a430' }} />
+          <StarIcon sx={{ fontSize: '0.95rem', color: colors.amber }} />
           <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: colors.ink2 }}>
             2 Reviews
           </Typography>
@@ -1386,7 +1415,7 @@ const DetailView: React.FC<{
           )}
 
           <Box className={classes.posterRow} sx={{ cursor: 'pointer' }} onClick={() => setPosterOpen(true)}>
-            <Avatar className={classes.posterAvatar} sx={{ bgcolor: av.bg, color: av.fg }}>
+            <Avatar className={classes.posterAvatar} sx={{ background: avatarBg, color: '#fff' }}>
               {getInitials(acc.userName)}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -1542,8 +1571,17 @@ const AccommodationPage: React.FC = () => {
   const [allFilterOpen, setAllFilterOpen] = useState(false)
   const [filters, setFilters] = useState<SharedRoomFilters>(EMPTY_SHARED_FILTERS)
   const [allFilters, setAllFilters] = useState<SharedRoomFilters>(EMPTY_SHARED_FILTERS)
+  const [shortStayFilters, setShortStayFilters] = useState<ShortStayFilters>(EMPTY_SHORT_STAY_FILTERS)
   const [selectedAcc, setSelectedAcc] = useState<Accommodation | null>(null)
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+  const [savedIds, setSavedIds] = useState<Set<string>>(loadSavedIds)
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(SAVED_LISTINGS_KEY, JSON.stringify(Array.from(savedIds)))
+    } catch {
+      // Storage unavailable (private browsing, quota) — saved state just won't persist.
+    }
+  }, [savedIds])
 
   // Fetch all accommodations
   const { data, isLoading } = useAccommodations()
@@ -1582,9 +1620,14 @@ const AccommodationPage: React.FC = () => {
     if (filterTab === 'friends')   list = list.filter(a => a.isConnected)
     if (filterTab === 'mutual')    list = list.filter(a => a.mutualFriends > 0)
     if (filterTab === 'community') list = list.filter(a => !a.isConnected && a.mutualFriends === 0)
+    if (filterTab === 'saved')     list = list.filter(a => savedIds.has(a.id))
 
-    return applyFilters(list, filters)
-  }, [allAccommodations, selectedType, filterTab, filters])
+    // Short Stay gets its own filter sheet (dates, guests, poster) instead of
+    // the generic one (roommates/location don't apply to Short Stay).
+    return selectedType === 1
+      ? applyShortStayFilters(list, shortStayFilters)
+      : applyFilters(list, filters)
+  }, [allAccommodations, selectedType, filterTab, filters, shortStayFilters, savedIds])
 
   const subGroups = getSubGroups(selectedType)
   const currentCategory = CATEGORIES.find(c => c.type === selectedType)
@@ -1595,8 +1638,9 @@ const AccommodationPage: React.FC = () => {
     if (allFilterTab === 'friends')   list = list.filter(a => a.isConnected)
     if (allFilterTab === 'mutual')    list = list.filter(a => a.mutualFriends > 0)
     if (allFilterTab === 'community') list = list.filter(a => !a.isConnected && a.mutualFriends === 0)
+    if (allFilterTab === 'saved')     list = list.filter(a => savedIds.has(a.id))
     return applyFilters(list, allFilters)
-  }, [allAccommodations, allFilterTab, allFilters])
+  }, [allAccommodations, allFilterTab, allFilters, savedIds])
 
   const handleToggleSave = (id: string) =>
     setSavedIds(prev => {
@@ -1648,8 +1692,9 @@ const AccommodationPage: React.FC = () => {
           {[
             { key: 'all' as FilterTab,       label: 'All',            dotColor: colors.ink4 },
             { key: 'friends' as FilterTab,   label: 'Friends',        dotColor: colors.moss },
-            { key: 'mutual' as FilterTab,    label: 'Mutual Friends', dotColor: '#e8a430' },
+            { key: 'mutual' as FilterTab,    label: 'Mutual Friends', dotColor: colors.amber },
             { key: 'community' as FilterTab, label: 'Community',      dotColor: colors.ink3 },
+            { key: 'saved' as FilterTab,     label: 'Saved',          dotColor: colors.urgent },
           ].map(pill => (
             <Box
               key={pill.key}
@@ -1671,8 +1716,10 @@ const AccommodationPage: React.FC = () => {
             <ContentSkeleton count={4} variant="post" />
           ) : allFilteredAccommodations.length === 0 ? (
             <EmptyState
-              title="No listings found"
-              description="No accommodations match your filters yet."
+              title={allFilterTab === 'saved' ? 'No saved listings' : 'No listings found'}
+              description={allFilterTab === 'saved'
+                ? 'Tap the heart on any listing to save it here for later.'
+                : 'No accommodations match your filters yet.'}
               icon={<HomeWorkOutlinedIcon />}
             />
           ) : (
@@ -1749,7 +1796,7 @@ const AccommodationPage: React.FC = () => {
         <Box className={classes.categoryList}>
           {!isLoading && (
             <Box className={classes.categoryCard} onClick={() => setView('all')}>
-              <Box className={classes.categoryIcon} sx={{ background: `linear-gradient(140deg, ${colors.moss}, ${colors.mossDeep})` }}>
+              <Box className={classes.categoryIcon} sx={{ background: `linear-gradient(135deg, ${colors.moss}, ${colors.mossDeep})` }}>
                 <HomeWorkOutlinedIcon sx={{ color: '#fff', fontSize: '1.4rem' }} />
               </Box>
               <Box className={classes.categoryInfo}>
@@ -1779,7 +1826,7 @@ const AccommodationPage: React.FC = () => {
                 >
                   <Box
                     className={classes.categoryIcon}
-                    sx={{ background: `linear-gradient(140deg, ${cat.iconBg[0]}, ${cat.iconBg[1]})` }}
+                    sx={{ background: `linear-gradient(135deg, ${cat.iconBg[0]}, ${cat.iconBg[1]})` }}
                   >
                     {CATEGORY_ICON_PATHS[cat.type]}
                   </Box>
@@ -1804,8 +1851,9 @@ const AccommodationPage: React.FC = () => {
   const FILTER_PILLS = [
     { key: 'all' as FilterTab,       label: 'All',            dotColor: colors.ink4 },
     { key: 'friends' as FilterTab,   label: 'Friends',        dotColor: colors.moss },
-    { key: 'mutual' as FilterTab,    label: 'Mutual Friends', dotColor: '#e8a430' },
+    { key: 'mutual' as FilterTab,    label: 'Mutual Friends', dotColor: colors.amber },
     { key: 'community' as FilterTab, label: 'Community',      dotColor: colors.ink3 },
+    { key: 'saved' as FilterTab,     label: 'Saved',          dotColor: colors.urgent },
   ]
 
   return (
@@ -1834,8 +1882,19 @@ const AccommodationPage: React.FC = () => {
           <Typography className={classes.catTitle}>{currentCategory?.label}</Typography>
           <Typography className={classes.catSub}>{categoryAccommodations.length} listings</Typography>
         </Box>
-        <Box className={classes.filterBtn} onClick={() => setFilterOpen(true)}>
+        <Box className={classes.filterBtn} onClick={() => setFilterOpen(true)} sx={{ position: 'relative' }}>
           <TuneIcon sx={{ fontSize: '1.1rem' }} />
+          {(selectedType === 1 ? countShortStayFilters(shortStayFilters) : countActiveFilters(filters)) > 0 && (
+            <Box
+              sx={{
+                position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: '50%',
+                backgroundColor: colors.moss, color: '#fff', fontSize: '0.6rem', fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', px: '3px',
+              }}
+            >
+              {selectedType === 1 ? countShortStayFilters(shortStayFilters) : countActiveFilters(filters)}
+            </Box>
+          )}
         </Box>
       </Box>
 
@@ -1863,8 +1922,10 @@ const AccommodationPage: React.FC = () => {
       ) : categoryAccommodations.length === 0 ? (
         <Box sx={{ px: 2 }}>
           <EmptyState
-            title="No listings found"
-            description="No accommodations match your filters yet."
+            title={filterTab === 'saved' ? 'No saved listings' : 'No listings found'}
+            description={filterTab === 'saved'
+              ? 'Tap the heart on any listing to save it here for later.'
+              : 'No accommodations match your filters yet.'}
             icon={<HomeWorkOutlinedIcon />}
           />
         </Box>
@@ -1901,13 +1962,22 @@ const AccommodationPage: React.FC = () => {
       )}
 
       {/* Filter sheet */}
-      <SharedRoomFilterSheet
-        open={filterOpen}
-        onClose={() => setFilterOpen(false)}
-        filters={filters}
-        onChange={setFilters}
-        listingCount={categoryAccommodations.length}
-      />
+      {selectedType === 1 ? (
+        <ShortStayFilterSheet
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          filters={shortStayFilters}
+          onChange={setShortStayFilters}
+        />
+      ) : (
+        <SharedRoomFilterSheet
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          filters={filters}
+          onChange={setFilters}
+          listingCount={categoryAccommodations.length}
+        />
+      )}
     </Box>
   )
 }

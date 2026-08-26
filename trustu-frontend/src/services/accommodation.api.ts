@@ -71,6 +71,8 @@ export interface Accommodation {
   phone: string
   amenities: { id: number; name: string }[]
   photoUrls: string[]
+  /** Short Stay only — 'male' | 'female' | 'family' | 'students' | 'any' */
+  guestPreference: string[]
 }
 
 export interface CreateAccommodationPayload {
@@ -102,6 +104,8 @@ export interface CreateAccommodationPayload {
   /** 1=Students · 2=Working pros · 3=Family */
   roommate_preference?: number
   amenity_ids?: number[]
+  /** Short Stay only — array of 'male' | 'female' | 'family' | 'students' | 'any' */
+  guest_preference?: string[]
   photos?: File[]
   /** WhatsApp / contact number for interested users to reach the poster */
   phone?: string
@@ -196,6 +200,9 @@ function normalize(raw: any): Accommodation {
     ),
     amenities: normalizeAmenities(raw),
     photoUrls: normalizePhotoUrls(raw),
+    guestPreference: Array.isArray(raw.guest_preference ?? raw.guestPreference)
+      ? (raw.guest_preference ?? raw.guestPreference)
+      : [],
   }
 }
 
@@ -258,6 +265,7 @@ export const accommodationApi = {
     if (payload.roommate_preference != null) fd.append('roommate_preference', String(payload.roommate_preference))
 
     payload.amenity_ids?.forEach(id => fd.append('amenity_ids[]', String(id)))
+    payload.guest_preference?.forEach(v => fd.append('guest_preference[]', v))
     payload.photos?.forEach(photo   => fd.append('photos[]',      photo))
     if (payload.phone) fd.append('phone', payload.phone)
     payload.visible_to?.forEach(v => fd.append('visible_to[]', String(v)))

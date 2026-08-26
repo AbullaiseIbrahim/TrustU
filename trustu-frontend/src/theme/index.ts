@@ -134,9 +134,16 @@ let theme = createTheme({
     },
     MuiCssBaseline: {
       styleOverrides: {
+        html: {
+          // Prevents any stray fixed-width element from creating a horizontal
+          // scrollbar / bounce on mobile — the app layout never intentionally
+          // needs to scroll sideways.
+          overflowX: 'hidden',
+        },
         body: {
           minHeight: '100vh',
-          backgroundColor: '#f7f3ea',
+          backgroundColor: '#F3F4F2',
+          overflowX: 'hidden',
           WebkitFontSmoothing: 'antialiased',
           MozOsxFontSmoothing: 'grayscale',
         },

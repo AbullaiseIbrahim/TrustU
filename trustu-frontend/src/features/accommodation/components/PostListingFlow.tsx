@@ -8,6 +8,7 @@ import {
   InputAdornment,
 } from '@mui/material'
 import DatePickerField from '@/components/DatePickerField'
+import TimePickerField, { formatTimeDisplay } from '@/components/TimePickerField'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import CloseIcon from '@mui/icons-material/Close'
@@ -30,6 +31,8 @@ import colors from '@/theme/colors'
 import SelectField from '@/components/SelectField'
 import { useCreateAccommodation } from '../hooks/useAccommodationQueries'
 import { useAmenities } from '../hooks/useAmenityQueries'
+import { FURNISHING_OPTIONS } from '@/services/accommodation.api'
+import { formatINR } from '@/utils'
 import { useAuth } from '@/app/AuthProvider'
 import { useSnackbar } from '@/app/SnackbarProvider'
 import { SIGNUP_ENABLED_STATES } from '@/constants/states'
@@ -495,6 +498,15 @@ const ROOMMATE_PREFS_OPTIONS = [
   { value: 'family',   label: 'Family' },
 ]
 
+/** Only applies to Short Stay — per GET /accommodations/schema's guest_preference field. */
+const GUEST_PREFERENCE_OPTIONS = [
+  { value: 'male',     label: 'Male' },
+  { value: 'female',   label: 'Female' },
+  { value: 'family',   label: 'Family' },
+  { value: 'students', label: 'Students' },
+  { value: 'any',      label: 'Any' },
+]
+
 const FLAT_TYPE_OPTIONS = [
   { value: '1bhk', label: '1BHK' },
   { value: '2bhk', label: '2BHK' },
@@ -544,6 +556,74 @@ const VISIBLE_TO_OPTIONS = [
     desc: 'All Delhi Malayali Network members',
     icon: <PublicOutlinedIcon />,
   },
+]
+
+/** Hostel / PG only — Girls/Boys reuses the same gender field & values as GENDER_MAP. */
+const HOSTEL_INMATE_OPTIONS = [
+  { value: 'female', label: 'Girls' },
+  { value: 'male',   label: 'Boys' },
+]
+
+/**
+ * Hostel / PG only. No dedicated backend column exists for occupancy type, so
+ * each option maps onto the real `available_spots` field (spots per room) —
+ * "Any" leaves it unset rather than guessing a number.
+ */
+const HOSTEL_OCCUPANCY_OPTIONS: { value: string; label: string; spots?: number }[] = [
+  { value: 'single', label: 'Single',      spots: 1 },
+  { value: 'double', label: 'Double',      spots: 2 },
+  { value: 'triple', label: 'Triple',      spots: 3 },
+  { value: '4plus',  label: '4+ Sharing',  spots: 4 },
+  { value: 'any',    label: 'Any' },
+]
+
+/** Hostel / PG only — no backend column; folded into the description on submit. */
+const ROOM_FEATURES_OPTIONS = [
+  { value: 'spacious',        label: 'Spacious Rooms' },
+  { value: 'balcony',         label: 'Balcony' },
+  { value: 'scooty_parking',  label: 'Scooty Parking' },
+  { value: 'roof_access',     label: 'Fully Access to Roof' },
+]
+
+/** Hotel only — no backend column; folded into the description on submit. */
+const HOTEL_SERVICES_OPTIONS = [
+  { value: 'room_service',     label: 'Room Service' },
+  { value: 'laundry',          label: 'Laundry Service' },
+  { value: 'airport_shuttle',  label: 'Airport Shuttle' },
+  { value: 'parking',          label: 'Parking' },
+  { value: 'restaurant',       label: 'Restaurant' },
+]
+
+/** Hotel only — no backend column; folded into the description on submit. */
+const STAR_RATING_OPTIONS = [
+  { value: '1', label: '1 Star' },
+  { value: '2', label: '2 Star' },
+  { value: '3', label: '3 Star' },
+  { value: '4', label: '4 Star' },
+  { value: '5', label: '5 Star' },
+]
+
+/** Flat for Rent only — no backend columns; folded into the description on submit. */
+const VENTILATION_OPTIONS = [
+  { value: 'good',    label: 'Good' },
+  { value: 'average', label: 'Average' },
+  { value: 'poor',    label: 'Poor' },
+]
+const ELECTRICITY_TYPE_OPTIONS = [
+  { value: 'included', label: 'Included in rent' },
+  { value: 'prepaid',  label: 'Prepaid meter' },
+  { value: 'postpaid', label: 'Postpaid meter' },
+]
+const WATER_SUPPLY_OPTIONS = [
+  { value: '24x7',    label: '24x7 supply' },
+  { value: 'limited', label: 'Limited hours' },
+  { value: 'tanker',  label: 'Tanker supply' },
+]
+
+/** Flat for Rent & Hostel/PG — maps directly onto the real `security_deposit` boolean column. */
+const YES_NO_OPTIONS = [
+  { value: 'yes', label: 'Yes' },
+  { value: 'no',  label: 'No' },
 ]
 
 // ── Type / gender maps (string UI value → API numeric value) ─────────────────
@@ -609,8 +689,34 @@ interface ListingForm {
   rentPerPerson: string
   depositAmount: string
   amenities: string[]
+  /** Only applies to Short Stay */
+  guestPreference: string[]
   visibleTo: string
   phone: string
+  /** Short Stay / Flat for Rent — reuses availableSpots as the raw number, shown as "People Allowed" */
+  /** Shared Room only — no backend column for a second figure; folded into description */
+  totalRent: string
+  /** Short Stay / Hotel — no backend column; folded into description */
+  nearbyLandmark: string
+  /** Flat for Rent — wired to the real `furnishing` column */
+  furnishing: string
+  /** Flat for Rent / Hostel — wired to the real `security_deposit` boolean column */
+  securityDeposit: string
+  /** Flat for Rent — no backend columns; folded into description */
+  ventilation: string
+  electricityType: string
+  waterSupply: string
+  /** Hostel/PG — maps onto available_spots (see HOSTEL_OCCUPANCY_OPTIONS) */
+  occupancyType: string
+  /** Hostel/PG — no backend column; folded into description */
+  roomFeatures: string[]
+  roomFeaturesNote: string
+  /** Hotel — no backend columns; folded into description */
+  checkin: string
+  checkout: string
+  starRating: string
+  hotelServices: string[]
+  hotelServicesNote: string
 }
 
 const EMPTY_FORM: ListingForm = {
@@ -630,8 +736,24 @@ const EMPTY_FORM: ListingForm = {
   rentPerPerson: '',
   depositAmount: '',
   amenities: [],
+  guestPreference: [],
   visibleTo: 'friends-mutuals',
   phone: '',
+  totalRent: '',
+  nearbyLandmark: '',
+  furnishing: '',
+  securityDeposit: '',
+  ventilation: '',
+  electricityType: '',
+  waterSupply: '',
+  occupancyType: '',
+  roomFeatures: [],
+  roomFeaturesNote: '',
+  checkin: '',
+  checkout: '',
+  starRating: '',
+  hotelServices: [],
+  hotelServicesNote: '',
 }
 
 // ── Stepper control ───────────────────────────────────────────────────────────
@@ -697,6 +819,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
   const [step, setStep] = useState<1 | 2>(1)
   const [stayType, setStayType] = useState('shared-room')
   const [form, setForm] = useState<ListingForm>(EMPTY_FORM)
+  const [showPreview, setShowPreview] = useState(false)
 
   // Revoke all object URLs when the dialog closes to avoid memory leaks
   useEffect(() => {
@@ -708,7 +831,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
   const setF = (patch: Partial<ListingForm>) =>
     setForm(prev => ({ ...prev, ...patch }))
 
-  const toggleMulti = (key: 'amenities', val: string) => {
+  const toggleMulti = (key: 'amenities' | 'guestPreference' | 'roomFeatures' | 'hotelServices', val: string) => {
     const arr = form[key]
     setF({ [key]: arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val] })
   }
@@ -736,6 +859,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
     setStep(1)
     setStayType('shared-room')
     setForm(EMPTY_FORM)
+    setShowPreview(false)
     onClose()
   }
 
@@ -743,6 +867,96 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
   // and roommate_preference doesn't apply to Short Stay or Hotel at all.
   const showCurrentRoommates = stayType === 'shared-room'
   const showRoommatePref = stayType === 'shared-room' || stayType === 'flat-for-rent' || stayType === 'hostel-pg'
+
+  // ── Per-type field visibility (see the 5 reference screenshots) ────────────
+  const showFlatType = stayType === 'shared-room' || stayType === 'short-stay' || stayType === 'flat-for-rent'
+  const showTotalRent = stayType === 'shared-room'
+  const showGuestPreference = stayType === 'short-stay' || stayType === 'flat-for-rent'
+  const showAvailability = stayType !== 'hostel-pg' && stayType !== 'hotel'
+  const availabilityLabel = stayType === 'shared-room' ? 'Available spots' : 'People allowed'
+  const showAvailableFrom = stayType !== 'hotel'
+  const showOccupancyType = stayType === 'hostel-pg'
+  const showFurnishing = stayType === 'flat-for-rent'
+  const showSecurityDepositField = stayType === 'flat-for-rent' || stayType === 'hostel-pg'
+  const showVentilationEtc = stayType === 'flat-for-rent'
+  const showNearbyLandmark = stayType === 'short-stay' || stayType === 'hotel'
+  const showRoomFeatures = stayType === 'hostel-pg'
+  const showCheckInOut = stayType === 'hotel'
+  const showStarRating = stayType === 'hotel'
+  const showHotelServices = stayType === 'hotel'
+  // Gender field: full Male/Female/Any for most types, Girls/Boys for Hostel/PG, hidden for Hotel
+  const genderMode: 'full' | 'hostel' | 'none' =
+    stayType === 'hotel' ? 'none' : stayType === 'hostel-pg' ? 'hostel' : 'full'
+  const titleLabel =
+    stayType === 'hostel-pg' ? 'Hostel Name' : stayType === 'hotel' ? 'Hotel Name' : 'Title'
+  const rentLabel =
+    stayType === 'short-stay' ? 'Rent per day — per person'
+    : stayType === 'flat-for-rent' ? 'Rent per month'
+    : stayType === 'hostel-pg' ? 'Rent starting'
+    : stayType === 'hotel' ? 'Starting price'
+    : 'Rent per person'
+
+  // ── Fold fields the backend has no dedicated column for into the description
+  // so the information is still captured somewhere real (see the const comments
+  // above: VENTILATION_OPTIONS, ROOM_FEATURES_OPTIONS, HOTEL_SERVICES_OPTIONS, etc).
+  // Shared by handlePost (what actually gets submitted) and the Preview screen
+  // (so the preview shows exactly what will be posted).
+  const buildFullDescription = () => {
+    const extraDetailLines: string[] = []
+    if (showTotalRent && form.totalRent.trim()) {
+      extraDetailLines.push(`Total rent: ₹${form.totalRent.trim()}`)
+    }
+    if (showNearbyLandmark && form.nearbyLandmark.trim()) {
+      extraDetailLines.push(`Nearby landmark: ${form.nearbyLandmark.trim()}`)
+    }
+    if (showVentilationEtc) {
+      if (form.ventilation) extraDetailLines.push(`Ventilation: ${VENTILATION_OPTIONS.find(o => o.value === form.ventilation)?.label}`)
+      if (form.electricityType) extraDetailLines.push(`Electricity: ${ELECTRICITY_TYPE_OPTIONS.find(o => o.value === form.electricityType)?.label}`)
+      if (form.waterSupply) extraDetailLines.push(`Water supply: ${WATER_SUPPLY_OPTIONS.find(o => o.value === form.waterSupply)?.label}`)
+    }
+    if (showOccupancyType && form.occupancyType) {
+      extraDetailLines.push(`Occupancy: ${HOSTEL_OCCUPANCY_OPTIONS.find(o => o.value === form.occupancyType)?.label}`)
+    }
+    if (showRoomFeatures) {
+      const labels = form.roomFeatures.map(v => ROOM_FEATURES_OPTIONS.find(o => o.value === v)?.label).filter(Boolean)
+      if (labels.length) extraDetailLines.push(`Room features: ${labels.join(', ')}`)
+      if (form.roomFeaturesNote.trim()) extraDetailLines.push(form.roomFeaturesNote.trim())
+    }
+    if (showCheckInOut && (form.checkin || form.checkout)) {
+      const ci = form.checkin ? formatTimeDisplay(form.checkin) : '—'
+      const co = form.checkout ? formatTimeDisplay(form.checkout) : '—'
+      extraDetailLines.push(`Check-in: ${ci} · Check-out: ${co}`)
+    }
+    if (showStarRating && form.starRating) {
+      extraDetailLines.push(`Star rating: ${STAR_RATING_OPTIONS.find(o => o.value === form.starRating)?.label}`)
+    }
+    if (showHotelServices) {
+      const labels = form.hotelServices.map(v => HOTEL_SERVICES_OPTIONS.find(o => o.value === v)?.label).filter(Boolean)
+      if (labels.length) extraDetailLines.push(`Hotel services: ${labels.join(', ')}`)
+      if (form.hotelServicesNote.trim()) extraDetailLines.push(form.hotelServicesNote.trim())
+    }
+    return [form.description.trim(), extraDetailLines.join('\n')].filter(Boolean).join('\n\n')
+  }
+
+  // Hostel/PG has no Available Spots / People Allowed field of its own — Occupancy
+  // Type stands in for it and maps onto the same real `available_spots` column.
+  const occupancySpots = showOccupancyType
+    ? HOSTEL_OCCUPANCY_OPTIONS.find(o => o.value === form.occupancyType)?.spots
+    : undefined
+
+  let availableSpotsOut: number | undefined
+  let peopleAllowedOut: number | undefined
+  if (stayType === 'shared-room') {
+    availableSpotsOut = form.availableSpots
+    peopleAllowedOut = form.availableSpots + form.currentRoommates
+  } else if (showAvailability) {
+    // Short Stay / Flat for Rent — the stepper is relabeled "People allowed"
+    availableSpotsOut = form.availableSpots
+    peopleAllowedOut = form.availableSpots
+  } else if (showOccupancyType) {
+    availableSpotsOut = occupancySpots
+    peopleAllowedOut = occupancySpots
+  }
 
   const handlePost = () => {
     if (!form.cityId) {
@@ -761,10 +975,12 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
       showError('Please enter the floor number — it\'s required for Flat for Rent listings.')
       return
     }
+    const fullDescription = buildFullDescription()
+
     createMutation.mutate(
       {
-        title:           form.title || `${typeLabel} — Listing`,
-        description:     form.description,
+        title:           form.title.trim() || `${typeLabel} — Listing`,
+        description:     fullDescription,
         amount:          Number(form.rentPerPerson) || 0,
         deposit_amount:  Number(form.depositAmount) || undefined,
         city_id:         Number(form.cityId),
@@ -773,19 +989,24 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
         is_negotiable:   false,
         address:         form.locality.trim(),
         available_from:  form.availableFrom || new Date().toISOString().split('T')[0],
-        gender:          GENDER_MAP[form.gender] ?? 2,
+        gender:          genderMode === 'none' ? 2 : (GENDER_MAP[form.gender] ?? 2),
         flat_type:       FLAT_TYPE_MAP[form.flatType] ?? null,
         floor:           form.floor.trim() ? Number(form.floor) : null,
-        available_spots: form.availableSpots,
-        people_allowed:  (showCurrentRoommates ? form.currentRoommates : 0) + form.availableSpots,
+        available_spots: availableSpotsOut,
+        people_allowed:  peopleAllowedOut,
         current_roommates:   showCurrentRoommates ? form.currentRoommates : undefined,
         roommate_preference: showRoommatePref ? ROOMMATE_PREF_MAP[form.roommatePref] : undefined,
-        furnishing:      0,
-        security_deposit: false,
+        furnishing:      showFurnishing && form.furnishing !== '' ? Number(form.furnishing) : 0,
+        security_deposit: showSecurityDepositField
+          ? form.securityDeposit === 'yes'
+          : Number(form.depositAmount) > 0,
         // When API amenities are loaded, values are numeric ID strings → convert back to numbers
         amenity_ids: apiAmenities.length > 0
           ? form.amenities.map(v => Number(v)).filter(Boolean)
           : [],
+        guest_preference: showGuestPreference && form.guestPreference.length
+          ? form.guestPreference
+          : undefined,
         photos:          form.photoFiles,
         phone:           form.phone.trim() || undefined,
         visible_to:      [VISIBLE_TO_MAP[form.visibleTo] ?? 1],
@@ -945,12 +1166,16 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
           </Box>
         </Box>
 
-        {/* Title */}
+        {/* Title (relabeled Hostel Name / Hotel Name for those types) */}
         <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>Title</Typography>
+          <Typography className={classes.fLabel}>{titleLabel}</Typography>
           <TextField
             fullWidth size="small"
-            placeholder="e.g. Female Flatmate Needed — Student"
+            placeholder={
+              stayType === 'hostel-pg' ? 'Maximum 25 words'
+              : stayType === 'hotel' ? 'Maximum 25 words'
+              : 'e.g. Female Flatmate Needed — Student'
+            }
             value={form.title}
             onChange={e => setF({ title: e.target.value })}
             sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
@@ -969,42 +1194,68 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
           />
         </Box>
 
-        {/* Availability */}
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>Availability</Typography>
-          <StepperField
-            label="Available spots"
-            value={form.availableSpots}
-            min={1} max={10}
-            onChange={v => setF({ availableSpots: v })}
-          />
-          {showCurrentRoommates && (
+        {/* Availability — hidden for Hostel/PG (Occupancy Type stands in) and Hotel */}
+        {showAvailability && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Availability</Typography>
             <StepperField
-              label="Current roommates"
-              value={form.currentRoommates}
-              min={0} max={10}
-              onChange={v => setF({ currentRoommates: v })}
+              label={availabilityLabel}
+              value={form.availableSpots}
+              min={1} max={10}
+              onChange={v => setF({ availableSpots: v })}
             />
-          )}
-        </Box>
-
-        {/* Gender Preference */}
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>Gender Preference</Typography>
-          <Box className={classes.segmented}>
-            {GENDER_OPTIONS.map((o, i) => (
-              <Box
-                key={o.value}
-                component="button"
-                className={cx(classes.segBtn, { [classes.segBtnActive]: form.gender === o.value })}
-                style={i === 0 ? { borderLeft: 'none' } : {}}
-                onClick={() => setF({ gender: o.value })}
-              >
-                {o.label}
-              </Box>
-            ))}
+            {showCurrentRoommates && (
+              <StepperField
+                label="Current roommates"
+                value={form.currentRoommates}
+                min={0} max={10}
+                onChange={v => setF({ currentRoommates: v })}
+              />
+            )}
           </Box>
-        </Box>
+        )}
+
+        {/* Occupancy Type — Hostel/PG only, stands in for Availability */}
+        {showOccupancyType && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Occupancy Type</Typography>
+            <Box className={classes.chipsWrap}>
+              {HOSTEL_OCCUPANCY_OPTIONS.map(o => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.chip, { [classes.chipActive]: form.occupancyType === o.value })}
+                  onClick={() => setF({ occupancyType: form.occupancyType === o.value ? '' : o.value })}
+                >
+                  {form.occupancyType === o.value && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Gender Preference — full Male/Female/Any, Girls/Boys for Hostel/PG, hidden for Hotel */}
+        {genderMode !== 'none' && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>
+              {genderMode === 'hostel' ? 'Inmates Preference' : 'Gender Preference'}
+            </Typography>
+            <Box className={classes.segmented}>
+              {(genderMode === 'hostel' ? HOSTEL_INMATE_OPTIONS : GENDER_OPTIONS).map((o, i) => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.segBtn, { [classes.segBtnActive]: form.gender === o.value })}
+                  style={i === 0 ? { borderLeft: 'none' } : {}}
+                  onClick={() => setF({ gender: o.value })}
+                >
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
 
         {/* Roommate Preference — doesn't apply to Short Stay or Hotel */}
         {showRoommatePref && (
@@ -1026,10 +1277,30 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
         </Box>
         )}
 
-        {/* Type of Flat + Floor — only relevant for Flat for Rent */}
-        {stayType === 'flat-for-rent' && (
+        {/* Guest Preference — Short Stay & Flat for Rent */}
+        {showGuestPreference && (
           <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Type of Flat</Typography>
+            <Typography className={classes.fLabel}>Guest Preference</Typography>
+            <Box className={classes.chipsWrap}>
+              {GUEST_PREFERENCE_OPTIONS.map(o => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.chip, { [classes.chipActive]: form.guestPreference.includes(o.value) })}
+                  onClick={() => toggleMulti('guestPreference', o.value)}
+                >
+                  {form.guestPreference.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Flat Type — Shared Room, Short Stay, Flat for Rent */}
+        {showFlatType && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Flat Type</Typography>
             <Box className={classes.chipsWrap}>
               {FLAT_TYPE_OPTIONS.map(o => (
                 <Box
@@ -1043,27 +1314,197 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
                 </Box>
               ))}
             </Box>
+          </Box>
+        )}
+
+        {/* Floor + Furnishing — Flat for Rent only */}
+        {stayType === 'flat-for-rent' && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Floor</Typography>
             <TextField
               fullWidth size="small"
-              label="Floor"
               placeholder="e.g. 2 (0 for ground floor)"
               value={form.floor}
               onChange={e => setF({ floor: e.target.value.replace(/\D/g, '') })}
               inputProps={{ inputMode: 'numeric' }}
-              sx={{ mt: 1.25, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
             />
           </Box>
         )}
 
-        {/* Available From */}
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>Available From</Typography>
-          <DatePickerField
-            label="Select date"
-            value={form.availableFrom}
-            onChange={v => setF({ availableFrom: v })}
-          />
-        </Box>
+        {showFurnishing && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Furnishing</Typography>
+            <SelectField
+              label="Furnishing"
+              value={form.furnishing}
+              onChange={v => setF({ furnishing: v })}
+              options={FURNISHING_OPTIONS.map(o => ({ value: String(o.value), label: o.label }))}
+              placeholder="Options"
+            />
+          </Box>
+        )}
+
+        {/* Security Deposit — Flat for Rent & Hostel/PG */}
+        {showSecurityDepositField && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Security Deposit</Typography>
+            <SelectField
+              label="Security deposit required?"
+              value={form.securityDeposit}
+              onChange={v => setF({ securityDeposit: v })}
+              options={YES_NO_OPTIONS}
+              placeholder="Options"
+            />
+          </Box>
+        )}
+
+        {/* Ventilation / Electricity / Water Supply — Flat for Rent only */}
+        {showVentilationEtc && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Ventilation</Typography>
+            <SelectField
+              label="Ventilation"
+              value={form.ventilation}
+              onChange={v => setF({ ventilation: v })}
+              options={VENTILATION_OPTIONS}
+              placeholder="Options"
+            />
+            <Typography className={classes.fLabel} sx={{ mt: 1.5 }}>Electricity Type</Typography>
+            <SelectField
+              label="Electricity type"
+              value={form.electricityType}
+              onChange={v => setF({ electricityType: v })}
+              options={ELECTRICITY_TYPE_OPTIONS}
+              placeholder="Options"
+            />
+            <Typography className={classes.fLabel} sx={{ mt: 1.5 }}>Water Supply</Typography>
+            <SelectField
+              label="Water supply"
+              value={form.waterSupply}
+              onChange={v => setF({ waterSupply: v })}
+              options={WATER_SUPPLY_OPTIONS}
+              placeholder="Options"
+            />
+          </Box>
+        )}
+
+        {/* Room Features — Hostel/PG only */}
+        {showRoomFeatures && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Room Features</Typography>
+            <Box className={classes.chipsWrap} sx={{ mb: 1.25 }}>
+              {ROOM_FEATURES_OPTIONS.map(o => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.chip, { [classes.chipActive]: form.roomFeatures.includes(o.value) })}
+                  onClick={() => toggleMulti('roomFeatures', o.value)}
+                >
+                  {form.roomFeatures.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+            <TextField
+              fullWidth size="small"
+              placeholder="Maximum 15 words"
+              value={form.roomFeaturesNote}
+              onChange={e => setF({ roomFeaturesNote: e.target.value })}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+            />
+          </Box>
+        )}
+
+        {/* Check-in / Check-out — Hotel only */}
+        {showCheckInOut && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Check-in / Check-out</Typography>
+            <Box sx={{ display: 'flex', gap: 1.25 }}>
+              <Box sx={{ flex: 1 }}>
+                <TimePickerField
+                  label="Check-in"
+                  value={form.checkin}
+                  onChange={v => setF({ checkin: v })}
+                />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <TimePickerField
+                  label="Check-out"
+                  value={form.checkout}
+                  onChange={v => setF({ checkout: v })}
+                />
+              </Box>
+            </Box>
+          </Box>
+        )}
+
+        {/* Nearby Landmark — Short Stay & Hotel */}
+        {showNearbyLandmark && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Nearby Landmark</Typography>
+            <TextField
+              fullWidth size="small"
+              placeholder="Maximum 25 words"
+              value={form.nearbyLandmark}
+              onChange={e => setF({ nearbyLandmark: e.target.value })}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+            />
+          </Box>
+        )}
+
+        {/* Star Rating — Hotel only */}
+        {showStarRating && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Star Rating</Typography>
+            <SelectField
+              label="Star rating"
+              value={form.starRating}
+              onChange={v => setF({ starRating: v })}
+              options={STAR_RATING_OPTIONS}
+              placeholder="Options"
+            />
+          </Box>
+        )}
+
+        {/* Hotel Services — Hotel only */}
+        {showHotelServices && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Hotel Services</Typography>
+            <Box className={classes.chipsWrap} sx={{ mb: 1.25 }}>
+              {HOTEL_SERVICES_OPTIONS.map(o => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.chip, { [classes.chipActive]: form.hotelServices.includes(o.value) })}
+                  onClick={() => toggleMulti('hotelServices', o.value)}
+                >
+                  {form.hotelServices.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+            <TextField
+              fullWidth size="small"
+              placeholder="Maximum 15 words"
+              value={form.hotelServicesNote}
+              onChange={e => setF({ hotelServicesNote: e.target.value })}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+            />
+          </Box>
+        )}
+
+        {/* Available From — hidden for Hotel */}
+        {showAvailableFrom && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Available From</Typography>
+            <DatePickerField
+              label="Select date"
+              value={form.availableFrom}
+              onChange={v => setF({ availableFrom: v })}
+            />
+          </Box>
+        )}
 
         {/* Location */}
         <Box className={classes.fBlock}>
@@ -1096,15 +1537,25 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
         {/* Rent */}
         <Box className={classes.fBlock}>
           <Typography className={classes.fLabel}>Rent</Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             <TextField
-              size="small" label="Rent / amount"
+              size="small" label={rentLabel}
               value={form.rentPerPerson}
               onChange={e => setF({ rentPerPerson: e.target.value.replace(/\D/g, '') })}
               InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
               inputProps={{ inputMode: 'numeric' }}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
             />
+            {showTotalRent && (
+              <TextField
+                size="small" label="Total rent"
+                value={form.totalRent}
+                onChange={e => setF({ totalRent: e.target.value.replace(/\D/g, '') })}
+                InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+                inputProps={{ inputMode: 'numeric' }}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+              />
+            )}
             <TextField
               size="small" label="Deposit amount (optional)"
               value={form.depositAmount}
@@ -1182,7 +1633,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
       </DialogContent>
 
       <Box className={classes.s2Footer}>
-        <Box component="button" className={classes.previewBtn}>
+        <Box component="button" className={classes.previewBtn} onClick={() => setShowPreview(true)}>
           Preview
         </Box>
         <Box
@@ -1198,6 +1649,152 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
     </>
   )
 
+  // ── Preview — shows the listing exactly as it will look once posted ─────────
+
+  const renderPreview = () => {
+    const description = buildFullDescription()
+    const amount = Number(form.rentPerPerson) || 0
+    const cityName = SIGNUP_ENABLED_STATES.find(s => String(s.id) === form.cityId)?.name
+
+    const selectedAmenityLabels = form.amenities
+      .map(v => amenityOptions.find(o => o.value === v)?.label)
+      .filter((v): v is string => Boolean(v))
+
+    const genderLabel =
+      genderMode === 'hostel' ? HOSTEL_INMATE_OPTIONS.find(o => o.value === form.gender)?.label
+      : genderMode === 'full'  ? GENDER_OPTIONS.find(o => o.value === form.gender)?.label
+      : null
+
+    const infoChips: string[] = []
+    if (showFlatType && form.flatType) {
+      infoChips.push(FLAT_TYPE_OPTIONS.find(o => o.value === form.flatType)?.label ?? '')
+    }
+    if (genderLabel) infoChips.push(genderLabel)
+    if (showGuestPreference && form.guestPreference.length) {
+      infoChips.push(
+        form.guestPreference.map(v => GUEST_PREFERENCE_OPTIONS.find(o => o.value === v)?.label).filter(Boolean).join(', '),
+      )
+    }
+    if (showOccupancyType && form.occupancyType) {
+      infoChips.push(HOSTEL_OCCUPANCY_OPTIONS.find(o => o.value === form.occupancyType)?.label ?? '')
+    }
+    if (showAvailability) infoChips.push(`${form.availableSpots} ${availabilityLabel}`)
+    if (showFurnishing && form.furnishing) {
+      infoChips.push(FURNISHING_OPTIONS.find(o => String(o.value) === form.furnishing)?.label ?? '')
+    }
+    if (showStarRating && form.starRating) {
+      infoChips.push(STAR_RATING_OPTIONS.find(o => o.value === form.starRating)?.label ?? '')
+    }
+
+    const hue = form.gender === 'female' ? 340 : form.gender === 'male' ? 210 : 110
+    const heroGrad = `linear-gradient(155deg, oklch(82% 0.06 ${hue}), oklch(66% 0.09 ${hue + 30}))`
+
+    return (
+      <>
+        <Box className={classes.s2Header}>
+          <Box component="button" className={classes.closeBtn} onClick={() => setShowPreview(false)} aria-label="back">
+            <ArrowBackIcon sx={{ fontSize: '1rem' }} />
+          </Box>
+          <Typography className={classes.s2Title}>Preview</Typography>
+          <Box sx={{ width: 34 }} />
+        </Box>
+
+        <DialogContent className={classes.s2Body} sx={{ p: 0 }}>
+          <Box sx={{
+            height: 200,
+            background: form.photos[0] ? `url("${form.photos[0]}") center/cover no-repeat` : heroGrad,
+          }} />
+
+          <Box sx={{ p: '20px' }}>
+            <Typography sx={{ fontWeight: 700, fontSize: '1.15rem', color: colors.ink, letterSpacing: '-0.3px', mb: 0.5 }}>
+              {form.title.trim() || `${typeLabel} — Listing`}
+            </Typography>
+
+            {description && (
+              <Typography sx={{ fontSize: '0.85rem', color: colors.ink3, whiteSpace: 'pre-line', lineHeight: 1.5, mb: 1.5 }}>
+                {description}
+              </Typography>
+            )}
+
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 1.5 }}>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.3rem', color: colors.moss }}>
+                {formatINR(amount)}
+              </Typography>
+              <Typography sx={{ fontSize: '0.78rem', color: colors.ink4, fontWeight: 600 }}>
+                {rentLabel}
+              </Typography>
+            </Box>
+
+            {infoChips.length > 0 && (
+              <Box className={classes.chipsWrap} sx={{ mb: 2 }}>
+                {infoChips.map((c, i) => (
+                  <Box key={i} className={classes.chip} sx={{ cursor: 'default', pointerEvents: 'none' }}>
+                    {c}
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            {(form.locality.trim() || cityName) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <LocationOnOutlinedIcon sx={{ fontSize: '1rem', color: colors.ink4, flexShrink: 0 }} />
+                <Typography sx={{ fontSize: '0.82rem', color: colors.ink2 }}>
+                  {[form.locality.trim(), cityName].filter(Boolean).join(', ')}
+                </Typography>
+              </Box>
+            )}
+
+            {showAvailableFrom && form.availableFrom && (
+              <Typography sx={{ fontSize: '0.8rem', color: colors.ink3, mb: 2 }}>
+                Available from{' '}
+                {new Date(form.availableFrom).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </Typography>
+            )}
+
+            {selectedAmenityLabels.length > 0 && (
+              <>
+                <Typography className={classes.fLabel} sx={{ mt: 1 }}>Amenities Available</Typography>
+                <Box className={classes.chipsWrap} sx={{ mb: 2 }}>
+                  {selectedAmenityLabels.map((label, i) => (
+                    <Box key={i} className={cx(classes.chip, classes.chipActive)} sx={{ cursor: 'default', pointerEvents: 'none' }}>
+                      {label}
+                    </Box>
+                  ))}
+                </Box>
+              </>
+            )}
+
+            {form.phone.trim() && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                <WhatsAppIcon sx={{ fontSize: '1rem', color: '#25D366', flexShrink: 0 }} />
+                <Typography sx={{ fontSize: '0.82rem', color: colors.ink2 }}>{form.phone.trim()}</Typography>
+              </Box>
+            )}
+
+            <Typography sx={{ fontSize: '0.72rem', color: colors.ink4, mt: 3, fontStyle: 'italic' }}>
+              This is a preview — visible to {VISIBLE_TO_OPTIONS.find(o => o.value === form.visibleTo)?.label.toLowerCase()}.
+            </Typography>
+          </Box>
+        </DialogContent>
+
+        <Box className={classes.s2Footer}>
+          <Box component="button" className={classes.previewBtn} onClick={() => setShowPreview(false)}>
+            Edit
+          </Box>
+          <Box
+            component="button"
+            className={classes.postBtn}
+            onClick={handlePost}
+            disabled={createMutation.isPending}
+          >
+            <CheckIcon sx={{ fontSize: '1rem' }} />
+            {createMutation.isPending ? 'Posting…' : 'Post listing'}
+          </Box>
+        </Box>
+      </>
+    )
+  }
+
   return (
     <Dialog
       open={open}
@@ -1206,7 +1803,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
       PaperProps={{ className: classes.paper }}
       sx={{ '& .MuiDialog-container': { alignItems: 'flex-end', justifyContent: 'center' } }}
     >
-      {step === 1 ? renderStep1() : renderStep2()}
+      {step === 1 ? renderStep1() : showPreview ? renderPreview() : renderStep2()}
     </Dialog>
   )
 }

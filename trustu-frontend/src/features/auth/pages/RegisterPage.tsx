@@ -1,32 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import {
-  Box,
-  Button,
-  CircularProgress,
-  FormControl,
-  FormHelperText,
-  Grid,
-  InputLabel,
-  MenuItem,
-  Paper,
-  Select,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import { Box, Typography, CircularProgress, Avatar } from '@mui/material'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
+import AuthCard from '../components/AuthCard'
+import { AuthField, AuthSelectField, StepPill, authInputSx } from '../components/AuthField'
 import { authApi } from '@/services/auth.api'
 import { useAuth } from '@/app/AuthProvider'
 import { useSnackbar } from '@/app/SnackbarProvider'
 import { PATHS } from '@/routes/paths'
-import { SIGNUP_ENABLED_STATES } from '@/constants/states'
+import { SIGNUP_ENABLED_STATES, DISTRICTS_BY_STATE } from '@/constants/states'
+import { getInitials, selfAvatarGradient } from '@/utils'
+import colors from '@/theme/colors'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const GENDER_OPTIONS = [
@@ -65,25 +52,75 @@ const step1Schema = z
 type Step1Values = z.infer<typeof step1Schema>
 
 // ── Step 2 schema ─────────────────────────────────────────────────────────────
+// native_district / current_district are display-only — the backend only
+// accepts a state id, so they're never sent with the registration payload.
 const step2Schema = z.object({
-  native_state_id:  z.string().min(1, 'Please select your home state'),
-  current_state_id: z.string().min(1, 'Please select your current state'),
+  native_state_id:   z.string().min(1, 'Please select your home state'),
+  native_district:   z.string(),
+  current_state_id:  z.string().min(1, 'Please select your current state'),
+  current_district:  z.string(),
 })
 
 type Step2Values = z.infer<typeof step2Schema>
 
+// ── Shared back button ────────────────────────────────────────────────────────
+const BackButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+  <Box
+    component="button"
+    onClick={onClick}
+    aria-label="Back"
+    sx={{
+      width: 42, height: 42, borderRadius: '13px', border: `1.5px solid ${colors.line}`,
+      background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      cursor: 'pointer', '&:active': { transform: 'scale(0.94)' },
+    }}
+  >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M15 5l-7 7 7 7" stroke={colors.ink} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  </Box>
+)
+
+// ── Shared submit button ──────────────────────────────────────────────────────
+const SubmitButton: React.FC<{ label: string; loading?: boolean; onClick: () => void }> = ({ label, loading, onClick }) => (
+  <Box
+    component="button"
+    onClick={onClick}
+    disabled={loading}
+    sx={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '9px',
+      width: '100%', padding: '17px', border: 'none', borderRadius: '16px',
+      background: `linear-gradient(150deg, ${colors.mossMid}, ${colors.mossDeep})`,
+      fontFamily: 'inherit', fontSize: '16px', fontWeight: 700, color: '#fff',
+      cursor: 'pointer', boxShadow: colors.shadowFab,
+      '&:hover': { filter: 'brightness(1.06)' },
+      '&:active': { transform: 'scale(0.985)' },
+    }}
+  >
+    {loading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : (
+      <>
+        {label}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M5 12h14M13 6l6 6-6 6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </>
+    )}
+  </Box>
+)
+
 // ── Step 1 component ──────────────────────────────────────────────────────────
 interface Step1Props {
   prefillEmail: string
+  initialValues: Step1Values | null
   onNext: (data: Step1Values) => void
   onBack: () => void
 }
 
-function AccountStep({ prefillEmail, onNext, onBack }: Step1Props) {
+function AccountStep({ prefillEmail, initialValues, onNext, onBack }: Step1Props) {
   const { control, register, handleSubmit, setValue, formState: { errors } } =
     useForm<Step1Values>({
       resolver: zodResolver(step1Schema),
-      defaultValues: {
+      defaultValues: initialValues ?? {
         name: '', gender: '', designation: '', phone: '',
         email: prefillEmail, institute: '',
         password: '', password_confirmation: '',
@@ -91,235 +128,185 @@ function AccountStep({ prefillEmail, onNext, onBack }: Step1Props) {
     })
 
   useEffect(() => {
-    if (prefillEmail) setValue('email', prefillEmail)
-  }, [prefillEmail, setValue])
+    // Only apply the prefilled email from navigation state on first mount —
+    // don't clobber a value the user already typed when re-visiting this step.
+    if (prefillEmail && !initialValues) setValue('email', prefillEmail)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
-    <Box>
-      {/* Header */}
-      <Stack alignItems="center" spacing={2} mb={3}>
-        <Box sx={{
-          width: 72, height: 72, borderRadius: '50%',
-          bgcolor: 'primary.main', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 14px rgba(45,125,50,0.35)',
-        }}>
-          <PersonAddOutlinedIcon sx={{ color: '#fff', fontSize: 38 }} />
-        </Box>
-        <Box textAlign="center">
-          <Typography variant="h5" fontWeight={700}>Create your account</Typography>
-          <Typography variant="body2" color="text.secondary" mt={0.5}>
-            Step 1 of 2 — Your details
-          </Typography>
-        </Box>
-      </Stack>
-
-      <Box component="form" noValidate onSubmit={handleSubmit(onNext)}>
-        <Grid container spacing={2}>
-
-          {/* Name + Gender */}
-          <Grid item xs={12} sm={7}>
-            <TextField
-              {...register('name')} fullWidth label="Full Name"
-              error={!!errors.name} helperText={errors.name?.message}
-              autoComplete="name" autoFocus
-            />
-          </Grid>
-          <Grid item xs={12} sm={5}>
-            <Controller name="gender" control={control} render={({ field }) => (
-              <FormControl fullWidth error={!!errors.gender}>
-                <InputLabel shrink>Gender</InputLabel>
-                <Select {...field} label="Gender" displayEmpty notched>
-                  <MenuItem value=""><em>Select</em></MenuItem>
-                  {GENDER_OPTIONS.map(o => (
-                    <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-                  ))}
-                </Select>
-                {errors.gender && <FormHelperText>{errors.gender.message}</FormHelperText>}
-              </FormControl>
-            )} />
-          </Grid>
-
-          {/* Designation + Phone */}
-          <Grid item xs={12} sm={6}>
-            <Controller name="designation" control={control} render={({ field }) => (
-              <FormControl fullWidth error={!!errors.designation}>
-                <InputLabel shrink>Designation</InputLabel>
-                <Select {...field} label="Designation" displayEmpty notched>
-                  <MenuItem value=""><em>Select</em></MenuItem>
-                  {DESIGNATION_OPTIONS.map(o => (
-                    <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-                  ))}
-                </Select>
-                {errors.designation && <FormHelperText>{errors.designation.message}</FormHelperText>}
-              </FormControl>
-            )} />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              {...register('phone')} fullWidth label="Phone Number" placeholder="Optional"
-              error={!!errors.phone} helperText={errors.phone?.message}
-              autoComplete="tel" inputProps={{ inputMode: 'tel' }}
-            />
-          </Grid>
-
-          {/* Email */}
-          <Grid item xs={12}>
-            <TextField
-              {...register('email')} fullWidth label="Email Address" type="email"
-              error={!!errors.email} helperText={errors.email?.message}
-              autoComplete="email"
-            />
-          </Grid>
-
-          {/* Institute */}
-          <Grid item xs={12}>
-            <TextField
-              {...register('institute')} fullWidth label="Institute / College"
-              placeholder="Optional"
-              error={!!errors.institute} helperText={errors.institute?.message}
-            />
-          </Grid>
-
-          {/* Password */}
-          <Grid item xs={12}>
-            <TextField
-              {...register('password')} fullWidth label="Password" type="password"
-              placeholder="Min. 8 characters" autoComplete="new-password"
-              error={!!errors.password} helperText={errors.password?.message}
-            />
-          </Grid>
-
-          {/* Confirm Password */}
-          <Grid item xs={12}>
-            <TextField
-              {...register('password_confirmation')} fullWidth label="Confirm Password" type="password"
-              autoComplete="new-password"
-              error={!!errors.password_confirmation} helperText={errors.password_confirmation?.message}
-            />
-          </Grid>
-
-          {/* Next */}
-          <Grid item xs={12} mt={1}>
-            <Button type="submit" fullWidth variant="contained" size="large"
-              sx={{ py: 1.5, fontWeight: 600 }}>
-              Next — Select Your State
-            </Button>
-          </Grid>
-        </Grid>
+    <>
+      <Box sx={{ padding: '24px 24px 0' }}>
+        <BackButton onClick={onBack} />
+        <Typography component="h1" sx={{ margin: '20px 0 6px', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.6px', color: colors.ink }}>
+          Create your account
+        </Typography>
+        <Typography sx={{ margin: 0, fontSize: '14.5px', lineHeight: 1.5, color: colors.ink3, fontWeight: 500 }}>
+          Tell us a bit about yourself to get started.
+        </Typography>
       </Box>
 
-      <Typography variant="body2" align="center" sx={{ mt: 2 }}>
-        {'Already have an account? '}
-        <Box component="span"
-          sx={{ color: 'primary.main', cursor: 'pointer', fontWeight: 600 }}
-          onClick={onBack}>
-          Sign In
+      <Box component="form" noValidate onSubmit={handleSubmit(onNext)} sx={{ padding: '18px 24px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <AuthField label="Full Name" error={errors.name?.message}>
+          <Box component="input" autoComplete="name" autoFocus placeholder="Your full name" {...register('name')} sx={authInputSx} />
+        </AuthField>
+
+        <Box sx={{ display: 'flex', gap: '12px' }}>
+          <Box sx={{ flex: 1 }}>
+            <AuthField label="Gender" error={errors.gender?.message}>
+              <Controller name="gender" control={control} render={({ field }) => (
+                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="Select" options={GENDER_OPTIONS} />
+              )} />
+            </AuthField>
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            <AuthField label="Designation" error={errors.designation?.message}>
+              <Controller name="designation" control={control} render={({ field }) => (
+                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="Select" options={DESIGNATION_OPTIONS} />
+              )} />
+            </AuthField>
+          </Box>
         </Box>
-      </Typography>
-    </Box>
+
+        <AuthField label="Phone Number" error={errors.phone?.message}>
+          <Box component="input" autoComplete="tel" placeholder="Optional" {...register('phone')} sx={authInputSx} />
+        </AuthField>
+
+        <AuthField label="Email" error={errors.email?.message}>
+          <Box component="input" type="email" autoComplete="email" placeholder="you@example.com" {...register('email')} sx={authInputSx} />
+        </AuthField>
+
+        <AuthField label="Institute / College" error={errors.institute?.message}>
+          <Box component="input" placeholder="Optional" {...register('institute')} sx={authInputSx} />
+        </AuthField>
+
+        <AuthField label="Password" error={errors.password?.message}>
+          <Box component="input" type="password" autoComplete="new-password" placeholder="Min. 8 characters" {...register('password')} sx={authInputSx} />
+        </AuthField>
+
+        <AuthField label="Confirm Password" error={errors.password_confirmation?.message}>
+          <Box component="input" type="password" autoComplete="new-password" placeholder="••••••••" {...register('password_confirmation')} sx={authInputSx} />
+        </AuthField>
+
+        <Box sx={{ marginTop: '4px' }}>
+          <SubmitButton label="Next — Save Your Profile" onClick={handleSubmit(onNext)} />
+        </Box>
+      </Box>
+
+      <Box sx={{ padding: '0 24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '14px' }}>
+        <Typography component="span" sx={{ color: colors.ink3, fontWeight: 500, fontSize: 'inherit' }}>
+          Already have an account?
+        </Typography>
+        <Typography component="span" onClick={onBack} sx={{ color: colors.moss, fontWeight: 700, cursor: 'pointer', fontSize: 'inherit' }}>
+          Log in
+        </Typography>
+      </Box>
+    </>
   )
 }
 
-// ── Step 2 component ──────────────────────────────────────────────────────────
+// ── Step 2 component: "Save your profile" (location) ───────────────────────────
 interface Step2Props {
+  name: string
+  designationLabel: string
+  initialValues: Step2Values | null
   onSubmit: (data: Step2Values) => void
-  onBack: () => void
+  onBack: (data: Step2Values) => void
   isPending: boolean
 }
 
-function LocationStep({ onSubmit, onBack, isPending }: Step2Props) {
-  const { control, handleSubmit, formState: { errors } } =
+function ProfileLocationStep({ name, designationLabel, initialValues, onSubmit, onBack, isPending }: Step2Props) {
+  const { control, handleSubmit, watch, getValues, formState: { errors } } =
     useForm<Step2Values>({
       resolver: zodResolver(step2Schema),
-      defaultValues: { native_state_id: '', current_state_id: '' },
+      defaultValues: initialValues ?? { native_state_id: '', native_district: '', current_state_id: '', current_district: '' },
     })
 
+  const stateOptions = SIGNUP_ENABLED_STATES.map(s => ({ value: String(s.id), label: s.name }))
+  const nativeStateId = watch('native_state_id')
+  const currentStateId = watch('current_state_id')
+  const nativeDistrictOptions = (DISTRICTS_BY_STATE[Number(nativeStateId)] ?? []).map(d => ({ value: d, label: d }))
+  const currentDistrictOptions = (DISTRICTS_BY_STATE[Number(currentStateId)] ?? []).map(d => ({ value: d, label: d }))
+
   return (
-    <Box>
-      {/* Header */}
-      <Stack alignItems="center" spacing={2} mb={3}>
-        <Box sx={{
-          width: 72, height: 72, borderRadius: '50%',
-          bgcolor: 'primary.main', display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 14px rgba(45,125,50,0.35)',
-        }}>
-          <GroupsOutlinedIcon sx={{ color: '#fff', fontSize: 38 }} />
+    <>
+      <Box sx={{ padding: '24px 24px 0' }}>
+        <BackButton onClick={() => onBack(getValues())} />
+        <Box sx={{ marginTop: '18px' }}>
+          <StepPill step="STEP 1 OF 2" />
         </Box>
-        <Box textAlign="center">
-          <Typography variant="h5" fontWeight={700}>Your Location</Typography>
-          <Typography variant="body2" color="text.secondary" mt={0.5}>
-            Step 2 of 2 — We'll assign your community based on your states
-          </Typography>
+        <Typography component="h1" sx={{ margin: '16px 0 6px', fontSize: '26px', fontWeight: 800, letterSpacing: '-0.6px', color: colors.ink }}>
+          Save your profile
+        </Typography>
+        <Typography sx={{ margin: 0, fontSize: '14.5px', lineHeight: 1.5, color: colors.ink3, fontWeight: 500 }}>
+          Tell us where you&apos;re from and where you live now — we&apos;ll connect you to the right community.
+        </Typography>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '18px' }}>
+          <Avatar sx={{ width: 44, height: 44, background: selfAvatarGradient(), color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
+            {getInitials(name || 'U')}
+          </Avatar>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: '15px', fontWeight: 800, color: colors.ink, letterSpacing: '-0.2px' }}>
+              {name || 'Your name'}
+            </Typography>
+            {designationLabel && (
+              <Typography sx={{ fontSize: '12.5px', fontWeight: 500, color: colors.ink3 }}>
+                {designationLabel}
+              </Typography>
+            )}
+          </Box>
         </Box>
-      </Stack>
-
-      <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)}>
-        <Grid container spacing={2.5}>
-
-          {/* Home State */}
-          <Grid item xs={12}>
-            <Controller name="native_state_id" control={control} render={({ field }) => (
-              <FormControl fullWidth error={!!errors.native_state_id}>
-                <InputLabel shrink>Home State *</InputLabel>
-                <Select {...field} label="Home State *" displayEmpty notched>
-                  <MenuItem value=""><em>Select your home state</em></MenuItem>
-                  {SIGNUP_ENABLED_STATES.map(s => (
-                    <MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>
-                  ))}
-                </Select>
-                {errors.native_state_id
-                  ? <FormHelperText>{errors.native_state_id.message}</FormHelperText>
-                  : <FormHelperText>The state you originally come from</FormHelperText>
-                }
-              </FormControl>
-            )} />
-          </Grid>
-
-          {/* Current State */}
-          <Grid item xs={12}>
-            <Controller name="current_state_id" control={control} render={({ field }) => (
-              <FormControl fullWidth error={!!errors.current_state_id}>
-                <InputLabel shrink>Current State *</InputLabel>
-                <Select {...field} label="Current State *" displayEmpty notched>
-                  <MenuItem value=""><em>Select your current state</em></MenuItem>
-                  {SIGNUP_ENABLED_STATES.map(s => (
-                    <MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>
-                  ))}
-                </Select>
-                {errors.current_state_id
-                  ? <FormHelperText>{errors.current_state_id.message}</FormHelperText>
-                  : <FormHelperText>Where you're currently located</FormHelperText>
-                }
-              </FormControl>
-            )} />
-          </Grid>
-
-          {/* Register button */}
-          <Grid item xs={12} mt={1}>
-            <Button type="submit" fullWidth variant="contained" size="large"
-              disabled={isPending}
-              sx={{ py: 1.5, fontWeight: 600 }}>
-              {isPending
-                ? <CircularProgress size={22} sx={{ color: '#fff' }} />
-                : 'Register & Join Community'}
-            </Button>
-          </Grid>
-        </Grid>
       </Box>
 
-      {/* Back */}
-      <Button
-        fullWidth startIcon={<ArrowBackIcon />} onClick={onBack}
-        sx={{
-          mt: 1.5, color: 'text.secondary', fontWeight: 500, textTransform: 'none',
-          '&:hover': { bgcolor: 'transparent', color: 'text.primary' },
-        }}
-      >
-        Back to account details
-      </Button>
-    </Box>
+      <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)} sx={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <Typography component="span" sx={{ fontSize: '12.5px', fontWeight: 700, color: colors.ink2 }}>Permanent State</Typography>
+          <Box sx={{ display: 'flex', gap: '12px' }}>
+            <Box sx={{ flex: 1 }}>
+              <Controller name="native_state_id" control={control} render={({ field }) => (
+                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="State" options={stateOptions} />
+              )} />
+              {errors.native_state_id && (
+                <Typography sx={{ fontSize: '12px', fontWeight: 600, color: colors.urgent, marginTop: '6px' }}>
+                  {errors.native_state_id.message}
+                </Typography>
+              )}
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Controller name="native_district" control={control} render={({ field }) => (
+                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="District" options={nativeDistrictOptions} />
+              )} />
+            </Box>
+          </Box>
+        </Box>
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <Typography component="span" sx={{ fontSize: '12.5px', fontWeight: 700, color: colors.ink2 }}>Current State</Typography>
+          <Box sx={{ display: 'flex', gap: '12px' }}>
+            <Box sx={{ flex: 1 }}>
+              <Controller name="current_state_id" control={control} render={({ field }) => (
+                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="State" options={stateOptions} />
+              )} />
+              {errors.current_state_id && (
+                <Typography sx={{ fontSize: '12px', fontWeight: 600, color: colors.urgent, marginTop: '6px' }}>
+                  {errors.current_state_id.message}
+                </Typography>
+              )}
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Controller name="current_district" control={control} render={({ field }) => (
+                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="District" options={currentDistrictOptions} />
+              )} />
+            </Box>
+          </Box>
+        </Box>
+
+        <Box sx={{ marginTop: '4px' }}>
+          <SubmitButton label="Save & Continue" loading={isPending} onClick={handleSubmit(onSubmit)} />
+        </Box>
+      </Box>
+    </>
   )
 }
 
@@ -330,8 +317,8 @@ const RegisterPage: React.FC = () => {
   const prefillEmail = (location.state as { email?: string })?.email ?? ''
 
   const [step, setStep] = useState<1 | 2>(1)
-  // Keep Step 1 data in a ref — passwords never hit React state
   const step1Ref = useRef<Step1Values | null>(null)
+  const step2Ref = useRef<Step2Values | null>(null)
 
   const { login, syncProfile } = useAuth()
   const { showError } = useSnackbar()
@@ -340,15 +327,10 @@ const RegisterPage: React.FC = () => {
     mutationFn: authApi.register,
     onSuccess: async (data) => {
       login({ ...data.user, profileComplete: true }, data.token)
-      // Fetch full profile — backend has assigned community based on native_state_id
       await syncProfile()
       navigate(PATHS.onboarding)
     },
     onError: (error: Error & { errors?: Record<string, string[]>; status?: number }) => {
-      // 422 = validation error — the backend's message is meant for the user
-      // (e.g. "The email has already been taken."). Anything else (405, 500, …)
-      // may be a raw exception message, so fall back to a generic one instead
-      // of relaying backend internals to the user.
       const message = error.status === 422 && error.message
         ? error.message
         : 'Registration failed. Please try again.'
@@ -362,6 +344,7 @@ const RegisterPage: React.FC = () => {
   }
 
   const handleStep2Submit = (data: Step2Values) => {
+    step2Ref.current = data
     const s1 = step1Ref.current
     if (!s1) return
     registerMutation.mutate({
@@ -378,59 +361,28 @@ const RegisterPage: React.FC = () => {
     })
   }
 
+  const designationLabel = DESIGNATION_OPTIONS.find(d => d.value === step1Ref.current?.designation)?.label ?? ''
+
   return (
-    <Box sx={{
-      minHeight: '100vh',
-      bgcolor: 'background.default',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      py: { xs: 2, sm: 5 },
-      px: { xs: 1.5, sm: 2 },
-    }}>
-      {/* Back button — only on step 1 */}
-      {step === 1 && (
-        <Box sx={{ width: '100%', maxWidth: 520, mb: 1.5 }}>
-          <Button
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate(PATHS.auth.login)}
-            sx={{ color: 'text.secondary', fontWeight: 500, pl: 0, '&:hover': { bgcolor: 'transparent', color: 'text.primary' } }}
-          >
-            Back
-          </Button>
-        </Box>
+    <AuthCard maxWidth={480} bgcolor={colors.white}>
+      {step === 1 ? (
+        <AccountStep
+          prefillEmail={prefillEmail}
+          initialValues={step1Ref.current}
+          onNext={handleStep1Next}
+          onBack={() => navigate(PATHS.auth.login)}
+        />
+      ) : (
+        <ProfileLocationStep
+          name={step1Ref.current?.name ?? ''}
+          designationLabel={designationLabel}
+          initialValues={step2Ref.current}
+          onSubmit={handleStep2Submit}
+          onBack={(data) => { step2Ref.current = data; setStep(1) }}
+          isPending={registerMutation.isPending}
+        />
       )}
-
-      <Paper elevation={0} sx={{
-        width: '100%', maxWidth: 520, borderRadius: 4,
-        p: { xs: 2.5, sm: 4 },
-        bgcolor: 'background.paper',
-        border: '1px solid', borderColor: 'divider',
-      }}>
-        {step === 1 ? (
-          <AccountStep
-            prefillEmail={prefillEmail}
-            onNext={handleStep1Next}
-            onBack={() => navigate(PATHS.auth.login)}
-          />
-        ) : (
-          <LocationStep
-            onSubmit={handleStep2Submit}
-            onBack={() => setStep(1)}
-            isPending={registerMutation.isPending}
-          />
-        )}
-      </Paper>
-
-      {step === 1 && (
-        <Typography variant="caption" align="center" color="text.disabled" display="block" sx={{ mt: 2 }}>
-          By creating an account, you agree to our{' '}
-          <Box component="span" sx={{ color: 'primary.main', cursor: 'pointer', fontWeight: 500 }}>
-            Terms of Service
-          </Box>
-        </Typography>
-      )}
-    </Box>
+    </AuthCard>
   )
 }
 

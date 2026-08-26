@@ -28,7 +28,7 @@ import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
 import { makeStyles } from 'tss-react/mui'
 import { type Accommodation, accommodationTypeLabel, accommodationGenderLabel } from '@/services/accommodation.api'
 import { useMutualFriends } from '@/features/circle/hooks/useFriendshipQueries'
-import { formatINR, formatDate, getInitials } from '@/utils'
+import { formatINR, formatDate, getInitials, avatarGradient } from '@/utils'
 import colors from '@/theme/colors'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -355,8 +355,7 @@ const SharedRoomDetailSheet: React.FC<Props> = ({ acc, onClose, saved = false, o
 
   const hue = 110
   const heroGradient = `linear-gradient(160deg, oklch(84% 0.05 ${hue}), oklch(68% 0.08 ${hue + 30}))`
-  const posterHue = 200
-  const posterGradient = `linear-gradient(140deg, oklch(82% 0.07 ${posterHue}), oklch(72% 0.09 ${posterHue + 40}))`
+  const posterGradient = avatarGradient(acc.userId || acc.id)
 
   const eyebrow = [
     accommodationTypeLabel(acc.type),
@@ -461,7 +460,7 @@ const SharedRoomDetailSheet: React.FC<Props> = ({ acc, onClose, saved = false, o
           <Box className={classes.posterCard}>
             <Avatar
               className={classes.posterAvatar}
-              sx={{ background: posterGradient, color: `oklch(28% 0.07 ${posterHue})` }}
+              sx={{ background: posterGradient, color: '#fff' }}
             >
               {getInitials(acc.userName)}
             </Avatar>

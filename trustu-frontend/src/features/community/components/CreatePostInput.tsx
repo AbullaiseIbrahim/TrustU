@@ -5,7 +5,7 @@ import { makeStyles } from 'tss-react/mui'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/app/AuthProvider'
 import { useCreatePost } from '../hooks/usePostQueries'
-import { getInitials } from '@/utils'
+import { getInitials, selfAvatarGradient } from '@/utils'
 import colors from '@/theme/colors'
 
 const useStyles = makeStyles()(() => ({
@@ -34,7 +34,7 @@ const useStyles = makeStyles()(() => ({
     width: 36,
     height: 36,
     fontSize: '0.82rem',
-    background: `linear-gradient(135deg, ${colors.moss} 0%, ${colors.mossDeep} 100%)`,
+    background: selfAvatarGradient(),
     flexShrink: 0,
     fontWeight: 700,
   },
@@ -75,7 +75,7 @@ const useStyles = makeStyles()(() => ({
     width: 36,
     height: 36,
     fontSize: '0.82rem',
-    background: `linear-gradient(135deg, ${colors.moss} 0%, ${colors.mossDeep} 100%)`,
+    background: selfAvatarGradient(),
     flexShrink: 0,
     fontWeight: 700,
   },

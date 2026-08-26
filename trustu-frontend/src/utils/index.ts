@@ -29,3 +29,38 @@ export function formatDate(iso: string): string {
     day: 'numeric', month: 'short', year: 'numeric',
   })
 }
+
+// ── Avatar gradient ───────────────────────────────────────────────────────────
+// Every avatar in the prototype is a 150deg two-stop gradient circle with
+// white initials — not a pastel background with colored text. This is the
+// single source of truth for that palette; avatarGradient(seed) picks a
+// deterministic pair from a user id (or name, as a fallback), and
+// avatarSelfGradient is the fixed moss gradient the prototype always uses for
+// the signed-in user's own avatar.
+
+const AVATAR_GRADIENTS: [string, string][] = [
+  ['#C77B3B', '#9A5520'], // orange/brown
+  ['#B0497A', '#7A2D55'], // pink/mauve
+  ['#3B6FC7', '#234C9A'], // blue
+  ['#4A4A4A', '#2A2A2A'], // dark grey
+  ['#7A5BB0', '#4A2D7A'], // purple
+]
+
+export const AVATAR_SELF_GRADIENT: [string, string] = ['#1E7A47', '#0F5630']
+
+function hashSeed(seed: string): number {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+  return h
+}
+
+/** Deterministic 150deg gradient CSS string for a given user id / name seed. */
+export function avatarGradient(seed: string): string {
+  const [from, to] = AVATAR_GRADIENTS[hashSeed(seed) % AVATAR_GRADIENTS.length]
+  return `linear-gradient(150deg, ${from}, ${to})`
+}
+
+/** The fixed gradient the prototype uses for the signed-in user's own avatar everywhere. */
+export function selfAvatarGradient(): string {
+  return `linear-gradient(150deg, ${AVATAR_SELF_GRADIENT[0]}, ${AVATAR_SELF_GRADIENT[1]})`
+}

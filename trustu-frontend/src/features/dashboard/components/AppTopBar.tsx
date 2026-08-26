@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
-import { Box, Typography, IconButton, Badge, Menu, MenuItem, ListItemText } from '@mui/material'
+import React from 'react'
+import { Box, Typography, IconButton, Badge } from '@mui/material'
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import { makeStyles } from 'tss-react/mui'
-import { useAuth } from '@/app/AuthProvider'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { PATHS } from '@/routes/paths'
 import colors from '@/theme/colors'
 
 const useStyles = makeStyles()(() => ({
@@ -82,15 +83,21 @@ const useStyles = makeStyles()(() => ({
 
 const AppTopBar: React.FC = () => {
   const { classes } = useStyles()
-  const { user } = useAuth()
-  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
 
-  // Community name — truncate to 12 chars for the pill
-  const communityLabel = user?.communityName
-    ? user.communityName.length > 14
-      ? user.communityName.slice(0, 13) + '…'
-      : user.communityName
-    : 'Community'
+  // The pill is a Community ⇄ Network toggle. On the Community page it reads
+  // the current mode from ?view=network; from anywhere else it always offers
+  // "Network" as a jump-in. Toggling off network mode just drops the query
+  // param — it doesn't touch user.communityId, so it always lands back on
+  // whichever community the user actually belongs to.
+  const isOnCommunityPage = location.pathname === PATHS.dashboard.community
+  const isNetworkView = isOnCommunityPage && searchParams.get('view') === 'network'
+
+  const handleTogglePill = () => {
+    navigate(isNetworkView ? PATHS.dashboard.community : `${PATHS.dashboard.community}?view=network`)
+  }
 
   return (
     <Box className={classes.root}>
@@ -106,15 +113,15 @@ const AppTopBar: React.FC = () => {
       </Box>
 
       <Box className={classes.actions}>
-        {/* Community switcher pill */}
+        {/* Community ⇄ Network toggle */}
         <Box
           component="button"
           className={classes.communityPill}
-          onClick={(e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget)}
-          aria-label="Switch community"
+          onClick={handleTogglePill}
+          aria-label={isNetworkView ? 'Switch to your community' : 'Switch to network view'}
         >
           <FilterListIcon sx={{ fontSize: '0.95rem', color: '#fff' }} />
-          {communityLabel}
+          {isNetworkView ? 'Community' : 'Network'}
         </Box>
 
         {/* Notifications */}
@@ -124,23 +131,6 @@ const AppTopBar: React.FC = () => {
           </Badge>
         </IconButton>
       </Box>
-
-      {/* Community menu (placeholder — only shows current) */}
-      <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
-        onClose={() => setMenuAnchor(null)}
-        PaperProps={{ sx: { borderRadius: 2, minWidth: 200, mt: 0.5 } }}
-      >
-        <MenuItem dense onClick={() => setMenuAnchor(null)}>
-          <ListItemText
-            primary={user?.communityName ?? 'My Community'}
-            secondary="Current community"
-            primaryTypographyProps={{ fontWeight: 700, fontSize: '0.88rem' }}
-            secondaryTypographyProps={{ fontSize: '0.72rem', color: colors.moss }}
-          />
-        </MenuItem>
-      </Menu>
     </Box>
   )
 }

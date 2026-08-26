@@ -81,7 +81,7 @@ const useStyles = makeStyles()(() => ({
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: '1fr',
+    gridTemplateColumns: '1fr 1fr',
     gap: 12,
     padding: '8px 20px 32px',
   },
@@ -90,7 +90,7 @@ const useStyles = makeStyles()(() => ({
     flexDirection: 'column',
     alignItems: 'flex-start',
     gap: 10,
-    padding: '18px 16px',
+    padding: '18px 14px',
     borderRadius: 20,
     border: '1.5px solid rgba(0,0,0,0.07)',
     backgroundColor: '#FAFAFA',
@@ -125,12 +125,12 @@ const useStyles = makeStyles()(() => ({
     fontSize: '0.88rem',
     color: colors.textPrimary,
     lineHeight: 1.3,
+    marginBottom: 4,
   },
   tileDesc: {
     fontSize: '0.72rem',
     color: colors.textSecondary,
     lineHeight: 1.4,
-    marginTop: -4,
   },
 }))
 

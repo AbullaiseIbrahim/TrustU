@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Box, Typography, Avatar } from '@mui/material'
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined'
 import { makeStyles } from 'tss-react/mui'
@@ -24,7 +24,7 @@ import type { Friend, PendingRequest } from '@/services/friendship.api'
 import UserProfileSheet, { type ProfileSheetUser } from '../components/UserProfileSheet'
 import { useCommunityMembers, useCommunity } from '../hooks/useCommunityQueries'
 import type { CommunityMember } from '@/types/community.types'
-import { getInitials } from '@/utils'
+import { getInitials, avatarGradient } from '@/utils'
 import colors from '@/theme/colors'
 import CircularProgress from '@mui/material/CircularProgress'
 import Button from '@mui/material/Button'
@@ -35,34 +35,18 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
 type Tab = 'feed' | 'members' | 'friends' | 'mutual'
 
-// ── Avatar color palette (cycled by id hash, like the reference design) ────────
-const AVATAR_PALETTE = [
-  { bg: '#FBE3D0', fg: '#C9762E' },
-  { bg: '#DCEAFE', fg: '#3B6FB6' },
-  { bg: '#F6DDEB', fg: '#B0568E' },
-  { bg: '#E1EFE0', fg: '#5C8A5E' },
-  { bg: '#FFF3D6', fg: '#C99A2E' },
-  { bg: '#E6E1F7', fg: '#7660B8' },
-]
-
-function avatarColor(seed: string) {
-  let hash = 0
-  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0
-  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length]
-}
-
 const useStyles = makeStyles()(() => ({
   // ── Community gradient card ────────────────────────────────────────────────
   communityCard: {
-    background: `linear-gradient(155deg, #1a7a4a 0%, ${colors.mossDeep} 100%)`,
-    borderRadius: 20,
+    background: `linear-gradient(150deg, #2A8A52 0%, ${colors.mossDeep} 80%)`,
+    borderRadius: 22,
     margin: '4px 16px 14px',
-    padding: '20px 18px 16px',
+    padding: '24px 22px 22px',
     color: '#fff',
     position: 'relative',
     overflow: 'hidden',
     animation: 'fadeSlideUp 0.3s ease both',
-    boxShadow: `0 8px 28px rgba(14,107,63,0.30)`,
+    boxShadow: '0 14px 30px -16px rgba(15,86,48,0.55)',
   },
   leafDecor: {
     position: 'absolute',
@@ -87,6 +71,9 @@ const useStyles = makeStyles()(() => ({
     borderRadius: 20,
     padding: '5px 12px',
     marginBottom: 8,
+    transition: 'background-color 0.15s ease',
+    '&:hover': { backgroundColor: 'rgba(255,255,255,0.28)' },
+    '&:active': { transform: 'scale(0.97)' },
   },
   membersPillText: {
     fontWeight: 700,
@@ -140,6 +127,8 @@ const useStyles = makeStyles()(() => ({
     gap: 6,
     padding: '2px 16px 12px',
     overflowX: 'auto',
+    minWidth: 0,
+    maxWidth: '100%',
     '&::-webkit-scrollbar': { display: 'none' },
   },
   tabBtn: {
@@ -417,9 +406,11 @@ const CommunityCard: React.FC<{
   friendCount: number
   memberCount: number
   subCommCount?: number
-}> = ({ communityName, friendCount, memberCount, subCommCount = 0 }) => {
+  isNetworkView?: boolean
+  onExplore?: () => void
+  onSelectMembers?: () => void
+}> = ({ communityName, friendCount, memberCount, subCommCount = 0, isNetworkView = false, onExplore, onSelectMembers }) => {
   const { classes } = useStyles()
-  const navigate = useNavigate()
   const { data: friends = [] } = useFriends()
   const first5 = (friends as Friend[]).slice(0, 5)
 
@@ -440,8 +431,13 @@ const CommunityCard: React.FC<{
         {communityName ?? 'My Community'}
       </Typography>
 
-      {/* Members pill */}
-      <Box className={classes.membersPill}>
+      {/* Members pill — opens the Members tab */}
+      <Box
+        component="button"
+        className={classes.membersPill}
+        onClick={onSelectMembers}
+        sx={{ border: 'none', fontFamily: 'inherit', cursor: onSelectMembers ? 'pointer' : 'default' }}
+      >
         <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
           <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
         </svg>
@@ -473,14 +469,14 @@ const CommunityCard: React.FC<{
         </Box>
       )}
 
-      {/* Sub-communities link */}
-      {subCommCount > 0 && (
-        <Box className={classes.subCommLink} onClick={() => navigate(PATHS.onboarding, { state: { revisit: true } })}>
+      {/* Amalgam link — only shown in Network view, opens the community-switcher grid */}
+      {isNetworkView && subCommCount > 0 && (
+        <Box className={classes.subCommLink} onClick={onExplore}>
           <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
             <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
           </svg>
           <Typography className={classes.subCommText}>
-            Amalgam of {subCommCount}+ sub-communities
+            Amalgam of {subCommCount}+ Kerala communities
           </Typography>
           <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
             <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
@@ -539,7 +535,7 @@ const FriendsTab: React.FC = () => {
         {list.length === 0 ? (
           <Typography className={classes.emptyRow}>No friends yet</Typography>
         ) : list.map((f) => {
-          const av = avatarColor(f.id)
+          const avatarBg = avatarGradient(f.id)
           return (
             <Box
               key={f.id}
@@ -550,7 +546,7 @@ const FriendsTab: React.FC = () => {
               <Avatar
                 src={f.avatarUrl ?? undefined}
                 className={classes.personAvatar}
-                sx={{ bgcolor: av.bg, color: av.fg }}
+                sx={{ background: avatarBg, color: '#fff' }}
               >
                 {getInitials(f.name)}
               </Avatar>
@@ -611,7 +607,7 @@ const RequestsTab: React.FC = () => {
         {list.length === 0 ? (
           <Typography className={classes.emptyRow}>No pending requests</Typography>
         ) : list.map((req) => {
-          const av = avatarColor(req.id)
+          const avatarBg = avatarGradient(req.id)
           return (
             <Box key={req.id} className={classes.requestRow}>
               <Box
@@ -622,7 +618,7 @@ const RequestsTab: React.FC = () => {
                 <Avatar
                   src={req.avatarUrl ?? undefined}
                   className={classes.personAvatar}
-                  sx={{ bgcolor: av.bg, color: av.fg }}
+                  sx={{ background: avatarBg, color: '#fff' }}
                 >
                   {getInitials(req.name)}
                 </Avatar>
@@ -718,7 +714,9 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
     return (
       <Box className={classes.circleContent}>
         <Box className={classes.circleCard}>
-          <Typography className={classes.emptyRow}>No mutual friends yet. Add friends to see connections.</Typography>
+          <Typography className={classes.emptyRow}>
+            No suggestions yet. Once your friends add their own friends, people you&apos;re not connected to yet will show up here.
+          </Typography>
         </Box>
       </Box>
     )
@@ -728,15 +726,15 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
     <Box className={classes.circleContent}>
       <Box sx={{ px: 2, pb: 1 }}>
         <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: colors.ink }}>
-          {mutuals.length} Mutual Friends
+          {mutuals.length} People You May Know
         </Typography>
         <Typography sx={{ fontSize: '0.8rem', color: colors.ink3, mt: '2px' }}>
-          People you share a connection with through your friends
+          Friends of your friends who aren&apos;t your friend yet — not people you already share a connection with.
         </Typography>
       </Box>
       <Box className={classes.circleCard}>
         {mutuals.map((f) => {
-          const av = avatarColor(f.id)
+          const avatarBg = avatarGradient(f.id)
           return (
             <Box
               key={f.id}
@@ -744,7 +742,7 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
               sx={{ cursor: 'pointer' }}
               onClick={() => setViewingUser({ userId: f.userId, name: f.name, designation: f.designation, avatarUrl: f.avatarUrl })}
             >
-              <Avatar src={f.avatarUrl ?? undefined} className={classes.personAvatar} sx={{ bgcolor: av.bg, color: av.fg }}>
+              <Avatar src={f.avatarUrl ?? undefined} className={classes.personAvatar} sx={{ background: avatarBg, color: '#fff' }}>
                 {getInitials(f.name)}
               </Avatar>
               <Box className={classes.personInfo}>
@@ -841,7 +839,7 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number; c
           // Compare real user ids (not the membership row's `id`) — coerce to
           // string defensively in case either side ever comes back numeric.
           const isSelf = !!currentUserId && String(m.userId) === String(currentUserId)
-          const av = avatarColor(m.userId)
+          const avatarBg = avatarGradient(m.userId)
           return (
             <Box
               key={m.id}
@@ -855,7 +853,7 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number; c
               <Avatar
                 src={m.avatarUrl ?? undefined}
                 className={classes.personAvatar}
-                sx={{ bgcolor: av.bg, color: av.fg }}
+                sx={{ background: avatarBg, color: '#fff' }}
               >
                 {getInitials(m.name)}
               </Avatar>
@@ -962,18 +960,39 @@ const CommunityPage: React.FC = () => {
   const memberCount = membersPageForCount?.meta?.total ?? 0
 
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const tabParam = searchParams.get('tab') as Tab | null
   const activeTab: Tab = (tabParam && ['feed', 'members', 'friends', 'mutual'].includes(tabParam))
     ? tabParam
     : 'feed'
-  const setActiveTab = (tab: Tab) => setSearchParams(tab === 'feed' ? {} : { tab }, { replace: true })
-  const subCommCount = communityDetail?.subCommunities?.length ?? 0
+  const setActiveTab = (tab: Tab) => {
+    const next = new URLSearchParams(searchParams)
+    tab === 'feed' ? next.delete('tab') : next.set('tab', tab)
+    setSearchParams(next, { replace: true })
+  }
+  // Scroll the active tab pill fully into view — with 4 tabs (the last being the
+  // long "People You May Know" label) it can otherwise sit clipped at the right
+  // edge of the horizontally-scrolling tab bar instead of being fully visible.
+  const activeTabRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' })
+  }, [activeTab])
+
+  const isNetworkView = searchParams.get('view') === 'network'
+  const otherCommunities = communityDetail?.subCommunities ?? []
+  const subCommCount = otherCommunities.length
+  // No dedicated "network" entity in the API — the network view is the sum of
+  // this community plus its sibling communities (communityDetail.subCommunities).
+  const networkMemberCount = memberCount + otherCommunities.reduce((sum, c) => sum + c.memberCount, 0)
+  // Community naming follows "State-Locality" (e.g. "Kerala-Jamia Nagar") — use
+  // the state part for the network label since there's no separate city field.
+  const networkLabel = `${(user?.communityName ?? '').split('-')[0] || 'Kerala'} Malayali Network`
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: 'feed',    label: 'Feed' },
     { key: 'members', label: 'Members' },
     { key: 'friends', label: 'Friends', badge: pendingCount },
-    { key: 'mutual',  label: 'Mutual Friends' },
+    { key: 'mutual',  label: 'People You May Know' },
   ]
 
   return (
@@ -981,9 +1000,12 @@ const CommunityPage: React.FC = () => {
 
       {/* Community gradient card */}
       <CommunityCard
-        communityName={user?.communityName}
+        communityName={isNetworkView ? networkLabel : user?.communityName}
+        isNetworkView={isNetworkView}
+        onExplore={() => navigate(PATHS.onboarding, { state: { revisit: true, initialView: 'explore' } })}
+        onSelectMembers={() => setActiveTab('members')}
+        memberCount={isNetworkView ? networkMemberCount : memberCount}
         friendCount={friendCount}
-        memberCount={memberCount}
         subCommCount={subCommCount}
       />
 
@@ -992,6 +1014,7 @@ const CommunityPage: React.FC = () => {
         {tabs.map((tab) => (
           <Box
             key={tab.key}
+            ref={activeTab === tab.key ? activeTabRef : undefined}
             component="button"
             className={cx(classes.tabBtn, { [classes.tabBtnActive]: activeTab === tab.key })}
             onClick={() => setActiveTab(tab.key)}

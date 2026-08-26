@@ -10,7 +10,7 @@ import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { makeStyles } from 'tss-react/mui'
-import { getInitials, formatRelativeTime } from '@/utils'
+import { getInitials, formatRelativeTime, avatarGradient } from '@/utils'
 import type { Post } from '@/types/post.types'
 import { useCreateComment, useComments, useLikePost, useDeletePost, useDeleteComment } from '../hooks/usePostQueries'
 import { useAuth } from '@/app/AuthProvider'
@@ -18,21 +18,6 @@ import colors from '@/theme/colors'
 
 interface PostCardProps {
   post: Post
-}
-
-// Deterministic avatar color from user id
-const PALETTE = [
-  { bg: '#FBE3D0', fg: '#C9762E' },
-  { bg: '#DCEAFE', fg: '#3B6FB6' },
-  { bg: '#F6DDEB', fg: '#B0568E' },
-  { bg: '#E1EFE0', fg: '#5C8A5E' },
-  { bg: '#FFF3D6', fg: '#C99A2E' },
-  { bg: '#E6E1F7', fg: '#7660B8' },
-]
-function avatarColor(seed: string) {
-  let h = 0
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
-  return PALETTE[h % PALETTE.length]
 }
 
 const useStyles = makeStyles()(() => ({
@@ -227,7 +212,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   )
 
   const isOwnPost = user?.id === post.userId
-  const av = avatarColor(post.userId || post.id)
+  const avatarBg = avatarGradient(post.userId || post.id)
 
   // Combine title + description as single readable content
   const contentText = post.title && post.description
@@ -259,7 +244,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           <Avatar
             className={classes.avatar}
             src={post.userAvatarUrl ?? undefined}
-            sx={{ bgcolor: av.bg, color: av.fg }}
+            sx={{ background: avatarBg, color: '#fff' }}
           >
             {getInitials(post.userName)}
           </Avatar>
@@ -392,13 +377,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             </Typography>
           ) : (
             comments.map((comment) => {
-              const cav = avatarColor(comment.userId || comment.id)
+              const commentAvatarBg = avatarGradient(comment.userId || comment.id)
               return (
                 <Box key={comment.id} className={classes.replyItem}>
                   <Avatar
                     className={classes.replyAvatar}
                     src={comment.userAvatarUrl ?? undefined}
-                    sx={{ bgcolor: cav.bg, color: cav.fg }}
+                    sx={{ background: commentAvatarBg, color: '#fff' }}
                   >
                     {getInitials(comment.userName)}
                   </Avatar>
