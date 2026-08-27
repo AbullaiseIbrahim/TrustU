@@ -15,6 +15,7 @@ import { PATHS } from '@/routes/paths'
 import colors from '@/theme/colors'
 import { StepPill } from '@/features/auth/components/AuthField'
 import type { Community } from '@/types/community.types'
+import { formatCommunityName } from '@/utils'
 
 // ── Styles — exact pixel match to the prototype's onboarding screens ───────────
 
@@ -250,7 +251,7 @@ const ExploreCommunities: React.FC<{ myCommunityId?: string | null; myCommunityN
 
   const handleTileClick = (c: Community) => {
     if (c.memberCount > 0) setSwitchTarget(c)
-    else setComingSoon(c.name)
+    else setComingSoon(formatCommunityName(c.name))
   }
 
   // No onError here — a failure still reaches the user via the global
@@ -260,7 +261,7 @@ const ExploreCommunities: React.FC<{ myCommunityId?: string | null; myCommunityN
     joinMutation.mutate(switchTarget.id, {
       onSuccess: async () => {
         await syncProfile()
-        showSuccess(`Switched to ${switchTarget.name}`)
+        showSuccess(`Switched to ${formatCommunityName(switchTarget.name)}`)
         navigate(PATHS.dashboard.community, { replace: true })
       },
     })
@@ -290,7 +291,7 @@ const ExploreCommunities: React.FC<{ myCommunityId?: string | null; myCommunityN
             {/* My community — already joined */}
             <Box className={classes.gridTile} sx={{ background: colors.mossSoft, borderColor: colors.moss }}>
               <Typography className={classes.gridTileName} sx={{ color: colors.mossDeep }}>
-                {myCommunityName ?? 'Your community'}
+                {myCommunityName ? formatCommunityName(myCommunityName) : 'Your community'}
               </Typography>
               <Typography className={classes.gridTileMeta}>Your community</Typography>
               <Box className={classes.gridBadge}>
@@ -299,7 +300,7 @@ const ExploreCommunities: React.FC<{ myCommunityId?: string | null; myCommunityN
             </Box>
             {others.map((c) => (
               <Box key={c.id} className={classes.gridTile} onClick={() => handleTileClick(c)}>
-                <Typography className={classes.gridTileName}>{c.name}</Typography>
+                <Typography className={classes.gridTileName}>{formatCommunityName(c.name)}</Typography>
                 <Typography className={classes.gridTileMeta}>
                   {c.memberCount > 0 ? `${c.memberCount.toLocaleString('en-IN')} members` : 'Coming soon'}
                 </Typography>
@@ -322,9 +323,9 @@ const ExploreCommunities: React.FC<{ myCommunityId?: string | null; myCommunityN
             <Typography component="h3" className={classes.modalTitle}>Switch community?</Typography>
             <Typography className={classes.modalBody}>
               You&apos;ll move from{' '}
-              <Box component="span" sx={{ fontWeight: 700, color: colors.ink }}>{myCommunityName ?? 'your current community'}</Box>
+              <Box component="span" sx={{ fontWeight: 700, color: colors.ink }}>{myCommunityName ? formatCommunityName(myCommunityName) : 'your current community'}</Box>
               {' '}to{' '}
-              <Box component="span" sx={{ fontWeight: 700, color: colors.ink }}>{switchTarget.name}</Box>. You can switch back anytime.
+              <Box component="span" sx={{ fontWeight: 700, color: colors.ink }}>{formatCommunityName(switchTarget.name)}</Box>. You can switch back anytime.
             </Typography>
             <Box className={classes.modalBtnRow}>
               <Box
@@ -429,7 +430,7 @@ const OnboardingCommunityPage: React.FC = () => {
     )
   }
 
-  const communityName = myCommunity?.name ?? user?.communityName ?? 'Your Community'
+  const communityName = formatCommunityName(myCommunity?.name ?? user?.communityName) || 'Your Community'
   const locationText = myCommunity?.description || null
   const memberCount = membersPage?.meta?.total ?? 0
   const friendCount = friends.length

@@ -17,7 +17,7 @@ import { makeStyles } from 'tss-react/mui'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/app/AuthProvider'
 import { PATHS } from '@/routes/paths'
-import { getInitials } from '@/utils'
+import { getInitials, formatCommunityName } from '@/utils'
 import colors from '@/theme/colors'
 
 const useStyles = makeStyles()(() => ({
@@ -142,7 +142,7 @@ const DashboardNavbar: React.FC = () => {
               <Typography className={classes.appName}>TrustU</Typography>
               {user?.communityName && (
                 <Typography className={classes.communitySubtitle}>
-                  {user.communityName}
+                  {formatCommunityName(user.communityName)}
                 </Typography>
               )}
             </Box>

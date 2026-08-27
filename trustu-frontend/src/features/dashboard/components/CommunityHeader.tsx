@@ -4,6 +4,7 @@ import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import { makeStyles } from 'tss-react/mui'
 import type { Community } from '@/types/community.types'
 import colors from '@/theme/colors'
+import { formatCommunityName } from '@/utils'
 
 interface CommunityHeaderProps {
   community?: Community
@@ -91,7 +92,7 @@ const CommunityHeader: React.FC<CommunityHeaderProps> = ({ community, isLoading 
           ) : (
             <>
               <Typography className={classes.name}>
-                {community?.name ?? 'Your Community'}
+                {community?.name ? formatCommunityName(community.name) : 'Your Community'}
               </Typography>
               <Box className={classes.memberRow}>
                 <PeopleAltOutlinedIcon className={classes.memberIcon} />

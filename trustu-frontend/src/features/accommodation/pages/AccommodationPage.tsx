@@ -32,7 +32,7 @@ import { makeStyles } from 'tss-react/mui'
 import { useSearchParams } from 'react-router-dom'
 import { useAccommodations, useAccommodationDetail } from '../hooks/useAccommodationQueries'
 import type { Accommodation } from '@/services/accommodation.api'
-import { formatINR, formatDate, getInitials, avatarGradient } from '@/utils'
+import { formatINR, formatDate, getInitials, avatarGradient, formatCommunityName } from '@/utils'
 import colors from '@/theme/colors'
 import EmptyState from '@/components/EmptyState'
 import { useAuth } from '@/app/AuthProvider'
@@ -1787,7 +1787,7 @@ const AccommodationPage: React.FC = () => {
       <Box sx={{ backgroundColor: colors.cream, minHeight: '100%', pb: 4 }}>
         {/* Breadcrumb */}
         <Box className={classes.breadcrumb}>
-          <Box className={classes.breadcrumbText}>{user?.communityName ?? 'Explore'}</Box>
+          <Box className={classes.breadcrumbText}>{user?.communityName ? formatCommunityName(user.communityName) : 'Explore'}</Box>
         </Box>
 
         <Typography className={classes.landingHeading}>What are you looking for?</Typography>
@@ -1862,7 +1862,7 @@ const AccommodationPage: React.FC = () => {
       {/* Community stats header */}
       <Box className={classes.communityHeader}>
         <Typography className={classes.communityHeaderName}>
-          {user?.communityName ?? 'Community'}
+          {user?.communityName ? formatCommunityName(user.communityName) : 'Community'}
         </Typography>
         <Typography className={classes.communityHeaderMembers}>
           {/* memberCount comes from community API — show friendCount as proxy */}

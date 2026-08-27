@@ -6,7 +6,7 @@ import CheckIcon from '@mui/icons-material/Check'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import { makeStyles } from 'tss-react/mui'
 import colors from '@/theme/colors'
-import { getInitials } from '@/utils'
+import { getInitials, formatCommunityName } from '@/utils'
 import { useMutualFriends } from '@/features/circle/hooks/useFriendshipQueries'
 
 const SlideUp = React.forwardRef(function SlideUp(
@@ -180,7 +180,7 @@ const UserProfileSheet: React.FC<Props> = ({ open, onClose, user, friendStatus, 
         </Avatar>
         <Typography className={classes.name}>{displayUser.name}</Typography>
         {displayUser.designation && <Typography className={classes.designation}>{displayUser.designation}</Typography>}
-        {displayUser.communityName && <Typography className={classes.communityRow}>{displayUser.communityName}</Typography>}
+        {displayUser.communityName && <Typography className={classes.communityRow}>{formatCommunityName(displayUser.communityName)}</Typography>}
 
         {isLoading ? (
           <CircularProgress size={18} sx={{ color: colors.moss, mt: 2 }} />

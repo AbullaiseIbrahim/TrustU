@@ -1,3 +1,20 @@
+/**
+ * The backend returns community names as "State City" (e.g. "Kerala Delhi")
+ * with no locality — the product currently has one live community (Kerala
+ * natives in Jamia Nagar, Delhi), so that exact name is special-cased to the
+ * desired "State - Locality" display format. Any other name just gets a dash
+ * inserted after its first word, until more communities go live and the
+ * backend can return this format directly.
+ */
+export function formatCommunityName(name?: string | null): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  if (trimmed === 'Kerala Delhi') return 'Kerala - Jamia Nagar'
+  if (trimmed.includes('-')) return trimmed
+  const spaceIndex = trimmed.indexOf(' ')
+  return spaceIndex === -1 ? trimmed : `${trimmed.slice(0, spaceIndex)} - ${trimmed.slice(spaceIndex + 1)}`
+}
+
 export function getInitials(name: string): string {
   return name.split(' ').map(p => p[0]?.toUpperCase() ?? '').slice(0, 2).join('')
 }

@@ -10,7 +10,7 @@ import { AuthField, AuthSelectField, StepPill, authInputSx } from '../components
 import { authApi } from '@/services/auth.api'
 import { useAuth } from '@/app/AuthProvider'
 import { PATHS } from '@/routes/paths'
-import { SIGNUP_ENABLED_STATES, DISTRICTS_BY_STATE } from '@/constants/states'
+import { NATIVE_STATE_OPTIONS, CURRENT_STATE_OPTIONS, DISTRICTS_BY_STATE } from '@/constants/states'
 import { getInitials, selfAvatarGradient } from '@/utils'
 import colors from '@/theme/colors'
 
@@ -217,13 +217,23 @@ interface Step2Props {
 }
 
 function ProfileLocationStep({ name, designationLabel, initialValues, onSubmit, onBack, isPending }: Step2Props) {
+  const nativeStateOptions = NATIVE_STATE_OPTIONS.map(s => ({ value: String(s.id), label: s.name }))
+  const currentStateOptions = CURRENT_STATE_OPTIONS.map(s => ({ value: String(s.id), label: s.name }))
+
   const { control, handleSubmit, watch, getValues, formState: { errors } } =
     useForm<Step2Values>({
       resolver: zodResolver(step2Schema),
-      defaultValues: initialValues ?? { native_state_id: '', native_district: '', current_state_id: '', current_district: '' },
+      // Only one state — and, for Delhi, only one district (Jamia Nagar) —
+      // is offered right now, so pre-select both rather than making the user
+      // pick from a list of one.
+      defaultValues: initialValues ?? {
+        native_state_id: nativeStateOptions[0]?.value ?? '',
+        native_district: '',
+        current_state_id: currentStateOptions[0]?.value ?? '',
+        current_district: (DISTRICTS_BY_STATE[Number(currentStateOptions[0]?.value)] ?? [])[0] ?? '',
+      },
     })
 
-  const stateOptions = SIGNUP_ENABLED_STATES.map(s => ({ value: String(s.id), label: s.name }))
   const nativeStateId = watch('native_state_id')
   const currentStateId = watch('current_state_id')
   const nativeDistrictOptions = (DISTRICTS_BY_STATE[Number(nativeStateId)] ?? []).map(d => ({ value: d, label: d }))
@@ -266,7 +276,7 @@ function ProfileLocationStep({ name, designationLabel, initialValues, onSubmit, 
           <Box sx={{ display: 'flex', gap: '12px' }}>
             <Box sx={{ flex: 1 }}>
               <Controller name="native_state_id" control={control} render={({ field }) => (
-                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="State" options={stateOptions} />
+                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="State" options={nativeStateOptions} />
               )} />
               {errors.native_state_id && (
                 <Typography sx={{ fontSize: '12px', fontWeight: 600, color: colors.urgent, marginTop: '6px' }}>
@@ -287,7 +297,7 @@ function ProfileLocationStep({ name, designationLabel, initialValues, onSubmit, 
           <Box sx={{ display: 'flex', gap: '12px' }}>
             <Box sx={{ flex: 1 }}>
               <Controller name="current_state_id" control={control} render={({ field }) => (
-                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="State" options={stateOptions} />
+                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="State" options={currentStateOptions} />
               )} />
               {errors.current_state_id && (
                 <Typography sx={{ fontSize: '12px', fontWeight: 600, color: colors.urgent, marginTop: '6px' }}>

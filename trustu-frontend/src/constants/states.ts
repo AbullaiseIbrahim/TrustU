@@ -38,10 +38,14 @@ export const INDIA_STATES: { id: number; name: string }[] = [
   { id: 36, name: 'Puducherry' },
 ]
 
-/** States enabled for sign-up during initial rollout. Expand as coverage grows. */
-export const SIGNUP_ENABLED_STATES = INDIA_STATES.filter(s =>
-  s.name === 'Kerala' || s.name === 'Delhi'
-)
+/**
+ * Sign-up is currently locked to the single live community — Kerala natives
+ * now living in Jamia Nagar, Delhi — so "Permanent State" and "Current State"
+ * each only offer the one state that community requires. Expand both lists
+ * as more communities go live.
+ */
+export const NATIVE_STATE_OPTIONS = INDIA_STATES.filter(s => s.name === 'Kerala')
+export const CURRENT_STATE_OPTIONS = INDIA_STATES.filter(s => s.name === 'Delhi')
 
 /**
  * District/area options shown under a selected state, for display purposes
@@ -56,10 +60,6 @@ export const DISTRICTS_BY_STATE: Record<number, string[]> = {
     'Idukki', 'Ernakulam', 'Thrissur', 'Palakkad', 'Malappuram',
     'Kozhikode', 'Wayanad', 'Kannur', 'Kasaragod',
   ],
-  // Delhi (id 32) — the 11 official revenue districts.
-  32: [
-    'Central Delhi', 'East Delhi', 'New Delhi', 'North Delhi', 'North East Delhi',
-    'North West Delhi', 'Shahdara', 'South Delhi', 'South East Delhi',
-    'South West Delhi', 'West Delhi',
-  ],
+  // Delhi (id 32) — only Jamia Nagar is a live community area for now.
+  32: ['Jamia Nagar'],
 }

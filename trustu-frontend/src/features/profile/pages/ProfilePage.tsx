@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/app/AuthProvider'
 import { useProfileQuery, useUpdateProfile } from '../hooks/useProfileMutations'
 import { authApi } from '@/services/auth.api'
-import { getInitials, avatarGradient, selfAvatarGradient, formatINR, formatDate } from '@/utils'
+import { getInitials, avatarGradient, selfAvatarGradient, formatINR, formatDate, formatCommunityName } from '@/utils'
 import { PATHS } from '@/routes/paths'
 import colors from '@/theme/colors'
 import type { Designation, Gender } from '@/types/auth.types'
@@ -918,7 +918,7 @@ const ProfilePage: React.FC = () => {
         </Box>
 
         <Typography className={classes.profileCaption}>
-          {displayUser?.communityName ? `Member of ${displayUser.communityName}` : 'Complete your profile to connect with your community'}
+          {displayUser?.communityName ? `Member of ${formatCommunityName(displayUser.communityName)}` : 'Complete your profile to connect with your community'}
         </Typography>
       </Box>
 
@@ -934,7 +934,7 @@ const ProfilePage: React.FC = () => {
       <Box className={classes.detailCard}>
         <DetailRow icon={genderIcon} label="Gender" value={displayUser?.gender ?? null} />
         <DetailRow icon={<FlagOutlinedIcon />} label="From" value={displayUser?.nativeStateName ?? null} />
-        <DetailRow icon={<LocationOnOutlinedIcon />} label="Living in" value={displayUser?.communityName ?? null} />
+        <DetailRow icon={<LocationOnOutlinedIcon />} label="Living in" value={displayUser?.communityName ? formatCommunityName(displayUser.communityName) : null} />
         <DetailRow icon={<BadgeOutlinedIcon />} label="Designation" value={displayUser?.designation ?? null} />
         <DetailRow icon={<SchoolOutlinedIcon />} label="Institution" value={displayUser?.institute ?? null} />
       </Box>

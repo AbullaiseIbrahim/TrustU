@@ -24,7 +24,7 @@ import type { Friend, PendingRequest } from '@/services/friendship.api'
 import UserProfileSheet, { type ProfileSheetUser } from '../components/UserProfileSheet'
 import { useCommunityMembers, useCommunity } from '../hooks/useCommunityQueries'
 import type { CommunityMember } from '@/types/community.types'
-import { getInitials, avatarGradient } from '@/utils'
+import { getInitials, avatarGradient, formatCommunityName } from '@/utils'
 import colors from '@/theme/colors'
 import CircularProgress from '@mui/material/CircularProgress'
 import Button from '@mui/material/Button'
@@ -85,13 +85,13 @@ const useStyles = makeStyles()(() => ({
     fontSize: '0.82rem',
     color: 'rgba(255,255,255,0.80)',
     fontWeight: 500,
-    marginBottom: 10,
     lineHeight: 1.4,
   },
   subCommLink: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 4,
+    marginTop: 10,
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
     padding: '5px 12px',
@@ -409,13 +409,15 @@ const useStyles = makeStyles()(() => ({
 // ── Community gradient card ────────────────────────────────────────────────────
 const CommunityCard: React.FC<{
   communityName?: string | null
+  /** The user's actual joined community — shown on the Amalgam link in Network view, as opposed to the "Delhi Malayali Network" label used for the card title there. */
+  joinedCommunityName?: string | null
   friendCount: number
   memberCount: number
   subCommCount?: number
   isNetworkView?: boolean
   onExplore?: () => void
   onSelectMembers?: () => void
-}> = ({ communityName, friendCount, memberCount, subCommCount = 0, isNetworkView = false, onExplore, onSelectMembers }) => {
+}> = ({ communityName, joinedCommunityName, friendCount, memberCount, subCommCount = 0, isNetworkView = false, onExplore, onSelectMembers }) => {
   const { classes } = useStyles()
   const { data: friends = [] } = useFriends()
   const first5 = (friends as Friend[]).slice(0, 5)
@@ -452,13 +454,11 @@ const CommunityCard: React.FC<{
         </Typography>
       </Box>
 
-      {/* Friends · Mutual Friends line */}
-      {friendCount > 0 && (
-        <Typography className={classes.friendsLine}>
-          {friendCount.toLocaleString('en-IN')} Friends
-          {mutualFriendsCount > 0 && ` · ${mutualFriendsCount.toLocaleString('en-IN')} Mutual Friends`}
-        </Typography>
-      )}
+      {/* Friends · Mutual Friends line — always rendered, even at 0, so the
+          card doesn't reflow once these counts come in. */}
+      <Typography className={classes.friendsLine}>
+        {friendCount.toLocaleString('en-IN')} Friends · {mutualFriendsCount.toLocaleString('en-IN')} Mutual Friends
+      </Typography>
 
       {/* Avatar stack */}
       {first5.length > 0 && (
@@ -475,14 +475,14 @@ const CommunityCard: React.FC<{
         </Box>
       )}
 
-      {/* Amalgam link — only shown in Network view, opens the community-switcher grid */}
+      {/* Joined-community link — only shown in Network view, opens the community-switcher grid */}
       {isNetworkView && subCommCount > 0 && (
         <Box className={classes.subCommLink} onClick={onExplore}>
           <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
             <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
           </svg>
           <Typography className={classes.subCommText}>
-            Amalgam of {subCommCount}+ Kerala communities
+            {joinedCommunityName ?? 'My Community'}
           </Typography>
           <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
             <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
@@ -990,9 +990,9 @@ const CommunityPage: React.FC = () => {
   // No dedicated "network" entity in the API — the network view is the sum of
   // this community plus its sibling communities (communityDetail.subCommunities).
   const networkMemberCount = memberCount + otherCommunities.reduce((sum, c) => sum + c.memberCount, 0)
-  // Community naming follows "State-Locality" (e.g. "Kerala-Jamia Nagar") — use
-  // the state part for the network label since there's no separate city field.
-  const networkLabel = `${(user?.communityName ?? '').split('-')[0] || 'Kerala'} Malayali Network`
+  // The network is Delhi's Malayali diaspora, not the members' native state —
+  // fixed for now since the pilot only covers Delhi (see CURRENT_STATE_OPTIONS).
+  const networkLabel = 'Delhi Malayali Network'
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: 'feed',    label: 'Feed' },
@@ -1006,7 +1006,8 @@ const CommunityPage: React.FC = () => {
 
       {/* Community gradient card */}
       <CommunityCard
-        communityName={isNetworkView ? networkLabel : user?.communityName}
+        communityName={isNetworkView ? networkLabel : (user?.communityName ? formatCommunityName(user.communityName) : user?.communityName)}
+        joinedCommunityName={user?.communityName ? formatCommunityName(user.communityName) : user?.communityName}
         isNetworkView={isNetworkView}
         onExplore={() => navigate(PATHS.onboarding, { state: { revisit: true, initialView: 'explore' } })}
         onSelectMembers={() => setActiveTab('members')}

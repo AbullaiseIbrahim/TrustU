@@ -5,7 +5,7 @@ import { makeStyles } from 'tss-react/mui'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/app/AuthProvider'
 import { useCreatePost } from '../hooks/usePostQueries'
-import { getInitials, selfAvatarGradient } from '@/utils'
+import { getInitials, selfAvatarGradient, formatCommunityName } from '@/utils'
 import colors from '@/theme/colors'
 
 const useStyles = makeStyles()(() => ({
@@ -195,7 +195,7 @@ const CreatePostInput: React.FC = () => {
             </Avatar>
             <Box>
               <Typography className={classes.userName}>{user?.name ?? 'You'}</Typography>
-              <Typography className={classes.userMeta}>{user?.communityName ?? 'Community'}</Typography>
+              <Typography className={classes.userMeta}>{user?.communityName ? formatCommunityName(user.communityName) : 'Community'}</Typography>
             </Box>
           </Box>
 
