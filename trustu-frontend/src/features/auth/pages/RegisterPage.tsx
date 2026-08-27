@@ -34,10 +34,12 @@ const step1Schema = z
     name:                  z.string().min(2, 'Full name must be at least 2 characters'),
     gender:                z.enum(['male', 'female', 'other', '']),
     designation:           z.string().min(1, 'Please select a designation'),
-    phone:                 z.string().refine(
-      (v) => v === '' || /^[0-9+\-\s]{7,15}$/.test(v),
-      { message: 'Enter a valid phone number' },
-    ),
+    phone:                 z.string()
+      .min(1, 'Phone number is required')
+      .refine(
+        (v) => /^[0-9+\-\s]{7,15}$/.test(v),
+        { message: 'Enter a valid phone number' },
+      ),
     email:                 z.string().email('Enter a valid email address'),
     institute:             z.string(),
     password:              z.string().min(8, 'Password must be at least 8 characters'),
@@ -168,7 +170,7 @@ function AccountStep({ prefillEmail, initialValues, onNext, onBack }: Step1Props
         </Box>
 
         <AuthField label="Phone Number" error={errors.phone?.message}>
-          <Box component="input" autoComplete="tel" placeholder="Optional" {...register('phone')} sx={authInputSx} />
+          <Box component="input" autoComplete="tel" placeholder="e.g. 9876543210" {...register('phone')} sx={authInputSx} />
         </AuthField>
 
         <AuthField label="Email" error={errors.email?.message}>

@@ -28,11 +28,15 @@ const useStyles = makeStyles()(() => ({
     backdropFilter: 'blur(16px)',
     WebkitBackdropFilter: 'blur(16px)',
     borderTop: `1px solid ${colors.line}`,
+    boxSizing: 'border-box',
+    paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+    transform: 'translateZ(0)',
+  },
+  row: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-around',
     height: 64,
-    paddingBottom: 'env(safe-area-inset-bottom)',
   },
   item: {
     flex: 1,
@@ -166,16 +170,18 @@ const BottomNav: React.FC = () => {
   return (
     <>
       <Box className={classes.root}>
-        {NAV_ITEMS_LEFT.map(renderItem)}
+        <Box className={classes.row}>
+          {NAV_ITEMS_LEFT.map(renderItem)}
 
-        {/* Center action button */}
-        <Box className={classes.centerItem}>
-          <Box className={classes.centerBtn} onClick={() => setAddOpen(true)}>
-            <AddIcon sx={{ color: '#fff', fontSize: '1.5rem' }} />
+          {/* Center action button */}
+          <Box className={classes.centerItem}>
+            <Box className={classes.centerBtn} onClick={() => setAddOpen(true)}>
+              <AddIcon sx={{ color: '#fff', fontSize: '1.5rem' }} />
+            </Box>
           </Box>
-        </Box>
 
-        {NAV_ITEMS_RIGHT.map(renderItem)}
+          {NAV_ITEMS_RIGHT.map(renderItem)}
+        </Box>
       </Box>
 
       <AddServiceModal open={addOpen} onClose={() => setAddOpen(false)} />

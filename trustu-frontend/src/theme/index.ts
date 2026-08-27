@@ -149,6 +149,11 @@ let theme = createTheme({
         },
         a: { color: 'inherit', textDecoration: 'none' },
         '*, *::before, *::after': { boxSizing: 'border-box' },
+        '@media (max-width: 600px)': {
+          'input, textarea, select': {
+            fontSize: '16px !important',
+          },
+        },
         '@keyframes fadeSlideUp': {
           from: { opacity: 0, transform: 'translateY(12px)' },
           to: { opacity: 1, transform: 'translateY(0)' },

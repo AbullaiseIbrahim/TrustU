@@ -607,6 +607,10 @@ const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => 
 
   const handleSave = () => {
     setSaveError(null)
+    if (!form.phone.trim()) {
+      setSaveError('Phone number is required.')
+      return
+    }
     const fullName = [form.firstName.trim(), form.lastName.trim()].filter(Boolean).join(' ')
     updateProfile.mutate(
       {

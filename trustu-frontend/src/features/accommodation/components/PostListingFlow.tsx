@@ -967,6 +967,10 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
       showError('Please enter the address / locality.')
       return
     }
+    if (!form.phone.trim()) {
+      showError('Please enter a WhatsApp / contact number.')
+      return
+    }
     if (showRoommatePref && stayType === 'shared-room' && !form.roommatePref) {
       showError('Please select a roommate preference.')
       return
@@ -1571,7 +1575,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
         <Box className={classes.fBlock}>
           <Typography className={classes.fLabel}>WhatsApp Number</Typography>
           <TextField
-            fullWidth size="small"
+            fullWidth size="small" required
             placeholder="e.g. 9876543210"
             value={form.phone}
             onChange={e => setF({ phone: e.target.value.replace(/\D/g, '').slice(0, 15) })}
