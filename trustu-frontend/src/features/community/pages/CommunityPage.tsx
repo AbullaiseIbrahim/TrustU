@@ -124,11 +124,15 @@ const useStyles = makeStyles()(() => ({
   // ── Tab bar ────────────────────────────────────────────────────────────────
   tabBar: {
     display: 'flex',
-    gap: 6,
     padding: '2px 16px 12px',
-    overflowX: 'auto',
+    overflow: 'hidden',
     minWidth: 0,
     maxWidth: '100%',
+  },
+  tabRow: {
+    display: 'flex',
+    gap: 6,
+    overflowX: 'auto',
     '&::-webkit-scrollbar': { display: 'none' },
   },
   tabBtn: {
@@ -1011,22 +1015,24 @@ const CommunityPage: React.FC = () => {
 
       {/* Tab bar */}
       <Box className={classes.tabBar}>
-        {tabs.map((tab) => (
-          <Box
-            key={tab.key}
-            ref={activeTab === tab.key ? activeTabRef : undefined}
-            component="button"
-            className={cx(classes.tabBtn, { [classes.tabBtnActive]: activeTab === tab.key })}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-            {tab.badge != null && tab.badge > 0 && (
-              <Box component="span" className={classes.tabBadge}>
-                {tab.badge}
-              </Box>
-            )}
-          </Box>
-        ))}
+        <Box className={classes.tabRow}>
+          {tabs.map((tab) => (
+            <Box
+              key={tab.key}
+              ref={activeTab === tab.key ? activeTabRef : undefined}
+              component="button"
+              className={cx(classes.tabBtn, { [classes.tabBtnActive]: activeTab === tab.key })}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+              {tab.badge != null && tab.badge > 0 && (
+                <Box component="span" className={classes.tabBadge}>
+                  {tab.badge}
+                </Box>
+              )}
+            </Box>
+          ))}
+        </Box>
       </Box>
 
       {/* Feed tab */}
