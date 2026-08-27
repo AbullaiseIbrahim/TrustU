@@ -111,8 +111,8 @@ export interface CreateAccommodationPayload {
   phone?: string
   /**
    * 0=Private · 1=Public · 2=Friends · 3=Mutual Friends (per /accommodations/schema).
-   * The API validates this as an array (`visible_to[]=`) even though only one
-   * value is ever sent from this form.
+   * The API validates this as an array (`visible_to[]=`) — PostListingFlow's
+   * "Friends & Mutual Friends" option relies on that and sends both [2, 3].
    */
   visible_to?: number[]
 }

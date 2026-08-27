@@ -133,6 +133,8 @@ const useStyles = makeStyles()(() => ({
     display: 'flex',
     gap: 6,
     overflowX: 'auto',
+    scrollbarWidth: 'none',
+    msOverflowStyle: 'none',
     '&::-webkit-scrollbar': { display: 'none' },
   },
   tabBtn: {

@@ -13,8 +13,6 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import CloseIcon from '@mui/icons-material/Close'
 import CheckIcon from '@mui/icons-material/Check'
-import RemoveIcon from '@mui/icons-material/Remove'
-import AddIcon from '@mui/icons-material/Add'
 import KingBedOutlinedIcon from '@mui/icons-material/KingBedOutlined'
 import NightShelterOutlinedIcon from '@mui/icons-material/NightShelterOutlined'
 import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined'
@@ -23,9 +21,7 @@ import HotelOutlinedIcon from '@mui/icons-material/HotelOutlined'
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined'
-import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import { makeStyles } from 'tss-react/mui'
 import colors from '@/theme/colors'
 import SelectField from '@/components/SelectField'
@@ -35,7 +31,7 @@ import { FURNISHING_OPTIONS } from '@/services/accommodation.api'
 import { formatINR } from '@/utils'
 import { useAuth } from '@/app/AuthProvider'
 import { useSnackbar } from '@/app/SnackbarProvider'
-import { SIGNUP_ENABLED_STATES } from '@/constants/states'
+import { INDIA_STATES } from '@/constants/states'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -269,48 +265,6 @@ const useStyles = makeStyles()(() => ({
     fontSize: '0.65rem',
     fontWeight: 600,
   },
-  // Steppers
-  stepperRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '10px 0',
-    borderBottom: `1px solid ${colors.lineSoft}`,
-    '&:last-child': { borderBottom: 'none', paddingBottom: 0 },
-    '&:first-of-type': { paddingTop: 0 },
-  },
-  stepperLabel: {
-    fontWeight: 500,
-    fontSize: '0.85rem',
-    color: colors.ink2,
-  },
-  stepperControls: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 14,
-  },
-  stepperBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: '50%',
-    border: `1.5px solid ${colors.line}`,
-    backgroundColor: colors.white,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    color: colors.ink2,
-    transition: 'all 0.15s ease',
-    '&:hover': { borderColor: colors.moss, color: colors.moss },
-    '&:disabled': { opacity: 0.4, cursor: 'not-allowed' },
-  },
-  stepperValue: {
-    fontWeight: 700,
-    fontSize: '0.9rem',
-    color: colors.ink,
-    minWidth: 20,
-    textAlign: 'center',
-  },
   // Segmented
   segmented: {
     display: 'flex',
@@ -365,54 +319,20 @@ const useStyles = makeStyles()(() => ({
     backgroundColor: colors.mossSoft,
     color: colors.mossDeep,
   },
-  // Visible To rows
-  visibleRow: {
-    display: 'flex',
+  // Amenities "Show more" toggle
+  showMoreBtn: {
+    display: 'inline-flex',
     alignItems: 'center',
-    gap: 14,
-    padding: '14px 0',
-    borderBottom: `1px solid ${colors.lineSoft}`,
+    gap: 4,
+    marginTop: 10,
+    border: 'none',
+    background: 'transparent',
     cursor: 'pointer',
-    '&:last-child': { borderBottom: 'none', paddingBottom: 0 },
-    '&:first-of-type': { paddingTop: 0 },
-  },
-  visibleIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 11,
-    backgroundColor: colors.cream,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    color: colors.ink3,
-    '& svg': { fontSize: '1.1rem' },
-  },
-  visibleLabel: {
+    padding: 0,
+    fontFamily: 'inherit',
+    fontSize: '0.8rem',
     fontWeight: 700,
-    fontSize: '0.85rem',
-    color: colors.ink,
-  },
-  visibleDesc: {
-    fontSize: '0.72rem',
-    color: colors.ink3,
-    marginTop: 2,
-  },
-  visibleRadio: {
-    marginLeft: 'auto',
-    width: 20,
-    height: 20,
-    borderRadius: '50%',
-    border: `2px solid ${colors.line}`,
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.white,
-  },
-  visibleRadioActive: {
-    border: `2px solid ${colors.moss}`,
-    backgroundColor: colors.moss,
+    color: colors.moss,
   },
   // Footer 2-button
   s2Footer: {
@@ -525,37 +445,53 @@ const FALLBACK_AMENITY_OPTIONS = [
   { value: 'iron',    label: 'Iron' },
 ]
 
+/** Gender Preference — Shared Room only (per the reference mockup, just Male/Female). */
 const GENDER_OPTIONS = [
   { value: 'male',   label: 'Male' },
   { value: 'female', label: 'Female' },
-  { value: 'any',    label: 'Any' },
 ]
 
 const VISIBLE_TO_OPTIONS = [
-  {
-    value: 'friends',
-    label: 'Friends only',
-    desc: 'Only your friends can see this listing',
-    icon: <LockOutlinedIcon />,
-  },
-  {
-    value: 'friends-mutuals',
-    label: 'Friends + Mutuals',
-    desc: 'Your friends and their connections',
-    icon: <PeopleOutlinedIcon />,
-  },
-  {
-    value: 'community',
-    label: 'Whole community',
-    desc: 'Everyone in Jamia Nagar community',
-    icon: <HolidayVillageOutlinedIcon />,
-  },
-  {
-    value: 'network',
-    label: 'Entire network',
-    desc: 'All Delhi Malayali Network members',
-    icon: <PublicOutlinedIcon />,
-  },
+  { value: 'friends',                 label: 'Friends' },
+  { value: 'mutual-friends',          label: 'Mutual Friends' },
+  { value: 'friends-mutual-friends',  label: 'Friends & Mutual Friends' },
+  { value: 'anyone',                  label: 'Anyone' },
+]
+
+/**
+ * Every reference mockup shows a single "Locality" dropdown, not a separate
+ * city/state selector — every option here sits within Delhi (see
+ * LISTING_CITY_ID below), so no separate city field is needed on this form.
+ */
+const LOCALITY_OPTIONS = [
+  { value: 'abul_fazal_enclave', label: 'Abul Fazal Enclave' },
+  { value: 'shaheen_bagh',       label: 'Shaheen Bagh' },
+  { value: 'batla_house',        label: 'Batla House' },
+  { value: 'zakir_nagar',        label: 'Zakir Nagar' },
+  { value: 'ghaffar_manzil',     label: 'Ghaffar Manzil' },
+  { value: 'noor_nagar',         label: 'Noor Nagar' },
+  { value: 'okhla_head',         label: 'Okhla Head' },
+]
+
+/** 1–10, used for Available Spots / People Allowed dropdowns. */
+const AVAILABLE_SPOTS_OPTIONS = Array.from({ length: 10 }, (_, i) => ({
+  value: String(i + 1), label: String(i + 1),
+}))
+
+/** 0–10, used for the Current Roommates dropdown. */
+const CURRENT_ROOMMATES_OPTIONS = Array.from({ length: 11 }, (_, i) => ({
+  value: String(i), label: String(i),
+}))
+
+const ordinal = (n: number) => {
+  const suffixes = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return `${n}${suffixes[(v - 20) % 10] ?? suffixes[v] ?? suffixes[0]}`
+}
+/** Flat for Rent only. Ground Floor + 1st–15th. */
+const FLOOR_OPTIONS = [
+  { value: '0', label: 'Ground Floor' },
+  ...Array.from({ length: 15 }, (_, i) => ({ value: String(i + 1), label: `${ordinal(i + 1)} Floor` })),
 ]
 
 /** Hostel / PG only — Girls/Boys reuses the same gender field & values as GENDER_MAP. */
@@ -639,8 +575,14 @@ const STAY_TYPE_MAP: Record<string, number> = {
 const GENDER_MAP: Record<string, number> = {
   male:   0,
   female: 1,
-  any:    2,
 }
+
+/**
+ * Every listing created through this form sits in one of the LOCALITY_OPTIONS
+ * neighbourhoods, all within Delhi — so the backend's required city_id is
+ * fixed here instead of asking the user to pick a city/state again.
+ */
+const LISTING_CITY_ID = INDIA_STATES.find(s => s.name === 'Delhi')?.id ?? 32
 
 const ROOMMATE_PREF_MAP: Record<string, number> = {
   students: 1,
@@ -658,14 +600,14 @@ const FLAT_TYPE_MAP: Record<string, number> = {
 /**
  * Maps the UI's 4 visibility choices to the backend's actual `visible_to`
  * enum (0=Private · 1=Public · 2=Friends · 3=Mutual Friends — see
- * GET /accommodations/schema). The backend has no separate "community" vs
- * "network" scope, so both collapse to Public until the backend adds one.
+ * GET /accommodations/schema). `visible_to` accepts an array, so "Friends &
+ * Mutual Friends" sends both enum values rather than needing a combined one.
  */
-const VISIBLE_TO_MAP: Record<string, number> = {
-  friends: 2,
-  'friends-mutuals': 3,
-  community: 1,
-  network: 1,
+const VISIBLE_TO_MAP: Record<string, number[]> = {
+  friends: [2],
+  'mutual-friends': [3],
+  'friends-mutual-friends': [2, 3],
+  anyone: [1],
 }
 
 // ── Form state ────────────────────────────────────────────────────────────────
@@ -673,8 +615,8 @@ const VISIBLE_TO_MAP: Record<string, number> = {
 interface ListingForm {
   photoFiles: File[]   // actual File objects for upload
   photos: string[]     // preview object URLs — revoked on remove / close
+  /** Hostel/PG & Hotel only — shown as "Hostel Name" / "Hotel Name" */
   title: string
-  description: string
   availableSpots: number
   currentRoommates: number
   gender: string
@@ -684,10 +626,9 @@ interface ListingForm {
   /** Required by the backend for Flat for Rent listings */
   floor: string
   availableFrom: string
-  cityId: string
+  /** Selected value from LOCALITY_OPTIONS — see LISTING_CITY_ID */
   locality: string
   rentPerPerson: string
-  depositAmount: string
   amenities: string[]
   /** Only applies to Short Stay */
   guestPreference: string[]
@@ -723,21 +664,18 @@ const EMPTY_FORM: ListingForm = {
   photoFiles: [],
   photos: [],
   title: '',
-  description: '',
   availableSpots: 1,
   currentRoommates: 2,
-  gender: 'any',
+  gender: '',
   roommatePref: '',
   flatType: '',
   floor: '',
   availableFrom: '',
-  cityId: '',
   locality: '',
   rentPerPerson: '',
-  depositAmount: '',
   amenities: [],
   guestPreference: [],
-  visibleTo: 'friends-mutuals',
+  visibleTo: 'friends-mutual-friends',
   phone: '',
   totalRent: '',
   nearbyLandmark: '',
@@ -754,44 +692,6 @@ const EMPTY_FORM: ListingForm = {
   starRating: '',
   hotelServices: [],
   hotelServicesNote: '',
-}
-
-// ── Stepper control ───────────────────────────────────────────────────────────
-
-interface StepperProps {
-  label: string
-  value: number
-  min?: number
-  max?: number
-  onChange: (v: number) => void
-}
-
-const StepperField: React.FC<StepperProps> = ({ label, value, min = 0, max = 10, onChange }) => {
-  const { classes } = useStyles()
-  return (
-    <Box className={classes.stepperRow}>
-      <Typography className={classes.stepperLabel}>{label}</Typography>
-      <Box className={classes.stepperControls}>
-        <Box
-          component="button"
-          className={classes.stepperBtn}
-          onClick={() => onChange(Math.max(min, value - 1))}
-          disabled={value <= min}
-        >
-          <RemoveIcon sx={{ fontSize: '0.9rem' }} />
-        </Box>
-        <Typography className={classes.stepperValue}>{value}</Typography>
-        <Box
-          component="button"
-          className={classes.stepperBtn}
-          onClick={() => onChange(Math.min(max, value + 1))}
-          disabled={value >= max}
-        >
-          <AddIcon sx={{ fontSize: '0.9rem' }} />
-        </Box>
-      </Box>
-    </Box>
-  )
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -820,6 +720,8 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
   const [stayType, setStayType] = useState('shared-room')
   const [form, setForm] = useState<ListingForm>(EMPTY_FORM)
   const [showPreview, setShowPreview] = useState(false)
+  const [showAllAmenities, setShowAllAmenities] = useState(false)
+  const AMENITIES_COLLAPSED_COUNT = 7
 
   // Revoke all object URLs when the dialog closes to avoid memory leaks
   useEffect(() => {
@@ -863,10 +765,11 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
     onClose()
   }
 
-  // Per GET /accommodations/schema: current_roommates only applies to Shared Room,
-  // and roommate_preference doesn't apply to Short Stay or Hotel at all.
+  // Per GET /accommodations/schema: current_roommates only applies to Shared Room.
+  // Roommate Preference and Available From are also Shared Room–only per the
+  // reference mockups (Hostel/PG has Available From but not Roommate Preference).
   const showCurrentRoommates = stayType === 'shared-room'
-  const showRoommatePref = stayType === 'shared-room' || stayType === 'flat-for-rent' || stayType === 'hostel-pg'
+  const showRoommatePref = stayType === 'shared-room'
 
   // ── Per-type field visibility (see the 5 reference screenshots) ────────────
   const showFlatType = stayType === 'shared-room' || stayType === 'short-stay' || stayType === 'flat-for-rent'
@@ -874,7 +777,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
   const showGuestPreference = stayType === 'short-stay' || stayType === 'flat-for-rent'
   const showAvailability = stayType !== 'hostel-pg' && stayType !== 'hotel'
   const availabilityLabel = stayType === 'shared-room' ? 'Available spots' : 'People allowed'
-  const showAvailableFrom = stayType !== 'hotel'
+  const showAvailableFrom = stayType === 'shared-room' || stayType === 'hostel-pg'
   const showOccupancyType = stayType === 'hostel-pg'
   const showFurnishing = stayType === 'flat-for-rent'
   const showSecurityDepositField = stayType === 'flat-for-rent' || stayType === 'hostel-pg'
@@ -884,11 +787,14 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
   const showCheckInOut = stayType === 'hotel'
   const showStarRating = stayType === 'hotel'
   const showHotelServices = stayType === 'hotel'
-  // Gender field: full Male/Female/Any for most types, Girls/Boys for Hostel/PG, hidden for Hotel
+  // Gender field: Male/Female for Shared Room, Girls/Boys for Hostel/PG, hidden
+  // otherwise — Short Stay & Flat for Rent use Guest Preference instead.
   const genderMode: 'full' | 'hostel' | 'none' =
-    stayType === 'hotel' ? 'none' : stayType === 'hostel-pg' ? 'hostel' : 'full'
-  const titleLabel =
-    stayType === 'hostel-pg' ? 'Hostel Name' : stayType === 'hotel' ? 'Hotel Name' : 'Title'
+    stayType === 'shared-room' ? 'full' : stayType === 'hostel-pg' ? 'hostel' : 'none'
+  // Title only appears as "Hostel Name" / "Hotel Name" — the other 3 types
+  // have no title/description field at all per the reference mockups.
+  const showTitleField = stayType === 'hostel-pg' || stayType === 'hotel'
+  const titleLabel = stayType === 'hostel-pg' ? 'Hostel Name' : 'Hotel Name'
   const rentLabel =
     stayType === 'short-stay' ? 'Rent per day — per person'
     : stayType === 'flat-for-rent' ? 'Rent per month'
@@ -935,7 +841,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
       if (labels.length) extraDetailLines.push(`Hotel services: ${labels.join(', ')}`)
       if (form.hotelServicesNote.trim()) extraDetailLines.push(form.hotelServicesNote.trim())
     }
-    return [form.description.trim(), extraDetailLines.join('\n')].filter(Boolean).join('\n\n')
+    return extraDetailLines.join('\n')
   }
 
   // Hostel/PG has no Available Spots / People Allowed field of its own — Occupancy
@@ -959,24 +865,20 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
   }
 
   const handlePost = () => {
-    if (!form.cityId) {
-      showError('Please select a city / state.')
-      return
-    }
-    if (!form.locality.trim()) {
-      showError('Please enter the address / locality.')
+    if (!form.locality) {
+      showError('Please select a locality.')
       return
     }
     if (!form.phone.trim()) {
       showError('Please enter a WhatsApp / contact number.')
       return
     }
-    if (showRoommatePref && stayType === 'shared-room' && !form.roommatePref) {
+    if (showRoommatePref && !form.roommatePref) {
       showError('Please select a roommate preference.')
       return
     }
-    if (stayType === 'flat-for-rent' && !form.floor.trim()) {
-      showError('Please enter the floor number — it\'s required for Flat for Rent listings.')
+    if (stayType === 'flat-for-rent' && !form.floor) {
+      showError('Please select the floor — it\'s required for Flat for Rent listings.')
       return
     }
     const fullDescription = buildFullDescription()
@@ -986,24 +888,21 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
         title:           form.title.trim() || `${typeLabel} — Listing`,
         description:     fullDescription,
         amount:          Number(form.rentPerPerson) || 0,
-        deposit_amount:  Number(form.depositAmount) || undefined,
-        city_id:         Number(form.cityId),
+        city_id:         LISTING_CITY_ID,
         community_id:    user?.communityId != null ? Number(user.communityId) : null,
         type:            STAY_TYPE_MAP[stayType] ?? 0,
         is_negotiable:   false,
-        address:         form.locality.trim(),
+        address:         LOCALITY_OPTIONS.find(o => o.value === form.locality)?.label ?? '',
         available_from:  form.availableFrom || new Date().toISOString().split('T')[0],
         gender:          genderMode === 'none' ? 2 : (GENDER_MAP[form.gender] ?? 2),
         flat_type:       FLAT_TYPE_MAP[form.flatType] ?? null,
-        floor:           form.floor.trim() ? Number(form.floor) : null,
+        floor:           form.floor ? Number(form.floor) : null,
         available_spots: availableSpotsOut,
         people_allowed:  peopleAllowedOut,
         current_roommates:   showCurrentRoommates ? form.currentRoommates : undefined,
         roommate_preference: showRoommatePref ? ROOMMATE_PREF_MAP[form.roommatePref] : undefined,
         furnishing:      showFurnishing && form.furnishing !== '' ? Number(form.furnishing) : 0,
-        security_deposit: showSecurityDepositField
-          ? form.securityDeposit === 'yes'
-          : Number(form.depositAmount) > 0,
+        security_deposit: showSecurityDepositField ? form.securityDeposit === 'yes' : false,
         // When API amenities are loaded, values are numeric ID strings → convert back to numbers
         amenity_ids: apiAmenities.length > 0
           ? form.amenities.map(v => Number(v)).filter(Boolean)
@@ -1013,7 +912,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
           : undefined,
         photos:          form.photoFiles,
         phone:           form.phone.trim() || undefined,
-        visible_to:      [VISIBLE_TO_MAP[form.visibleTo] ?? 1],
+        visible_to:      VISIBLE_TO_MAP[form.visibleTo] ?? [1],
       },
       { onSuccess: handleClose },
     )
@@ -1098,8 +997,433 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
 
       <DialogContent className={classes.s2Body} sx={{ p: 0 }}>
 
-        {/* Photos */}
+        {/* Title — only "Hostel Name" / "Hotel Name"; the other 3 types have
+            no title/description field at all per the reference mockups. */}
+        {showTitleField && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>{titleLabel}</Typography>
+            <TextField
+              fullWidth size="small"
+              placeholder="Maximum 25 words"
+              value={form.title}
+              onChange={e => setF({ title: e.target.value })}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+            />
+          </Box>
+        )}
+
+        {/* Flat Type — Shared Room, Short Stay, Flat for Rent */}
+        {showFlatType && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Flat Type</Typography>
+            <Box className={classes.chipsWrap}>
+              {FLAT_TYPE_OPTIONS.map(o => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.chip, { [classes.chipActive]: form.flatType === o.value })}
+                  onClick={() => setF({ flatType: form.flatType === o.value ? '' : o.value })}
+                >
+                  {form.flatType === o.value && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Gender Preference — Shared Room only, Inmates Preference for Hostel/PG */}
+        {genderMode !== 'none' && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>
+              {genderMode === 'hostel' ? 'Inmates Preference' : 'Gender Preference'}
+            </Typography>
+            <Box className={classes.segmented}>
+              {(genderMode === 'hostel' ? HOSTEL_INMATE_OPTIONS : GENDER_OPTIONS).map((o, i) => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.segBtn, { [classes.segBtnActive]: form.gender === o.value })}
+                  style={i === 0 ? { borderLeft: 'none' } : {}}
+                  onClick={() => setF({ gender: o.value })}
+                >
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Guest Preference — Short Stay & Flat for Rent */}
+        {showGuestPreference && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Guest Preference</Typography>
+            <Box className={classes.chipsWrap}>
+              {GUEST_PREFERENCE_OPTIONS.map(o => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.chip, { [classes.chipActive]: form.guestPreference.includes(o.value) })}
+                  onClick={() => toggleMulti('guestPreference', o.value)}
+                >
+                  {form.guestPreference.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Check-in / Check-out — Hotel only */}
+        {showCheckInOut && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Check-in / Check-out</Typography>
+            <Box sx={{ display: 'flex', gap: 1.25 }}>
+              <Box sx={{ flex: 1 }}>
+                <TimePickerField
+                  label="Check-in"
+                  value={form.checkin}
+                  onChange={v => setF({ checkin: v })}
+                />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <TimePickerField
+                  label="Check-out"
+                  value={form.checkout}
+                  onChange={v => setF({ checkout: v })}
+                />
+              </Box>
+            </Box>
+          </Box>
+        )}
+
+        {/* Availability — hidden for Hostel/PG (Occupancy Type stands in) and Hotel */}
+        {showAvailability && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>{availabilityLabel}</Typography>
+            <SelectField
+              label={availabilityLabel}
+              value={String(form.availableSpots)}
+              onChange={v => setF({ availableSpots: Number(v) })}
+              options={AVAILABLE_SPOTS_OPTIONS}
+              placeholder="Options"
+            />
+            {showCurrentRoommates && (
+              <>
+                <Typography className={classes.fLabel} sx={{ mt: 1.5 }}>Current Roommates</Typography>
+                <SelectField
+                  label="Current roommates"
+                  value={String(form.currentRoommates)}
+                  onChange={v => setF({ currentRoommates: Number(v) })}
+                  options={CURRENT_ROOMMATES_OPTIONS}
+                  placeholder="Options"
+                />
+              </>
+            )}
+          </Box>
+        )}
+
+        {/* Occupancy Type — Hostel/PG only, stands in for Availability */}
+        {showOccupancyType && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Occupancy Type</Typography>
+            <Box className={classes.chipsWrap}>
+              {HOSTEL_OCCUPANCY_OPTIONS.map(o => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.chip, { [classes.chipActive]: form.occupancyType === o.value })}
+                  onClick={() => setF({ occupancyType: form.occupancyType === o.value ? '' : o.value })}
+                >
+                  {form.occupancyType === o.value && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Roommate Preference — Shared Room only */}
+        {showRoommatePref && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Roommate Preference</Typography>
+            <SelectField
+              label="Roommate preference"
+              value={form.roommatePref}
+              onChange={v => setF({ roommatePref: v })}
+              options={ROOMMATE_PREFS_OPTIONS}
+              placeholder="Options"
+            />
+          </Box>
+        )}
+
+        {/* Available From — Shared Room & Hostel/PG only */}
+        {showAvailableFrom && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Available From</Typography>
+            <DatePickerField
+              label="Select date"
+              value={form.availableFrom}
+              onChange={v => setF({ availableFrom: v })}
+            />
+          </Box>
+        )}
+
+        {/* Nearby Landmark — Short Stay & Hotel */}
+        {showNearbyLandmark && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Nearby Landmark</Typography>
+            <TextField
+              fullWidth size="small"
+              placeholder="Maximum 25 words"
+              value={form.nearbyLandmark}
+              onChange={e => setF({ nearbyLandmark: e.target.value })}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+            />
+          </Box>
+        )}
+
+        {/* Locality */}
         <Box className={classes.fBlock}>
+          <Typography className={classes.fLabel}>Locality</Typography>
+          <SelectField
+            label="Locality"
+            value={form.locality}
+            onChange={v => setF({ locality: v })}
+            options={LOCALITY_OPTIONS}
+            placeholder="Options"
+          />
+        </Box>
+
+        {/* Visible To */}
+        <Box className={classes.fBlock}>
+          <Typography className={classes.fLabel}>Visible To</Typography>
+          <SelectField
+            label="Visible to"
+            value={form.visibleTo}
+            onChange={v => setF({ visibleTo: v })}
+            options={VISIBLE_TO_OPTIONS}
+            placeholder="Options"
+          />
+        </Box>
+
+        {/* Security Deposit — Flat for Rent & Hostel/PG */}
+        {showSecurityDepositField && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Security Deposit</Typography>
+            <SelectField
+              label="Security deposit required?"
+              value={form.securityDeposit}
+              onChange={v => setF({ securityDeposit: v })}
+              options={YES_NO_OPTIONS}
+              placeholder="Options"
+            />
+          </Box>
+        )}
+
+        {/* Floor — Flat for Rent only */}
+        {stayType === 'flat-for-rent' && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Floor</Typography>
+            <SelectField
+              label="Floor"
+              value={form.floor}
+              onChange={v => setF({ floor: v })}
+              options={FLOOR_OPTIONS}
+              placeholder="Options"
+            />
+          </Box>
+        )}
+
+        {showFurnishing && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Furnishing</Typography>
+            <SelectField
+              label="Furnishing"
+              value={form.furnishing}
+              onChange={v => setF({ furnishing: v })}
+              options={FURNISHING_OPTIONS.map(o => ({ value: String(o.value), label: o.label }))}
+              placeholder="Options"
+            />
+          </Box>
+        )}
+
+        {/* Ventilation / Electricity / Water Supply — Flat for Rent only */}
+        {showVentilationEtc && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Ventilation</Typography>
+            <SelectField
+              label="Ventilation"
+              value={form.ventilation}
+              onChange={v => setF({ ventilation: v })}
+              options={VENTILATION_OPTIONS}
+              placeholder="Options"
+            />
+            <Typography className={classes.fLabel} sx={{ mt: 1.5 }}>Electricity Type</Typography>
+            <SelectField
+              label="Electricity type"
+              value={form.electricityType}
+              onChange={v => setF({ electricityType: v })}
+              options={ELECTRICITY_TYPE_OPTIONS}
+              placeholder="Options"
+            />
+            <Typography className={classes.fLabel} sx={{ mt: 1.5 }}>Water Supply</Typography>
+            <SelectField
+              label="Water supply"
+              value={form.waterSupply}
+              onChange={v => setF({ waterSupply: v })}
+              options={WATER_SUPPLY_OPTIONS}
+              placeholder="Options"
+            />
+          </Box>
+        )}
+
+        {/* Room Features — Hostel/PG only */}
+        {showRoomFeatures && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Room Features</Typography>
+            <Box className={classes.chipsWrap} sx={{ mb: 1.25 }}>
+              {ROOM_FEATURES_OPTIONS.map(o => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.chip, { [classes.chipActive]: form.roomFeatures.includes(o.value) })}
+                  onClick={() => toggleMulti('roomFeatures', o.value)}
+                >
+                  {form.roomFeatures.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+            <TextField
+              fullWidth size="small"
+              placeholder="Maximum 15 words"
+              value={form.roomFeaturesNote}
+              onChange={e => setF({ roomFeaturesNote: e.target.value })}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+            />
+          </Box>
+        )}
+
+        {/* Star Rating — Hotel only */}
+        {showStarRating && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Star Rating</Typography>
+            <SelectField
+              label="Star rating"
+              value={form.starRating}
+              onChange={v => setF({ starRating: v })}
+              options={STAR_RATING_OPTIONS}
+              placeholder="Options"
+            />
+          </Box>
+        )}
+
+        {/* Hotel Services — Hotel only */}
+        {showHotelServices && (
+          <Box className={classes.fBlock}>
+            <Typography className={classes.fLabel}>Hotel Services</Typography>
+            <Box className={classes.chipsWrap} sx={{ mb: 1.25 }}>
+              {HOTEL_SERVICES_OPTIONS.map(o => (
+                <Box
+                  key={o.value}
+                  component="button"
+                  className={cx(classes.chip, { [classes.chipActive]: form.hotelServices.includes(o.value) })}
+                  onClick={() => toggleMulti('hotelServices', o.value)}
+                >
+                  {form.hotelServices.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                  {o.label}
+                </Box>
+              ))}
+            </Box>
+            <TextField
+              fullWidth size="small"
+              placeholder="Maximum 15 words"
+              value={form.hotelServicesNote}
+              onChange={e => setF({ hotelServicesNote: e.target.value })}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+            />
+          </Box>
+        )}
+
+        {/* Rent */}
+        <Box className={classes.fBlock}>
+          <Typography className={classes.fLabel}>Rent</Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <TextField
+              size="small" label={rentLabel}
+              value={form.rentPerPerson}
+              onChange={e => setF({ rentPerPerson: e.target.value.replace(/\D/g, '') })}
+              InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+              inputProps={{ inputMode: 'numeric' }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+            />
+            {showTotalRent && (
+              <TextField
+                size="small" label="Total rent"
+                value={form.totalRent}
+                onChange={e => setF({ totalRent: e.target.value.replace(/\D/g, '') })}
+                InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
+                inputProps={{ inputMode: 'numeric' }}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+              />
+            )}
+          </Box>
+        </Box>
+
+        {/* WhatsApp / Contact number */}
+        <Box className={classes.fBlock}>
+          <Typography className={classes.fLabel}>WhatsApp Number</Typography>
+          <TextField
+            fullWidth size="small" required
+            placeholder="e.g. 9876543210"
+            value={form.phone}
+            onChange={e => setF({ phone: e.target.value.replace(/\D/g, '').slice(0, 15) })}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <WhatsAppIcon sx={{ fontSize: '1rem', color: '#25D366' }} />
+                </InputAdornment>
+              ),
+            }}
+            inputProps={{ inputMode: 'tel', maxLength: 15 }}
+            helperText="Interested people will contact you directly via WhatsApp"
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+          />
+        </Box>
+
+        {/* Amenities — from API when available, hardcoded fallback otherwise */}
+        <Box className={classes.fBlock}>
+          <Typography className={classes.fLabel}>Amenities Available</Typography>
+          <Box className={classes.chipsWrap}>
+            {(showAllAmenities ? amenityOptions : amenityOptions.slice(0, AMENITIES_COLLAPSED_COUNT)).map(o => (
+              <Box
+                key={o.value}
+                component="button"
+                className={cx(classes.chip, { [classes.chipActive]: form.amenities.includes(o.value) })}
+                onClick={() => toggleMulti('amenities', o.value)}
+              >
+                {form.amenities.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
+                {o.label}
+              </Box>
+            ))}
+          </Box>
+          {amenityOptions.length > AMENITIES_COLLAPSED_COUNT && (
+            <Box
+              component="button"
+              className={classes.showMoreBtn}
+              onClick={() => setShowAllAmenities(v => !v)}
+            >
+              {showAllAmenities ? 'Show Less' : 'Show More'}
+              <KeyboardArrowDownIcon
+                sx={{ fontSize: '1rem', transition: 'transform 0.15s ease', transform: showAllAmenities ? 'rotate(180deg)' : 'none' }}
+              />
+            </Box>
+          )}
+        </Box>
+
+        {/* Photos */}
+        <Box className={classes.fBlock} style={{ borderBottom: 'none' }}>
           <Typography className={classes.fLabel}>
             Photos
             <Typography component="span" sx={{ fontWeight: 400, fontSize: '0.72rem', color: colors.ink4, ml: 1 }}>
@@ -1170,470 +1494,6 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
           </Box>
         </Box>
 
-        {/* Title (relabeled Hostel Name / Hotel Name for those types) */}
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>{titleLabel}</Typography>
-          <TextField
-            fullWidth size="small"
-            placeholder={
-              stayType === 'hostel-pg' ? 'Maximum 25 words'
-              : stayType === 'hotel' ? 'Maximum 25 words'
-              : 'e.g. Female Flatmate Needed — Student'
-            }
-            value={form.title}
-            onChange={e => setF({ title: e.target.value })}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-          />
-        </Box>
-
-        {/* Description */}
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>Description</Typography>
-          <TextField
-            fullWidth size="small" multiline minRows={3}
-            placeholder="Describe the place, nearby landmarks, rules, what's included…"
-            value={form.description}
-            onChange={e => setF({ description: e.target.value })}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-          />
-        </Box>
-
-        {/* Availability — hidden for Hostel/PG (Occupancy Type stands in) and Hotel */}
-        {showAvailability && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Availability</Typography>
-            <StepperField
-              label={availabilityLabel}
-              value={form.availableSpots}
-              min={1} max={10}
-              onChange={v => setF({ availableSpots: v })}
-            />
-            {showCurrentRoommates && (
-              <StepperField
-                label="Current roommates"
-                value={form.currentRoommates}
-                min={0} max={10}
-                onChange={v => setF({ currentRoommates: v })}
-              />
-            )}
-          </Box>
-        )}
-
-        {/* Occupancy Type — Hostel/PG only, stands in for Availability */}
-        {showOccupancyType && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Occupancy Type</Typography>
-            <Box className={classes.chipsWrap}>
-              {HOSTEL_OCCUPANCY_OPTIONS.map(o => (
-                <Box
-                  key={o.value}
-                  component="button"
-                  className={cx(classes.chip, { [classes.chipActive]: form.occupancyType === o.value })}
-                  onClick={() => setF({ occupancyType: form.occupancyType === o.value ? '' : o.value })}
-                >
-                  {form.occupancyType === o.value && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
-                  {o.label}
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        )}
-
-        {/* Gender Preference — full Male/Female/Any, Girls/Boys for Hostel/PG, hidden for Hotel */}
-        {genderMode !== 'none' && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>
-              {genderMode === 'hostel' ? 'Inmates Preference' : 'Gender Preference'}
-            </Typography>
-            <Box className={classes.segmented}>
-              {(genderMode === 'hostel' ? HOSTEL_INMATE_OPTIONS : GENDER_OPTIONS).map((o, i) => (
-                <Box
-                  key={o.value}
-                  component="button"
-                  className={cx(classes.segBtn, { [classes.segBtnActive]: form.gender === o.value })}
-                  style={i === 0 ? { borderLeft: 'none' } : {}}
-                  onClick={() => setF({ gender: o.value })}
-                >
-                  {o.label}
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        )}
-
-        {/* Roommate Preference — doesn't apply to Short Stay or Hotel */}
-        {showRoommatePref && (
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>Roommate Preference</Typography>
-          <Box className={classes.chipsWrap}>
-            {ROOMMATE_PREFS_OPTIONS.map(o => (
-              <Box
-                key={o.value}
-                component="button"
-                className={cx(classes.chip, { [classes.chipActive]: form.roommatePref === o.value })}
-                onClick={() => setF({ roommatePref: form.roommatePref === o.value ? '' : o.value })}
-              >
-                {form.roommatePref === o.value && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
-                {o.label}
-              </Box>
-            ))}
-          </Box>
-        </Box>
-        )}
-
-        {/* Guest Preference — Short Stay & Flat for Rent */}
-        {showGuestPreference && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Guest Preference</Typography>
-            <Box className={classes.chipsWrap}>
-              {GUEST_PREFERENCE_OPTIONS.map(o => (
-                <Box
-                  key={o.value}
-                  component="button"
-                  className={cx(classes.chip, { [classes.chipActive]: form.guestPreference.includes(o.value) })}
-                  onClick={() => toggleMulti('guestPreference', o.value)}
-                >
-                  {form.guestPreference.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
-                  {o.label}
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        )}
-
-        {/* Flat Type — Shared Room, Short Stay, Flat for Rent */}
-        {showFlatType && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Flat Type</Typography>
-            <Box className={classes.chipsWrap}>
-              {FLAT_TYPE_OPTIONS.map(o => (
-                <Box
-                  key={o.value}
-                  component="button"
-                  className={cx(classes.chip, { [classes.chipActive]: form.flatType === o.value })}
-                  onClick={() => setF({ flatType: form.flatType === o.value ? '' : o.value })}
-                >
-                  {form.flatType === o.value && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
-                  {o.label}
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        )}
-
-        {/* Floor + Furnishing — Flat for Rent only */}
-        {stayType === 'flat-for-rent' && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Floor</Typography>
-            <TextField
-              fullWidth size="small"
-              placeholder="e.g. 2 (0 for ground floor)"
-              value={form.floor}
-              onChange={e => setF({ floor: e.target.value.replace(/\D/g, '') })}
-              inputProps={{ inputMode: 'numeric' }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-            />
-          </Box>
-        )}
-
-        {showFurnishing && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Furnishing</Typography>
-            <SelectField
-              label="Furnishing"
-              value={form.furnishing}
-              onChange={v => setF({ furnishing: v })}
-              options={FURNISHING_OPTIONS.map(o => ({ value: String(o.value), label: o.label }))}
-              placeholder="Options"
-            />
-          </Box>
-        )}
-
-        {/* Security Deposit — Flat for Rent & Hostel/PG */}
-        {showSecurityDepositField && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Security Deposit</Typography>
-            <SelectField
-              label="Security deposit required?"
-              value={form.securityDeposit}
-              onChange={v => setF({ securityDeposit: v })}
-              options={YES_NO_OPTIONS}
-              placeholder="Options"
-            />
-          </Box>
-        )}
-
-        {/* Ventilation / Electricity / Water Supply — Flat for Rent only */}
-        {showVentilationEtc && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Ventilation</Typography>
-            <SelectField
-              label="Ventilation"
-              value={form.ventilation}
-              onChange={v => setF({ ventilation: v })}
-              options={VENTILATION_OPTIONS}
-              placeholder="Options"
-            />
-            <Typography className={classes.fLabel} sx={{ mt: 1.5 }}>Electricity Type</Typography>
-            <SelectField
-              label="Electricity type"
-              value={form.electricityType}
-              onChange={v => setF({ electricityType: v })}
-              options={ELECTRICITY_TYPE_OPTIONS}
-              placeholder="Options"
-            />
-            <Typography className={classes.fLabel} sx={{ mt: 1.5 }}>Water Supply</Typography>
-            <SelectField
-              label="Water supply"
-              value={form.waterSupply}
-              onChange={v => setF({ waterSupply: v })}
-              options={WATER_SUPPLY_OPTIONS}
-              placeholder="Options"
-            />
-          </Box>
-        )}
-
-        {/* Room Features — Hostel/PG only */}
-        {showRoomFeatures && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Room Features</Typography>
-            <Box className={classes.chipsWrap} sx={{ mb: 1.25 }}>
-              {ROOM_FEATURES_OPTIONS.map(o => (
-                <Box
-                  key={o.value}
-                  component="button"
-                  className={cx(classes.chip, { [classes.chipActive]: form.roomFeatures.includes(o.value) })}
-                  onClick={() => toggleMulti('roomFeatures', o.value)}
-                >
-                  {form.roomFeatures.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
-                  {o.label}
-                </Box>
-              ))}
-            </Box>
-            <TextField
-              fullWidth size="small"
-              placeholder="Maximum 15 words"
-              value={form.roomFeaturesNote}
-              onChange={e => setF({ roomFeaturesNote: e.target.value })}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-            />
-          </Box>
-        )}
-
-        {/* Check-in / Check-out — Hotel only */}
-        {showCheckInOut && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Check-in / Check-out</Typography>
-            <Box sx={{ display: 'flex', gap: 1.25 }}>
-              <Box sx={{ flex: 1 }}>
-                <TimePickerField
-                  label="Check-in"
-                  value={form.checkin}
-                  onChange={v => setF({ checkin: v })}
-                />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <TimePickerField
-                  label="Check-out"
-                  value={form.checkout}
-                  onChange={v => setF({ checkout: v })}
-                />
-              </Box>
-            </Box>
-          </Box>
-        )}
-
-        {/* Nearby Landmark — Short Stay & Hotel */}
-        {showNearbyLandmark && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Nearby Landmark</Typography>
-            <TextField
-              fullWidth size="small"
-              placeholder="Maximum 25 words"
-              value={form.nearbyLandmark}
-              onChange={e => setF({ nearbyLandmark: e.target.value })}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-            />
-          </Box>
-        )}
-
-        {/* Star Rating — Hotel only */}
-        {showStarRating && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Star Rating</Typography>
-            <SelectField
-              label="Star rating"
-              value={form.starRating}
-              onChange={v => setF({ starRating: v })}
-              options={STAR_RATING_OPTIONS}
-              placeholder="Options"
-            />
-          </Box>
-        )}
-
-        {/* Hotel Services — Hotel only */}
-        {showHotelServices && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Hotel Services</Typography>
-            <Box className={classes.chipsWrap} sx={{ mb: 1.25 }}>
-              {HOTEL_SERVICES_OPTIONS.map(o => (
-                <Box
-                  key={o.value}
-                  component="button"
-                  className={cx(classes.chip, { [classes.chipActive]: form.hotelServices.includes(o.value) })}
-                  onClick={() => toggleMulti('hotelServices', o.value)}
-                >
-                  {form.hotelServices.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
-                  {o.label}
-                </Box>
-              ))}
-            </Box>
-            <TextField
-              fullWidth size="small"
-              placeholder="Maximum 15 words"
-              value={form.hotelServicesNote}
-              onChange={e => setF({ hotelServicesNote: e.target.value })}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-            />
-          </Box>
-        )}
-
-        {/* Available From — hidden for Hotel */}
-        {showAvailableFrom && (
-          <Box className={classes.fBlock}>
-            <Typography className={classes.fLabel}>Available From</Typography>
-            <DatePickerField
-              label="Select date"
-              value={form.availableFrom}
-              onChange={v => setF({ availableFrom: v })}
-            />
-          </Box>
-        )}
-
-        {/* Location */}
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>Location</Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-            <SelectField
-              label="City / State"
-              value={form.cityId}
-              onChange={v => setF({ cityId: v })}
-              options={SIGNUP_ENABLED_STATES.map(s => ({ value: String(s.id), label: s.name }))}
-              placeholder="Select city / state"
-            />
-            <TextField
-              fullWidth size="small"
-              placeholder="Locality / address (e.g. Plot 12, Okhla, Jamia Nagar)"
-              value={form.locality}
-              onChange={e => setF({ locality: e.target.value })}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LocationOnOutlinedIcon sx={{ fontSize: '1rem', color: colors.ink3 }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-            />
-          </Box>
-        </Box>
-
-        {/* Rent */}
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>Rent</Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            <TextField
-              size="small" label={rentLabel}
-              value={form.rentPerPerson}
-              onChange={e => setF({ rentPerPerson: e.target.value.replace(/\D/g, '') })}
-              InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
-              inputProps={{ inputMode: 'numeric' }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-            />
-            {showTotalRent && (
-              <TextField
-                size="small" label="Total rent"
-                value={form.totalRent}
-                onChange={e => setF({ totalRent: e.target.value.replace(/\D/g, '') })}
-                InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
-                inputProps={{ inputMode: 'numeric' }}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-              />
-            )}
-            <TextField
-              size="small" label="Deposit amount (optional)"
-              value={form.depositAmount}
-              onChange={e => setF({ depositAmount: e.target.value.replace(/\D/g, '') })}
-              InputProps={{ startAdornment: <InputAdornment position="start">₹</InputAdornment> }}
-              inputProps={{ inputMode: 'numeric' }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-            />
-          </Box>
-        </Box>
-
-        {/* WhatsApp / Contact number */}
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>WhatsApp Number</Typography>
-          <TextField
-            fullWidth size="small" required
-            placeholder="e.g. 9876543210"
-            value={form.phone}
-            onChange={e => setF({ phone: e.target.value.replace(/\D/g, '').slice(0, 15) })}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <WhatsAppIcon sx={{ fontSize: '1rem', color: '#25D366' }} />
-                </InputAdornment>
-              ),
-            }}
-            inputProps={{ inputMode: 'tel', maxLength: 15 }}
-            helperText="Interested people will contact you directly via WhatsApp"
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-          />
-        </Box>
-
-        {/* Amenities — from API when available, hardcoded fallback otherwise */}
-        <Box className={classes.fBlock}>
-          <Typography className={classes.fLabel}>Amenities Available</Typography>
-          <Box className={classes.chipsWrap}>
-            {amenityOptions.map(o => (
-              <Box
-                key={o.value}
-                component="button"
-                className={cx(classes.chip, { [classes.chipActive]: form.amenities.includes(o.value) })}
-                onClick={() => toggleMulti('amenities', o.value)}
-              >
-                {form.amenities.includes(o.value) && <CheckIcon sx={{ fontSize: '0.72rem' }} />}
-                {o.label}
-              </Box>
-            ))}
-          </Box>
-        </Box>
-
-        {/* Visible To */}
-        <Box className={classes.fBlock} style={{ borderBottom: 'none' }}>
-          <Typography className={classes.fLabel}>Visible To</Typography>
-          <Typography sx={{ fontSize: '0.75rem', color: colors.ink3, mb: 1.5, lineHeight: 1.5 }}>
-            Choose who can see this listing so it never leaks to strangers.
-          </Typography>
-          {VISIBLE_TO_OPTIONS.map(o => (
-            <Box
-              key={o.value}
-              className={classes.visibleRow}
-              onClick={() => setF({ visibleTo: o.value })}
-            >
-              <Box className={classes.visibleIcon}>{o.icon}</Box>
-              <Box sx={{ flex: 1 }}>
-                <Typography className={classes.visibleLabel}>{o.label}</Typography>
-                <Typography className={classes.visibleDesc}>{o.desc}</Typography>
-              </Box>
-              <Box className={cx(classes.visibleRadio, { [classes.visibleRadioActive]: form.visibleTo === o.value })}>
-                {form.visibleTo === o.value && <CheckIcon sx={{ fontSize: '0.65rem', color: '#fff' }} />}
-              </Box>
-            </Box>
-          ))}
-        </Box>
-
       </DialogContent>
 
       <Box className={classes.s2Footer}>
@@ -1658,7 +1518,7 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
   const renderPreview = () => {
     const description = buildFullDescription()
     const amount = Number(form.rentPerPerson) || 0
-    const cityName = SIGNUP_ENABLED_STATES.find(s => String(s.id) === form.cityId)?.name
+    const localityLabel = LOCALITY_OPTIONS.find(o => o.value === form.locality)?.label
 
     const selectedAmenityLabels = form.amenities
       .map(v => amenityOptions.find(o => o.value === v)?.label)
@@ -1739,11 +1599,11 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
               </Box>
             )}
 
-            {(form.locality.trim() || cityName) && (
+            {localityLabel && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <LocationOnOutlinedIcon sx={{ fontSize: '1rem', color: colors.ink4, flexShrink: 0 }} />
                 <Typography sx={{ fontSize: '0.82rem', color: colors.ink2 }}>
-                  {[form.locality.trim(), cityName].filter(Boolean).join(', ')}
+                  {localityLabel}
                 </Typography>
               </Box>
             )}
