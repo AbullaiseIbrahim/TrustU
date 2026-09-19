@@ -2,8 +2,8 @@ import React, { useState } from 'react'
 import { Box, Snackbar } from '@mui/material'
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt'
-import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
-import HomeIcon from '@mui/icons-material/Home'
+import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined'
+import ExploreIcon from '@mui/icons-material/Explore'
 import AddIcon from '@mui/icons-material/Add'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline'
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble'
@@ -131,8 +131,8 @@ const BottomNav: React.FC = () => {
     {
       label: 'Explore',
       path: PATHS.dashboard.accommodation,
-      icon: <HomeOutlinedIcon />,
-      iconActive: <HomeIcon />,
+      icon: <ExploreOutlinedIcon />,
+      iconActive: <ExploreIcon />,
     },
   ]
 

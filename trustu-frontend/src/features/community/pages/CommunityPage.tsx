@@ -732,7 +732,7 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
     <Box className={classes.circleContent}>
       <Box sx={{ px: 2, pb: 1 }}>
         <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: colors.ink }}>
-          {mutuals.length} People You May Know
+          Discover ({mutuals.length})
         </Typography>
         <Typography sx={{ fontSize: '0.8rem', color: colors.ink3, mt: '2px' }}>
           Friends of your friends who aren&apos;t your friend yet — not people you already share a connection with.
@@ -976,9 +976,6 @@ const CommunityPage: React.FC = () => {
     tab === 'feed' ? next.delete('tab') : next.set('tab', tab)
     setSearchParams(next, { replace: true })
   }
-  // Scroll the active tab pill fully into view — with 4 tabs (the last being the
-  // long "People You May Know" label) it can otherwise sit clipped at the right
-  // edge of the horizontally-scrolling tab bar instead of being fully visible.
   const activeTabRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     activeTabRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' })
@@ -998,7 +995,7 @@ const CommunityPage: React.FC = () => {
     { key: 'feed',    label: 'Feed' },
     { key: 'members', label: 'Members' },
     { key: 'friends', label: 'Friends', badge: pendingCount },
-    { key: 'mutual',  label: 'People You May Know' },
+    { key: 'mutual',  label: 'Discover' },
   ]
 
   return (

@@ -1262,7 +1262,7 @@ const GridCard: React.FC<{
 
 // ── Category view ─────────────────────────────────────────────────────────────
 
-type FilterTab = 'all' | 'friends' | 'mutual' | 'community' | 'saved'
+type FilterTab = 'all' | 'friends' | 'mutual' | 'saved'
 
 // Wishlist has no backend endpoint yet (no /wishlist or /favorites route) —
 // persist locally so saved listings survive reloads/navigation instead of
@@ -1619,7 +1619,6 @@ const AccommodationPage: React.FC = () => {
     // Apply filter tab
     if (filterTab === 'friends')   list = list.filter(a => a.isConnected)
     if (filterTab === 'mutual')    list = list.filter(a => a.mutualFriends > 0)
-    if (filterTab === 'community') list = list.filter(a => !a.isConnected && a.mutualFriends === 0)
     if (filterTab === 'saved')     list = list.filter(a => savedIds.has(a.id))
 
     // Short Stay gets its own filter sheet (dates, guests, poster) instead of
@@ -1637,7 +1636,6 @@ const AccommodationPage: React.FC = () => {
     let list = [...allAccommodations].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     if (allFilterTab === 'friends')   list = list.filter(a => a.isConnected)
     if (allFilterTab === 'mutual')    list = list.filter(a => a.mutualFriends > 0)
-    if (allFilterTab === 'community') list = list.filter(a => !a.isConnected && a.mutualFriends === 0)
     if (allFilterTab === 'saved')     list = list.filter(a => savedIds.has(a.id))
     return applyFilters(list, allFilters)
   }, [allAccommodations, allFilterTab, allFilters, savedIds])
@@ -1693,7 +1691,6 @@ const AccommodationPage: React.FC = () => {
             { key: 'all' as FilterTab,       label: 'All',            dotColor: colors.ink4 },
             { key: 'friends' as FilterTab,   label: 'Friends',        dotColor: colors.moss },
             { key: 'mutual' as FilterTab,    label: 'Mutual Friends', dotColor: colors.amber },
-            { key: 'community' as FilterTab, label: 'Community',      dotColor: colors.ink3 },
             { key: 'saved' as FilterTab,     label: 'Saved',          dotColor: colors.urgent },
           ].map(pill => (
             <Box
@@ -1852,7 +1849,6 @@ const AccommodationPage: React.FC = () => {
     { key: 'all' as FilterTab,       label: 'All',            dotColor: colors.ink4 },
     { key: 'friends' as FilterTab,   label: 'Friends',        dotColor: colors.moss },
     { key: 'mutual' as FilterTab,    label: 'Mutual Friends', dotColor: colors.amber },
-    { key: 'community' as FilterTab, label: 'Community',      dotColor: colors.ink3 },
     { key: 'saved' as FilterTab,     label: 'Saved',          dotColor: colors.urgent },
   ]
 

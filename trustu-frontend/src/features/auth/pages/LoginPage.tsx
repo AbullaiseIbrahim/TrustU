@@ -63,8 +63,8 @@ const LoginPage: React.FC = () => {
       navigate(PATHS.dashboard.community)
     } catch (err) {
       const error = err as Error & { status?: number }
-      if (error.status === 401 || error.status === 404 || error.status === 422) {
-        navigate(PATHS.auth.register, { state: { email } })
+      if (error.status === 401) {
+        showError('Incorrect email or password. Please try again.')
       } else {
         showError(error.message ?? 'Something went wrong. Please try again.')
       }

@@ -39,7 +39,10 @@ apiClient.interceptors.response.use(
     if (error.response) {
       const { status } = error.response
 
-      if (status === 401) {
+      const requestHadAuthHeader = Boolean(
+        (error.config?.headers as Record<string, unknown> | undefined)?.Authorization
+      )
+      if (status === 401 && requestHadAuthHeader) {
         localStorage.removeItem('trustu_token')
         localStorage.removeItem('trustu_user')
         if (!window.location.pathname.includes('/auth')) {
