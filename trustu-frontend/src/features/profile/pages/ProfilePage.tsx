@@ -569,12 +569,16 @@ interface EditForm {
 interface EditSheetProps {
   open: boolean
   onClose: () => void
-  user: { name: string; email: string | null; phone: string | null; gender: string | null; designation: string | null; institute: string | null }
+  user: { name: string; email: string | null; phone: string | null; gender: string | null; designation: string | null; institute: string | null; avatarUrl: string | null }
 }
 
 const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => {
   const { classes } = useStyles()
   const updateProfile = useUpdateProfile()
+
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+  const [photoFile, setPhotoFile] = React.useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = React.useState<string | null>(null)
 
   const [form, setForm] = React.useState<EditForm>({
     firstName: '',
@@ -597,8 +601,35 @@ const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => 
         institute: user.institute ?? '',
       })
       setSaveError(null)
+      // Start each open showing the saved photo, not a stale pick from last time.
+      setPhotoFile(null)
+      setPhotoPreview(null)
     }
   }, [open])
+
+  // Revoke the local preview URL once it's replaced or the sheet unmounts, so
+  // we don't leak object URLs across repeated photo picks.
+  React.useEffect(() => {
+    if (!photoPreview) return
+    return () => URL.revokeObjectURL(photoPreview)
+  }, [photoPreview])
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow picking the same file again later
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setSaveError('Please choose an image file.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setSaveError('Image must be smaller than 5MB.')
+      return
+    }
+    setSaveError(null)
+    setPhotoFile(file)
+    setPhotoPreview(URL.createObjectURL(file))
+  }
 
   const set = (key: keyof EditForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(prev => ({ ...prev, [key]: e.target.value }))
@@ -621,6 +652,7 @@ const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => 
         gender:      form.gender ? form.gender.toLowerCase() : undefined,
         phone:       form.phone.trim() || undefined,
         institute:   form.institute.trim() || undefined,
+        photo:       photoFile,
       },
       {
         onSuccess: onClose,
@@ -676,15 +708,26 @@ const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => 
           <Box className={classes.editAvatarWrap}>
             <Avatar
               className={classes.editAvatar}
+              src={photoPreview ?? user.avatarUrl ?? undefined}
               sx={{ background: selfAvatarGradient(), color: '#fff' }}
             >
               {initials}
             </Avatar>
-            <Box className={classes.editAvatarFab2}>
+            <Box className={classes.editAvatarFab2} onClick={() => fileInputRef.current?.click()}>
               <CameraAltOutlinedIcon />
             </Box>
           </Box>
-          <Typography className={classes.changePhotoLabel}>Change photo</Typography>
+          <Typography className={classes.changePhotoLabel} onClick={() => fileInputRef.current?.click()}>
+            Change photo
+          </Typography>
+          <Box
+            component="input"
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            onChange={handlePhotoChange}
+            sx={{ display: 'none' }}
+          />
         </Box>
 
         {/* Name fields */}
@@ -856,7 +899,7 @@ const ProfilePage: React.FC = () => {
   const name = displayUser?.name ?? 'Unknown'
   const first8 = (friends as Friend[]).slice(0, 8)
   const friendCount = (friends as Friend[]).length
-  const { people: mutualPeople } = useMutualFriendsAggregate((friends as Friend[]).map(f => f.userId))
+  const { people: mutualPeople } = useMutualFriendsAggregate(friends as Friend[])
   const mutualCount = mutualPeople.length
   const first8Mutual = mutualPeople.slice(0, 8)
 
@@ -1017,6 +1060,7 @@ const ProfilePage: React.FC = () => {
           gender: displayUser?.gender ?? null,
           designation: displayUser?.designation ?? null,
           institute: displayUser?.institute ?? null,
+          avatarUrl: displayUser?.avatarUrl ?? null,
         }}
       />
     </Box>

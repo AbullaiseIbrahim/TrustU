@@ -146,13 +146,30 @@ function normalizeAmenities(raw: any): { id: number; name: string }[] {
     .filter(a => a.name)
 }
 
+// The accommodation photo endpoint serves relative storage paths (e.g.
+// "accommodations/xyz.png" via `image_path`) rather than full URLs -- unlike
+// the user-profile photo endpoint, which already returns an absolute URL.
+// Confirmed live: POSTing with field name `images[]` returns
+// `images: [{ image_path: "accommodations/....png", ... }]`, so a relative
+// path needs the backend's own origin prefixed on to become a loadable
+// image URL. VITE_API_BASE_URL is intentionally blank in dev (Vite proxies
+// /api instead), so fall back to the known production host in that case.
+const STORAGE_ORIGIN = import.meta.env.VITE_API_BASE_URL || 'https://lemonchiffon-hedgehog-419125.hostingersite.com'
+
+function toAbsoluteStorageUrl(value: string): string {
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  return `${STORAGE_ORIGIN}/storage/${value.replace(/^\/?storage\//, '').replace(/^\//, '')}`
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizePhotoUrls(raw: any): string[] {
   const list = raw.photos ?? raw.photo_urls ?? raw.photoUrls ?? raw.images ?? raw.media ?? []
   if (!Array.isArray(list)) return []
   return list
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((p: any) => (typeof p === 'string' ? p : p?.url ?? p?.path ?? p?.image_url ?? p?.file_path ?? ''))
+    .map((p: any) => (typeof p === 'string' ? p : p?.url ?? p?.path ?? p?.image_url ?? p?.file_path ?? p?.image_path ?? ''))
+    .map(toAbsoluteStorageUrl)
     .filter((url: string) => Boolean(url))
 }
 
@@ -266,7 +283,11 @@ export const accommodationApi = {
 
     payload.amenity_ids?.forEach(id => fd.append('amenity_ids[]', String(id)))
     payload.guest_preference?.forEach(v => fd.append('guest_preference[]', v))
-    payload.photos?.forEach(photo   => fd.append('photos[]',      photo))
+    // Confirmed live against the backend: it silently ignores a `photos[]`
+    // field (accepts the request, returns 200, but never saves an image), and
+    // only actually stores the file when it's sent as `images[]` -- matching
+    // the `images` key the read endpoints return it under.
+    payload.photos?.forEach(photo   => fd.append('images[]',      photo))
     if (payload.phone) fd.append('phone', payload.phone)
     payload.visible_to?.forEach(v => fd.append('visible_to[]', String(v)))
 

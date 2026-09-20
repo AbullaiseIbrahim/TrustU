@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { AuthTokens, User } from '@/types/auth.types'
 import { profileApi } from '@/services/profile.api'
 import { queryClient } from './QueryProvider'
@@ -26,6 +26,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null)
   const [tokens, setTokens] = useState<AuthTokens | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  // Guards the one-time background refresh below so it fires once per
+  // cached session, not on every user/tokens change (login/register already
+  // call syncProfile() themselves right after signing in).
+  const didAutoSync = useRef(false)
 
   useEffect(() => {
     const storedToken = localStorage.getItem(TOKEN_KEY)
@@ -84,7 +88,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const profile = await profileApi.get()
       setUser(prev => {
         if (!prev) return prev
-        const updated = { ...prev, ...profile, profileComplete: true }
+        const updated = {
+          ...prev,
+          ...profile,
+          // GET /user/profile isn't guaranteed to echo the same community
+          // membership shape login/register already gave us (it's a
+          // separate endpoint on the backend) -- never let this fetch
+          // downgrade community info we already resolved to null/false,
+          // only let it fill gaps or add more detail.
+          communityId:     profile.communityId     ?? prev.communityId,
+          communityName:   profile.communityName    ?? prev.communityName,
+          communityJoined: profile.communityJoined || prev.communityJoined,
+          profileComplete: true,
+        }
         localStorage.setItem(USER_KEY, JSON.stringify(updated))
         return updated
       })
@@ -95,6 +111,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       emitGlobalApiWarning(`Signed in, but couldn't load your full profile: ${getApiErrorMessage(err)}`)
     }
   }, [])
+
+  // A session restored from localStorage on mount never calls syncProfile()
+  // itself -- only a fresh login/register does -- so a page reload used to
+  // trust whatever was last cached forever, even if that cache was stale or
+  // incomplete (e.g. saved before a field like community membership was
+  // available). Run one background refresh after a cached session loads so
+  // things repair themselves where possible; the merge inside syncProfile()
+  // above never lets this downgrade good cached data, so it's safe to run
+  // silently.
+  useEffect(() => {
+    if (isLoading || !tokens || !user) return
+    if (didAutoSync.current) return
+    didAutoSync.current = true
+    syncProfile()
+  }, [isLoading, tokens, user, syncProfile])
 
   const value = useMemo<AuthContextValue>(
     () => ({ user, tokens, isAuthenticated: !!user && !!tokens, isLoading, login, logout, updateUser, syncProfile }),

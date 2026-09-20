@@ -55,7 +55,7 @@ const useStyles = makeStyles()(() => ({
     '&:hover': { color: colors.moss, backgroundColor: colors.mossSoft },
   },
 
-  // ── Expanded card ─────────────────────────────────────────────────────────────
+  // ── Expanded card ────────────────────────────────────────────────────────────
   expandedCard: {
     backgroundColor: colors.white,
     borderRadius: 20,
@@ -88,32 +88,18 @@ const useStyles = makeStyles()(() => ({
     fontSize: '0.7rem',
     color: colors.ink3,
   },
-  titleInput: {
-    width: '100%',
-    border: 'none',
-    outline: 'none',
-    backgroundColor: 'transparent',
-    fontSize: '0.98rem',
-    fontWeight: 700,
-    lineHeight: 1.4,
-    color: colors.ink,
-    fontFamily: 'inherit',
-    padding: '12px 16px 4px',
-    resize: 'none',
-    boxSizing: 'border-box',
-  },
   bodyInput: {
     width: '100%',
     border: 'none',
     outline: 'none',
     backgroundColor: 'transparent',
-    fontSize: '0.875rem',
+    fontSize: '0.9rem',
     lineHeight: 1.65,
-    color: colors.ink3,
+    color: colors.ink,
     fontFamily: 'inherit',
-    padding: '4px 16px 12px',
+    padding: '12px 16px',
     resize: 'none',
-    minHeight: 68,
+    minHeight: 88,
     boxSizing: 'border-box',
   },
   actions: {
@@ -156,12 +142,16 @@ const useStyles = makeStyles()(() => ({
   },
 }))
 
+// Single compose box's character cap. The backend post record still has
+// separate title/description columns (CreatePostPayload requires both), but
+// there's only one thing for the person to type here -- see handlePost.
+const MAX_LENGTH = 1000
+
 const CreatePostInput: React.FC = () => {
   const { classes } = useStyles()
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
+  const [content, setContent] = useState('')
   const createPost = useCreatePost()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -173,16 +163,19 @@ const CreatePostInput: React.FC = () => {
   }, [searchParams, setSearchParams])
 
   const handlePost = () => {
-    const t = title.trim()
-    const d = description.trim()
-    if (!t || !d || !user?.communityId) return
+    const text = content.trim()
+    if (!text || !user?.communityId) return
+    // The backend's post record still has separate title/description fields
+    // (both required), but the compose box only takes one piece of text —
+    // send it as both. PostCard.tsx already dedupes identical title/description
+    // pairs so the feed shows the text once, not twice.
     createPost.mutate(
-      { community_id: user.communityId, title: t, description: d },
-      { onSuccess: () => { setTitle(''); setDescription(''); setExpanded(false) } },
+      { community_id: user.communityId, title: text, description: text },
+      { onSuccess: () => { setContent(''); setExpanded(false) } },
     )
   }
 
-  const canPost = title.trim().length > 0 && description.trim().length > 0 && !!user?.communityId
+  const canPost = content.trim().length > 0 && !!user?.communityId
 
   if (expanded) {
     return (
@@ -199,33 +192,24 @@ const CreatePostInput: React.FC = () => {
             </Box>
           </Box>
 
-          {/* Title */}
-          <textarea
-            className={classes.titleInput}
-            placeholder="What's on your mind? Add a title…"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            rows={1}
-            maxLength={120}
-            autoFocus
-          />
-          {/* Body */}
+          {/* Single compose box -- no separate title field */}
           <textarea
             className={classes.bodyInput}
             placeholder="Share the details with your community…"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            maxLength={1000}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={4}
+            maxLength={MAX_LENGTH}
+            autoFocus
           />
 
           {/* Footer actions */}
           <Box className={classes.actions}>
-            <Typography className={classes.charCount}>{title.length}/120</Typography>
+            <Typography className={classes.charCount}>{content.length}/{MAX_LENGTH}</Typography>
             <Box className={classes.btnRow}>
               <Button
                 className={classes.cancelBtn}
-                onClick={() => { setExpanded(false); setTitle(''); setDescription('') }}
+                onClick={() => { setExpanded(false); setContent('') }}
                 size="small"
               >
                 Cancel

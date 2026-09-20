@@ -39,14 +39,14 @@ export const useMutualFriends = (userId: string) =>
  */
 const MUTUAL_AGGREGATE_CAP = 20
 
-export const useMutualFriendsAggregate = (friendUserIds: string[]) => {
-  const capped = friendUserIds.slice(0, MUTUAL_AGGREGATE_CAP)
+export const useMutualFriendsAggregate = (sourceFriends: Friend[]) => {
+  const capped = sourceFriends.slice(0, MUTUAL_AGGREGATE_CAP)
 
   const results = useQueries({
-    queries: capped.map((userId) => ({
-      queryKey: FRIENDSHIP_KEYS.mutual(userId),
-      queryFn: () => friendshipApi.mutual(userId),
-      enabled: !!userId,
+    queries: capped.map((f) => ({
+      queryKey: FRIENDSHIP_KEYS.mutual(f.userId),
+      queryFn: () => friendshipApi.mutual(f.userId),
+      enabled: !!f.userId,
       staleTime: 60_000,
     })),
   })
@@ -54,17 +54,38 @@ export const useMutualFriendsAggregate = (friendUserIds: string[]) => {
   const isLoading = capped.length > 0 && results.some((r) => r.isLoading)
 
   // Once a friend group is fully interconnected, the union naturally includes
-  // people who are already direct friends — exclude them so this tab reads as
+  // people who are already direct friends -- exclude them so this tab reads as
   // "people you might know" rather than re-listing your friends list.
-  const directFriendIds = new Set(friendUserIds)
+  const directFriendIds = new Set(sourceFriends.map((f) => f.userId))
   const byId = new Map<string, Friend>()
-  results.forEach((r) => {
-    (r.data ?? []).forEach((f) => {
-      if (!directFriendIds.has(f.userId) && !byId.has(f.userId)) byId.set(f.userId, f)
+  // How many of the current user's own friends also connect to this person --
+  // a real, derived "N mutual" count (not per-target-person data the API
+  // exposes directly, but a straightforward tally of the same calls above).
+  const countById = new Map<string, number>()
+  // WHICH of the current user's own friends connect to this person -- real
+  // Friend objects (name/avatar), capped at 3 per person, used to render a
+  // small overlapping-avatar cluster next to the "N mutual" count.
+  const connectorsById = new Map<string, Friend[]>()
+  results.forEach((r, i) => {
+    const connector = capped[i]
+    ;(r.data ?? []).forEach((f) => {
+      if (directFriendIds.has(f.userId)) return
+      if (!byId.has(f.userId)) byId.set(f.userId, f)
+      countById.set(f.userId, (countById.get(f.userId) ?? 0) + 1)
+      if (connector) {
+        const list = connectorsById.get(f.userId) ?? []
+        if (list.length < 3) list.push(connector)
+        connectorsById.set(f.userId, list)
+      }
     })
   })
 
-  return { people: Array.from(byId.values()), isLoading }
+  return {
+    people: Array.from(byId.values()),
+    isLoading,
+    mutualCounts: countById,
+    mutualConnectors: connectorsById,
+  }
 }
 
 // Note: none of these mutations set their own onError — a failure still reaches

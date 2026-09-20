@@ -13,6 +13,7 @@ const AppShell       = lazy(() => import('../features/dashboard/layouts/AppShell
 const DashboardLayout = lazy(() => import('../features/dashboard/layouts/DashboardLayout'))
 const MyListingsPage = lazy(() => import('../features/profile/pages/MyListingsPage'))
 const OnboardingCommunityPage = lazy(() => import('../features/onboarding/pages/OnboardingCommunityPage'))
+const DiscoverDetailPage = lazy(() => import('../features/community/pages/DiscoverDetailPage'))
 const NotFoundPage   = lazy(() => import('../components/NotFoundPage'))
 
 // ── Eager imports (tab pages + profile — prevents full-page Suspense flash) ────
@@ -50,6 +51,7 @@ export default function AppRoutes() {
           <Route path={PATHS.dashboard.root} element={<DashboardLayout />}>
             <Route index element={<Navigate to={PATHS.dashboard.community} replace />} />
             <Route path="community"     element={<CommunityPage />} />
+            <Route path="community/discover" element={<DiscoverDetailPage />} />
             <Route path="accommodation" element={<AccommodationPage />} />
           </Route>
 

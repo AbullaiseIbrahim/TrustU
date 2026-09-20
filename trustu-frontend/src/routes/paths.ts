@@ -11,6 +11,7 @@ export const PATHS = {
     root: '/dashboard',
     community: '/dashboard/community',
     accommodation: '/dashboard/accommodation',
+    discover: '/dashboard/community/discover',
   },
   profile: '/profile',
   myListings: '/my-listings',

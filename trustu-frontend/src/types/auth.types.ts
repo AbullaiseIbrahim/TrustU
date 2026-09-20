@@ -49,6 +49,8 @@ export interface RegisterRequest {
   gender?: string
   phone?: string
   institute?: string
+  /** Profile photo picked during registration, if any. */
+  profile_image?: File | null
 }
 
 export interface SendOtpRequest {

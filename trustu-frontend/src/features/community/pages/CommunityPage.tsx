@@ -1,6 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Box, Typography, Avatar } from '@mui/material'
+import { Box, Typography, Avatar, Tooltip } from '@mui/material'
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined'
+import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt'
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
+import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import { makeStyles } from 'tss-react/mui'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { PATHS } from '@/routes/paths'
@@ -22,12 +30,13 @@ import {
 } from '@/features/circle/hooks/useFriendshipQueries'
 import type { Friend, PendingRequest } from '@/services/friendship.api'
 import UserProfileSheet, { type ProfileSheetUser } from '../components/UserProfileSheet'
-import { useCommunityMembers, useCommunity } from '../hooks/useCommunityQueries'
+import { useCommunityMembers, useCommunity, useNewCommunityMembers } from '../hooks/useCommunityQueries'
 import type { CommunityMember } from '@/types/community.types'
-import { getInitials, avatarGradient, formatCommunityName } from '@/utils'
+import { getInitials, avatarGradient, formatCommunityName, communityLocation, formatRelativeTime } from '@/utils'
 import colors from '@/theme/colors'
 import CircularProgress from '@mui/material/CircularProgress'
 import Button from '@mui/material/Button'
+import { useAccommodations } from '@/features/accommodation/hooks/useAccommodationQueries'
 import CheckIcon from '@mui/icons-material/Check'
 import CloseIcon from '@mui/icons-material/Close'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
@@ -35,7 +44,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
 type Tab = 'feed' | 'members' | 'friends' | 'mutual'
 
-const useStyles = makeStyles()(() => ({
+export const useStyles = makeStyles()(() => ({
   // ── Community gradient card ────────────────────────────────────────────────
   communityCard: {
     background: `linear-gradient(150deg, #2A8A52 0%, ${colors.mossDeep} 80%)`,
@@ -121,49 +130,218 @@ const useStyles = makeStyles()(() => ({
     color: '#fff',
   },
 
+  // ── New default-view community card elements (mockup: badge, location,
+  // stats row, larger avatar row, tagline). Kept separate from the classes
+  // above so the Network view (isNetworkView) keeps its original, untouched
+  // layout until it gets its own design pass. ────────────────────────────────
+  communityContent: {
+    position: 'relative',
+  },
+  communityBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 20,
+    padding: '5px 12px 5px 10px',
+    marginBottom: 14,
+  },
+  communityBadgeText: {
+    fontSize: '0.68rem',
+    fontWeight: 700,
+    letterSpacing: '0.6px',
+    textTransform: 'uppercase',
+    color: '#fff',
+  },
+  communityNameLg: {
+    fontWeight: 800,
+    fontSize: '1.65rem',
+    letterSpacing: '-0.6px',
+    lineHeight: 1.15,
+    margin: '0 0 8px',
+    color: '#fff',
+  },
+  locationRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 16,
+  },
+  locationIcon: {
+    fontSize: '0.95rem !important',
+    color: '#fff',
+  },
+  locationText: {
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  statsRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 10,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+  },
+  statItem: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 5,
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    fontFamily: 'inherit',
+  },
+  statNumber: {
+    fontSize: '0.98rem',
+    fontWeight: 800,
+    color: '#fff',
+  },
+  statAmber: {
+    color: colors.amber,
+  },
+  statLabel: {
+    fontSize: '0.8rem',
+    fontWeight: 500,
+    color: 'rgba(255,255,255,0.75)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 14,
+    background: 'rgba(255,255,255,0.3)',
+  },
+  infoIcon: {
+    fontSize: '0.78rem !important',
+    color: 'rgba(255,255,255,0.55)',
+  },
+  avatarStackLg: {
+    display: 'flex',
+    marginBottom: 14,
+  },
+  stackAvatarLg: {
+    width: 38,
+    height: 38,
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    border: '2px solid rgba(255,255,255,0.55)',
+    marginLeft: -10,
+    '&:first-of-type': { marginLeft: 0 },
+    background: 'rgba(255,255,255,0.22)',
+    color: '#fff',
+  },
+  avatarOverflow: {
+    backgroundColor: 'rgba(0,0,0,0.28)',
+  },
+  tagline: {
+    fontSize: '1.05rem',
+    fontWeight: 800,
+    color: '#fff',
+    margin: '0 0 4px',
+  },
+  taglineSub: {
+    fontSize: '0.82rem',
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: 500,
+    lineHeight: 1.4,
+    margin: 0,
+  },
+  mosqueDecor: {
+    position: 'absolute',
+    right: -10,
+    top: 0,
+    bottom: 0,
+    height: '100%',
+    width: 200,
+    opacity: 0.2,
+    pointerEvents: 'none',
+    WebkitMaskImage: 'linear-gradient(180deg, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 96%)',
+    maskImage: 'linear-gradient(180deg, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 96%)',
+  },
+  communityPhoto: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundImage: 'url(/images/jamia-nagar.jpg)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'right center',
+    pointerEvents: 'none',
+  },
+  communityPhotoScrim: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    background: `linear-gradient(100deg, ${colors.mossDeep} 0%, ${colors.mossDeep} 30%, rgba(15,86,48,0.72) 52%, rgba(15,86,48,0.25) 78%, rgba(15,86,48,0) 100%)`,
+    pointerEvents: 'none',
+  },
+
   // ── Tab bar ────────────────────────────────────────────────────────────────
   tabBar: {
-    display: 'flex',
-    padding: '2px 16px 12px',
-    overflow: 'hidden',
-    minWidth: 0,
-    maxWidth: '100%',
+    margin: '4px 16px 14px',
   },
   tabRow: {
     display: 'flex',
-    gap: 6,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     overflowX: 'auto',
     scrollbarWidth: 'none',
     msOverflowStyle: 'none',
     '&::-webkit-scrollbar': { display: 'none' },
   },
   tabBtn: {
-    padding: '6px 14px',
-    borderRadius: 20,
-    fontSize: '0.8rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
     border: 'none',
     background: 'transparent',
-    color: colors.ink3,
-    transition: 'all 0.18s ease',
+    cursor: 'pointer',
     fontFamily: 'inherit',
+    outline: 'none',
+    boxShadow: 'none',
+    WebkitAppearance: 'none',
+    appearance: 'none',
+    WebkitTapHighlightColor: 'transparent',
+    '&:focus': { outline: 'none', boxShadow: 'none' },
+    '&:focus-visible': { outline: 'none', boxShadow: 'none' },
   },
-  tabBtnActive: {
-    background: colors.ink,
-    color: '#fff',
+  tabPill: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    padding: '7px 15px',
+    borderRadius: 8,
+    fontSize: '0.76rem',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    color: colors.ink3,
+    background: 'transparent',
+    boxShadow: 'none',
+    transition: 'all 0.18s ease',
+  },
+  tabPillActive: {
+    color: colors.moss,
+    background: colors.mossSoft,
+  },
+  tabIcon: {
+    fontSize: '1.05rem !important',
   },
   tabBadge: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 16,
-    height: 16,
+    minWidth: 15,
+    height: 15,
     padding: '0 4px',
-    marginLeft: 6,
     borderRadius: 8,
-    fontSize: '0.6rem',
+    fontSize: '0.58rem',
     fontWeight: 700,
     lineHeight: 1,
     background: colors.error,
@@ -172,6 +350,93 @@ const useStyles = makeStyles()(() => ({
   },
 
   // ── Friends horizontal scroll ──────────────────────────────────────────────
+  // Accommodation summary card (Feed tab)
+  accomCard: {
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    margin: '4px 16px 14px',
+    padding: '16px',
+    boxShadow: '0 0 2px rgba(20,20,15,0.04), 0 0 22px rgba(20,20,15,0.05)',
+  },
+  accomTitle: {
+    fontWeight: 800,
+    fontSize: '1rem',
+    color: colors.ink,
+    margin: 0,
+  },
+  accomSubtitle: {
+    fontSize: '0.78rem',
+    color: colors.ink3,
+    fontWeight: 500,
+    margin: '2px 0 14px',
+  },
+  accomStatsRow: {
+    display: 'flex',
+    gap: 10,
+    marginBottom: 14,
+  },
+  accomStat: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 14,
+    padding: '14px 12px 12px',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  accomStatGreen: { backgroundColor: '#F3FAF4' },
+  accomStatAmber: { backgroundColor: '#FCFAF0' },
+  accomStatGrey: { backgroundColor: '#FAFAF9' },
+  accomStatTopRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  accomStatIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  accomStatIconGreen: { backgroundColor: '#CDE7D1', color: colors.mossDeep },
+  accomStatIconAmber: { backgroundColor: '#F6E192', color: '#A6861F' },
+  accomStatIconGrey: { backgroundColor: '#E6E6E4', color: colors.ink },
+  accomStatNumber: {
+    fontWeight: 800,
+    fontSize: '1.2rem',
+    lineHeight: 1,
+  },
+  accomStatNumberGreen: { color: colors.mossDeep },
+  accomStatNumberAmber: { color: '#A6861F' },
+  accomStatNumberGrey: { color: colors.ink },
+  accomStatLabel: {
+    fontSize: '0.72rem',
+    fontWeight: 500,
+    color: colors.ink,
+    lineHeight: 1.35,
+  },
+  accomStatLabelGreen: { color: colors.mossDeep, fontWeight: 700 },
+  accomStatLabelAmber: { color: '#A6861F', fontWeight: 700 },
+  accomStatLabelGrey: { color: colors.ink, fontWeight: 700 },
+  accomExploreBtn: {
+    width: '100%',
+    borderRadius: 14,
+    padding: '12px 16px',
+    background: `linear-gradient(135deg, ${colors.moss} 0%, ${colors.mossDeep} 100%)`,
+    color: '#fff',
+    fontWeight: 700,
+    fontSize: '0.88rem',
+    textTransform: 'none',
+    boxShadow: '0 6px 18px rgba(14,107,63,0.30)',
+    '&:hover': {
+      background: `linear-gradient(135deg, ${colors.moss} 0%, ${colors.mossDeep} 100%)`,
+      boxShadow: '0 8px 22px rgba(14,107,63,0.36)',
+    },
+  },
+
   friendsScroll: {
     display: 'flex',
     gap: 12,
@@ -215,6 +480,374 @@ const useStyles = makeStyles()(() => ({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+
+  // ── Discover tab ────────────────────────────────────────
+  discoverIntro: {
+    padding: '4px 16px 2px',
+  },
+  discoverIntroTitle: {
+    fontWeight: 800,
+    fontSize: '1.05rem',
+    color: colors.ink,
+    lineHeight: 1.25,
+  },
+  discoverIntroSub: {
+    fontSize: '0.8rem',
+    color: colors.ink3,
+    marginTop: 2,
+  },
+  discoverSection: {
+    marginTop: 18,
+  },
+  discoverSectionCard: {
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    margin: '0 16px',
+    padding: '14px 14px 12px',
+    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 6px 22px rgba(20,20,15,0.05)',
+  },
+  discoverSectionHead: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    padding: '0 0 10px',
+    gap: 8,
+  },
+  discoverSectionTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  discoverSectionTitle: {
+    fontWeight: 700,
+    fontSize: '0.92rem',
+    color: colors.ink,
+  },
+  discoverNewBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '1px 7px',
+    borderRadius: 8,
+    fontSize: '0.6rem',
+    fontWeight: 800,
+    letterSpacing: '0.3px',
+    color: '#fff',
+    backgroundColor: colors.moss,
+  },
+  discoverSectionSub: {
+    fontSize: '0.76rem',
+    color: colors.ink3,
+    marginTop: 2,
+  },
+  seeAllLink: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    color: colors.moss,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    background: 'none',
+    border: 'none',
+    fontFamily: 'inherit',
+    padding: '2px 0',
+    WebkitTapHighlightColor: 'transparent',
+  },
+  discoverAvatarScroll: {
+    display: 'flex',
+    gap: 18,
+    padding: '0 0 2px',
+    overflowX: 'auto',
+    '&::-webkit-scrollbar': { display: 'none' },
+  },
+  discoverAvatarItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 5,
+    flexShrink: 0,
+    width: 66,
+    cursor: 'pointer',
+  },
+  discoverAvatarLg: {
+    width: 54,
+    height: 54,
+    fontSize: '1rem',
+    fontWeight: 700,
+  },
+  discoverAvatarName: {
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    color: colors.ink,
+    textAlign: 'center',
+    maxWidth: 66,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  discoverAvatarCaption: {
+    fontSize: '0.66rem',
+    color: colors.ink3,
+    textAlign: 'center',
+  },
+  discoverCardScroll: {
+    display: 'flex',
+    gap: 12,
+    padding: '0 0 2px',
+    overflowX: 'auto',
+    '&::-webkit-scrollbar': { display: 'none' },
+  },
+  discoverCard: {
+    flexShrink: 0,
+    width: 138,
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: '14px 12px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
+    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 6px 22px rgba(20,20,15,0.05)',
+    cursor: 'pointer',
+  },
+  discoverCardName: {
+    fontWeight: 700,
+    fontSize: '0.82rem',
+    color: colors.ink,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  discoverCardCaption: {
+    fontSize: '0.68rem',
+    color: colors.ink3,
+    textAlign: 'center',
+    lineHeight: 1.3,
+  },
+  discoverEmpty: {
+    margin: '0 16px',
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    padding: '24px 16px',
+    textAlign: 'center',
+    color: colors.ink3,
+    fontSize: '0.85rem',
+  },
+  discoverNoData: {
+    padding: '4px 0 2px',
+    color: colors.ink3,
+    fontSize: '0.8rem',
+    lineHeight: 1.4,
+  },
+  discoverSectionIcon: {
+    fontSize: '1.05rem !important',
+    color: colors.moss,
+    flexShrink: 0,
+  },
+
+  // ── Discover detail page ────────────────────────────────────
+  discoverPageHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '10px 12px 14px',
+  },
+  discoverPageTitle: {
+    fontWeight: 800,
+    fontSize: '1.1rem',
+    color: colors.ink,
+  },
+  discoverPillRow: {
+    display: 'flex',
+    gap: 8,
+    padding: '0 16px 16px',
+    overflowX: 'auto',
+    '&::-webkit-scrollbar': { display: 'none' },
+  },
+  discoverPill: {
+    flexShrink: 0,
+    padding: '8px 16px',
+    borderRadius: 20,
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    color: colors.ink3,
+    backgroundColor: colors.white,
+    border: `1px solid ${colors.line}`,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    fontFamily: 'inherit',
+    WebkitTapHighlightColor: 'transparent',
+  },
+  discoverPillActive: {
+    color: '#fff',
+    backgroundColor: colors.mossDeep,
+    borderColor: colors.mossDeep,
+  },
+  ctaBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    margin: '4px 16px 22px',
+    padding: '14px 16px',
+    borderRadius: 16,
+    backgroundColor: colors.mossSoft,
+    cursor: 'pointer',
+    border: 'none',
+    width: 'calc(100% - 32px)',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+    WebkitTapHighlightColor: 'transparent',
+  },
+  ctaBannerIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  ctaBannerTitle: {
+    fontWeight: 700,
+    fontSize: '0.85rem',
+    color: colors.ink,
+  },
+  ctaBannerSub: {
+    fontSize: '0.74rem',
+    color: colors.ink3,
+    marginTop: 2,
+  },
+  popularGrid: {
+    display: 'flex',
+    gap: 16,
+    padding: '0 16px 4px',
+    overflowX: 'auto',
+    '&::-webkit-scrollbar': { display: 'none' },
+  },
+  popularItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 5,
+    flexShrink: 0,
+    width: 68,
+  },
+
+  // -- Discover person list (detail page) -- one white card per section,
+  // rows separated by divider lines, Add Friend button on the right. -----
+  discoverListCardHeader: {
+    padding: '14px 14px 10px',
+  },
+  discoverListCard: {
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    margin: '0 16px',
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 6px 22px rgba(20,20,15,0.05)',
+  },
+  discoverListRow: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '12px 44px 12px 14px',
+    cursor: 'pointer',
+    '&:not(:last-of-type)': {
+      borderBottom: `1px solid ${colors.line}`,
+    },
+  },
+  discoverPersonAvatar: {
+    width: 52,
+    height: 52,
+    fontSize: '0.92rem',
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  discoverPersonBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  discoverPersonName: {
+    fontWeight: 700,
+    fontSize: '0.88rem',
+    color: colors.ink,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  discoverPersonSub: {
+    fontSize: '0.74rem',
+    color: colors.ink3,
+    marginTop: 2,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  discoverPersonLocationRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  discoverPersonLocationIcon: {
+    fontSize: '0.8rem !important',
+    color: colors.ink3,
+    flexShrink: 0,
+  },
+  discoverPersonLocationText: {
+    fontSize: '0.74rem',
+    color: colors.ink3,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  discoverPersonFromText: {
+    fontSize: '0.72rem',
+    color: colors.ink4,
+    marginTop: 2,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  discoverPersonDismiss: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    color: colors.ink3,
+    padding: 4,
+  },
+  discoverMutualRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  discoverMutualStack: {
+    display: 'flex',
+    flexShrink: 0,
+  },
+  discoverMutualStackAvatar: {
+    width: 16,
+    height: 16,
+    fontSize: '0.45rem',
+    fontWeight: 700,
+    border: '2px solid #fff',
+    marginLeft: -5,
+    '&:first-of-type': { marginLeft: 0 },
+  },
+  discoverMutualText: {
+    fontSize: '0.72rem',
+    color: colors.ink3,
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  discoverListAction: {
+    flexShrink: 0,
   },
 
   // ── Circle sub-tab ─────────────────────────────────────────────────────────
@@ -289,6 +922,20 @@ const useStyles = makeStyles()(() => ({
     backgroundColor: colors.moss,
     color: '#fff',
     '&:hover': { backgroundColor: colors.mossDeep },
+    padding: '6px 14px',
+    minWidth: 0,
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+  },
+  addFriendPillOutlined: {
+    textTransform: 'none',
+    fontWeight: 700,
+    fontSize: '0.74rem',
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+    color: colors.moss,
+    border: `1.5px solid ${colors.moss}`,
+    '&:hover': { backgroundColor: colors.mossSoft, borderColor: colors.mossDeep },
     padding: '6px 14px',
     minWidth: 0,
     flexShrink: 0,
@@ -411,89 +1058,280 @@ const CommunityCard: React.FC<{
   communityName?: string | null
   /** The user's actual joined community — shown on the Amalgam link in Network view, as opposed to the "Delhi Malayali Network" label used for the card title there. */
   joinedCommunityName?: string | null
+  /** Backend community description — used as the card's subtitle tagline when present. */
+  description?: string | null
   friendCount: number
   memberCount: number
   subCommCount?: number
   isNetworkView?: boolean
   onExplore?: () => void
   onSelectMembers?: () => void
-}> = ({ communityName, joinedCommunityName, friendCount, memberCount, subCommCount = 0, isNetworkView = false, onExplore, onSelectMembers }) => {
-  const { classes } = useStyles()
+  onSelectFriends?: () => void
+  onSelectDiscover?: () => void
+}> = ({
+  communityName, joinedCommunityName, description, friendCount, memberCount, subCommCount = 0,
+  isNetworkView = false, onExplore, onSelectMembers, onSelectFriends, onSelectDiscover,
+}) => {
+  const { classes, cx } = useStyles()
   const { data: friends = [] } = useFriends()
-  const first5 = (friends as Friend[]).slice(0, 5)
 
   // Real mutual-friends count — aggregated via GET /friends/mutual/{userId}
   // across the current user's own friends (see useMutualFriendsAggregate).
-  const { people: mutualPeople } = useMutualFriendsAggregate((friends as Friend[]).map(f => f.userId))
+  const { people: mutualPeople } = useMutualFriendsAggregate(friends as Friend[])
   const mutualFriendsCount = mutualPeople.length
+
+  // ── Network view keeps its original, simpler layout for now — it has its
+  // own semantics (aggregate name, sub-community switcher link) that the new
+  // per-community design below hasn't been adapted for yet. ──────────────
+  if (isNetworkView) {
+    const first5 = (friends as Friend[]).slice(0, 5)
+    return (
+      <Box className={classes.communityCard}>
+        <svg className={classes.leafDecor} width={180} height={180} viewBox="0 0 180 180" fill="none">
+          <ellipse cx={90} cy={90} rx={80} ry={110} fill="#fff" transform="rotate(-25 90 90)" />
+        </svg>
+
+        <Typography className={classes.communityName}>
+          {communityName ?? 'My Community'}
+        </Typography>
+
+        <Box
+          component="button"
+          className={classes.membersPill}
+          onClick={onSelectMembers}
+          sx={{ border: 'none', fontFamily: 'inherit', cursor: onSelectMembers ? 'pointer' : 'default' }}
+        >
+          <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+          </svg>
+          <Typography className={classes.membersPillText}>
+            {memberCount.toLocaleString('en-IN')} Members
+          </Typography>
+        </Box>
+
+        <Typography className={classes.friendsLine}>
+          {friendCount.toLocaleString('en-IN')} Friends · {mutualFriendsCount.toLocaleString('en-IN')} Mutual Friends
+        </Typography>
+
+        {first5.length > 0 && (
+          <Box className={classes.avatarStack}>
+            {first5.map((f) => (
+              <Avatar
+                key={(f as Friend).id}
+                className={classes.stackAvatar}
+                src={(f as Friend).avatarUrl ?? undefined}
+              >
+                {getInitials((f as Friend).name)}
+              </Avatar>
+            ))}
+          </Box>
+        )}
+
+        {subCommCount > 0 && (
+          <Box className={classes.subCommLink} onClick={onExplore}>
+            <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+            </svg>
+            <Typography className={classes.subCommText}>
+              {joinedCommunityName ?? 'My Community'}
+            </Typography>
+            <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
+              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+            </svg>
+          </Box>
+        )}
+      </Box>
+    )
+  }
+
+  // ── Default per-community view — matches the approved mockup: a "Your
+  // Community" badge, name, locality line, a Members / Friends / Friends of
+  // Friends stat row, a real avatar row, and a tagline + description. ────
+  const location = communityLocation(communityName)
+  const subtitle = description?.trim() ||
+    (location ? 'Malayalis living, studying and working around Jamia Nagar.' : null)
+  const AVATAR_CAP = 4
+  const shownFriends = (friends as Friend[]).slice(0, AVATAR_CAP)
+  const overflowCount = Math.max((friends as Friend[]).length - AVATAR_CAP, 0)
 
   return (
     <Box className={classes.communityCard}>
-      {/* Background decoration */}
-      <svg className={classes.leafDecor} width={180} height={180} viewBox="0 0 180 180" fill="none">
-        <ellipse cx={90} cy={90} rx={80} ry={110} fill="#fff" transform="rotate(-25 90 90)" />
-      </svg>
+      {/* Background photo — a real Jamia Nagar mosque photo (watermark
+          removed), layered under a left-to-right scrim so the badge/name/
+          stats/tagline stay legible while the photo shows through on the
+          right, matching the approved mockup. There is no backend field for
+          community imagery/locality yet, so this (like
+          communityLocation/formatCommunityName in src/utils/index.ts) is
+          special-cased for the one live pilot community. Swap the image URL
+          for a real per-community asset once the product has more than one
+          community. */}
+      {location && (
+        <>
+          <Box className={classes.communityPhoto} aria-hidden="true" />
+          <Box className={classes.communityPhotoScrim} aria-hidden="true" />
+        </>
+      )}
+
+      <Box className={classes.communityContent}>
+      {/* "Your Community" badge */}
+      <Box className={classes.communityBadge}>
+        <PeopleAltOutlinedIcon sx={{ fontSize: '0.85rem', color: '#fff' }} />
+        <Typography className={classes.communityBadgeText}>Your Community</Typography>
+      </Box>
 
       {/* Community name — large bold */}
-      <Typography className={classes.communityName}>
+      <Typography className={classes.communityNameLg}>
         {communityName ?? 'My Community'}
       </Typography>
 
-      {/* Members pill — opens the Members tab */}
-      <Box
-        component="button"
-        className={classes.membersPill}
-        onClick={onSelectMembers}
-        sx={{ border: 'none', fontFamily: 'inherit', cursor: onSelectMembers ? 'pointer' : 'default' }}
-      >
-        <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
-          <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-        </svg>
-        <Typography className={classes.membersPillText}>
-          {memberCount.toLocaleString('en-IN')} Members
-        </Typography>
+      {/* Locality — only shown while we have one to show (see communityLocation) */}
+      {location && (
+        <Box className={classes.locationRow}>
+          <PlaceOutlinedIcon className={classes.locationIcon} />
+          <Typography className={classes.locationText}>{location}</Typography>
+        </Box>
+      )}
+
+      {/* Members / Friends / Friends of Friends */}
+      <Box className={classes.statsRow}>
+        <Box
+          component="button"
+          className={classes.statItem}
+          onClick={onSelectMembers}
+          sx={{ cursor: onSelectMembers ? 'pointer' : 'default' }}
+        >
+          <Typography className={classes.statNumber}>{memberCount.toLocaleString('en-IN')}</Typography>
+          <Typography className={classes.statLabel}>Members</Typography>
+        </Box>
+        <Box className={classes.statDivider} />
+        <Box
+          component="button"
+          className={classes.statItem}
+          onClick={onSelectFriends}
+          sx={{ cursor: onSelectFriends ? 'pointer' : 'default' }}
+        >
+          <Typography className={classes.statNumber}>{friendCount.toLocaleString('en-IN')}</Typography>
+          <Typography className={classes.statLabel}>Friends</Typography>
+        </Box>
+        <Box className={classes.statDivider} />
+        <Tooltip
+          title="Friends of your friends — people you're not connected to yet, but share a mutual connection with."
+          arrow
+        >
+          <Box
+            component="button"
+            className={classes.statItem}
+            onClick={onSelectDiscover}
+            sx={{ cursor: onSelectDiscover ? 'pointer' : 'default' }}
+          >
+            <Typography className={cx(classes.statNumber, classes.statAmber)}>
+              {mutualFriendsCount.toLocaleString('en-IN')}
+            </Typography>
+            <Typography className={classes.statLabel}>
+              Friends of Friends
+              <InfoOutlinedIcon className={classes.infoIcon} />
+            </Typography>
+          </Box>
+        </Tooltip>
       </Box>
 
-      {/* Friends · Mutual Friends line — always rendered, even at 0, so the
-          card doesn't reflow once these counts come in. */}
-      <Typography className={classes.friendsLine}>
-        {friendCount.toLocaleString('en-IN')} Friends · {mutualFriendsCount.toLocaleString('en-IN')} Mutual Friends
-      </Typography>
-
-      {/* Avatar stack */}
-      {first5.length > 0 && (
-        <Box className={classes.avatarStack}>
-          {first5.map((f) => (
+      {/* Avatar row — real friends, photo where available, initials otherwise,
+          capped with a "+N" overflow badge so this never grows unbounded. */}
+      {shownFriends.length > 0 && (
+        <Box className={classes.avatarStackLg}>
+          {shownFriends.map((f) => (
             <Avatar
-              key={(f as Friend).id}
-              className={classes.stackAvatar}
-              src={(f as Friend).avatarUrl ?? undefined}
+              key={f.id}
+              className={classes.stackAvatarLg}
+              src={f.avatarUrl ?? undefined}
             >
-              {getInitials((f as Friend).name)}
+              {getInitials(f.name)}
             </Avatar>
           ))}
+          {overflowCount > 0 && (
+            <Avatar className={cx(classes.stackAvatarLg, classes.avatarOverflow)}>
+              +{overflowCount}
+            </Avatar>
+          )}
         </Box>
       )}
 
-      {/* Joined-community link — only shown in Network view, opens the community-switcher grid */}
-      {isNetworkView && subCommCount > 0 && (
-        <Box className={classes.subCommLink} onClick={onExplore}>
-          <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
-            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-          </svg>
-          <Typography className={classes.subCommText}>
-            {joinedCommunityName ?? 'My Community'}
-          </Typography>
-          <svg width={13} height={13} viewBox="0 0 24 24" fill="rgba(255,255,255,0.85)">
-            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-          </svg>
-        </Box>
+      {/* Tagline + description */}
+      <Typography className={classes.tagline}>Your people are here.</Typography>
+      {subtitle && (
+        <Typography className={classes.taglineSub}>{subtitle}</Typography>
       )}
+      </Box>
     </Box>
   )
 }
 
 // ── Friends horizontal scroll row ─────────────────────────────────────────────
+const AccommodationSummaryCard: React.FC = () => {
+  const { classes, cx } = useStyles()
+  const navigate = useNavigate()
+  const { data } = useAccommodations()
+  const listings = data?.data ?? []
+  const friendsCount = listings.filter((a) => a.isConnected).length
+  const mutualCount = listings.filter((a) => a.mutualFriends > 0).length
+  // meta.total is the backend's real total (the list itself may only be one
+  // page), so it's the more accurate "everyone in the community" count.
+  const communityCount = data?.meta?.total ?? listings.length
+
+  return (
+    <Box className={classes.accomCard}>
+      <Typography className={classes.accomTitle}>Accommodation in your community</Typography>
+      <Typography className={classes.accomSubtitle}>Find a place through people you know and trust.</Typography>
+
+      <Box className={classes.accomStatsRow}>
+        <Box className={cx(classes.accomStat, classes.accomStatGreen)}>
+          <Box className={classes.accomStatTopRow}>
+            <Box className={cx(classes.accomStatIcon, classes.accomStatIconGreen)}>
+              <PeopleAltIcon sx={{ fontSize: '1rem' }} />
+            </Box>
+            <Typography className={cx(classes.accomStatNumber, classes.accomStatNumberGreen)}>{friendsCount}</Typography>
+          </Box>
+          <Typography className={classes.accomStatLabel}>
+            Listings from <Box component="span" className={classes.accomStatLabelGreen}>your friends</Box>
+          </Typography>
+        </Box>
+
+        <Box className={cx(classes.accomStat, classes.accomStatAmber)}>
+          <Box className={classes.accomStatTopRow}>
+            <Box className={cx(classes.accomStatIcon, classes.accomStatIconAmber)}>
+              <PeopleAltIcon sx={{ fontSize: '1rem' }} />
+            </Box>
+            <Typography className={cx(classes.accomStatNumber, classes.accomStatNumberAmber)}>{mutualCount}</Typography>
+          </Box>
+          <Typography className={classes.accomStatLabel}>
+            Listings from <Box component="span" className={classes.accomStatLabelAmber}>mutual connections</Box>
+          </Typography>
+        </Box>
+
+        <Box className={cx(classes.accomStat, classes.accomStatGrey)}>
+          <Box className={classes.accomStatTopRow}>
+            <Box className={cx(classes.accomStatIcon, classes.accomStatIconGrey)}>
+              <PeopleAltIcon sx={{ fontSize: '1rem' }} />
+            </Box>
+            <Typography className={cx(classes.accomStatNumber, classes.accomStatNumberGrey)}>{communityCount}</Typography>
+          </Box>
+          <Typography className={classes.accomStatLabel}>
+            Listings from <Box component="span" className={classes.accomStatLabelGrey}>community members</Box>
+          </Typography>
+        </Box>
+      </Box>
+
+      <Button
+        className={classes.accomExploreBtn}
+        endIcon={<ArrowForwardIcon />}
+        onClick={() => navigate(PATHS.dashboard.accommodation)}
+      >
+        Explore Accommodation
+      </Button>
+    </Box>
+  )
+}
+
 const FriendsScroll: React.FC = () => {
   const { classes } = useStyles()
   const { data: friends = [], isLoading } = useFriends()
@@ -667,7 +1505,7 @@ const RequestsTab: React.FC = () => {
 }
 
 // ── Small "Add Friend" pill used for mutual connections who aren't friends yet ─
-const MutualAddFriendButton: React.FC<{ userId: string }> = ({ userId }) => {
+export const MutualAddFriendButton: React.FC<{ userId: string; outlined?: boolean }> = ({ userId, outlined }) => {
   const { classes } = useStyles()
   const [requested, setRequested] = useState(false)
   const sendRequestMutation = useSendFriendRequest()
@@ -684,7 +1522,7 @@ const MutualAddFriendButton: React.FC<{ userId: string }> = ({ userId }) => {
   return (
     <Button
       disableElevation
-      className={classes.addFriendPill}
+      className={outlined ? classes.addFriendPillOutlined : classes.addFriendPill}
       onClick={() => {
         sendRequestMutation.mutate(userId)
         setRequested(true)
@@ -696,71 +1534,196 @@ const MutualAddFriendButton: React.FC<{ userId: string }> = ({ userId }) => {
   )
 }
 
-// ── Mutual Friends tab ────────────────────────────────────────────────────────
-const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
+// Status-aware "Add Friend" pill for New Members cards (reflects
+// pending/requested state from the community-members API's
+// friendshipStatus) -- unlike MutualAddFriendButton above, which is safe to
+// assume "not connected yet" always because useMutualFriendsAggregate
+// already excludes direct friends from its result.
+export const NewMemberAddFriendButton: React.FC<{ member: CommunityMember; outlined?: boolean }> = ({ member, outlined }) => {
   const { classes } = useStyles()
+  const [localStatus, setLocalStatus] = useState<'requested' | 'none' | null>(null)
+  const sendRequestMutation = useSendFriendRequest()
+  const cancelRequestMutation = useCancelFriendRequest()
 
-  // Real mutual friends — union of GET /friends/mutual/{userId} across your
-  // own friends, minus anyone who's already a direct friend (useMutualFriendsAggregate
-  // excludes them) — so this reads as "people you might know", not a re-listing
-  // of your friends list.
-  const friendUserIds = friends.map(f => f.userId)
-  const { people: mutuals, isLoading } = useMutualFriendsAggregate(friendUserIds)
-  const [viewingUser, setViewingUser] = useState<ProfileSheetUser | null>(null)
+  const serverStatus = deriveFriendStatus(member.friendshipStatus)
+  const isRequested = localStatus === 'requested' || (serverStatus === 'requested' && localStatus !== 'none')
 
-  if (isLoading) {
+  if (isRequested) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress size={28} sx={{ color: colors.moss }} />
-      </Box>
-    )
-  }
-
-  if (friends.length === 0 || mutuals.length === 0) {
-    return (
-      <Box className={classes.circleContent}>
-        <Box className={classes.circleCard}>
-          <Typography className={classes.emptyRow}>
-            No suggestions yet. Once your friends add their own friends, people you&apos;re not connected to yet will show up here.
-          </Typography>
-        </Box>
-      </Box>
+      <Button
+        variant="outlined"
+        className={classes.requestedPill}
+        endIcon={<CloseIcon sx={{ fontSize: '0.8rem !important' }} />}
+        onClick={(e) => {
+          e.stopPropagation()
+          cancelRequestMutation.mutate(member.userId)
+          setLocalStatus('none')
+        }}
+        disabled={cancelRequestMutation.isPending}
+      >
+        Requested
+      </Button>
     )
   }
 
   return (
-    <Box className={classes.circleContent}>
-      <Box sx={{ px: 2, pb: 1 }}>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: colors.ink }}>
-          Discover ({mutuals.length})
-        </Typography>
-        <Typography sx={{ fontSize: '0.8rem', color: colors.ink3, mt: '2px' }}>
-          Friends of your friends who aren&apos;t your friend yet — not people you already share a connection with.
-        </Typography>
+    <Button
+      disableElevation
+      className={outlined ? classes.addFriendPillOutlined : classes.addFriendPill}
+      onClick={(e) => {
+        e.stopPropagation()
+        sendRequestMutation.mutate(member.userId)
+        setLocalStatus('requested')
+      }}
+      disabled={sendRequestMutation.isPending}
+    >
+      Add Friend
+    </Button>
+  )
+}
+
+// -- Discover tab -- real, derivable suggestions only. Two sections:
+//  - "Friends of your friends" -- useMutualFriendsAggregate (the union of
+//    GET /friends/mutual/{userId} across your own friends), with a derived
+//    per-person "N mutual" count.
+//  - "New members" -- useNewCommunityMembers (the community members list,
+//    sorted by join date; see that hook for the fallback used if join dates
+//    aren't populated).
+// A third mockup section, "People you may know" (dismiss button, "from
+// <city>" suggestions), has no backend data source anywhere in this app yet
+// and is intentionally left out rather than filled with placeholder people.
+const DiscoverTab: React.FC<{ friends: Friend[]; communityId?: string | null; currentUserId?: string }> = ({
+  friends, communityId, currentUserId,
+}) => {
+  const { classes } = useStyles()
+  const navigate = useNavigate()
+
+  const { people: mutuals, isLoading: mutualsLoading, mutualCounts } = useMutualFriendsAggregate(friends)
+  const { members: newMembers, isLoading: membersLoading } = useNewCommunityMembers(communityId, currentUserId)
+
+  const [viewingUser, setViewingUser] = useState<ProfileSheetUser | null>(null)
+
+  return (
+    <Box>
+      <Box className={classes.discoverIntro}>
+        <Typography className={classes.discoverIntroTitle}>Discover people in your community</Typography>
+        <Typography className={classes.discoverIntroSub}>Connect with more people you know or may know.</Typography>
       </Box>
-      <Box className={classes.circleCard}>
-        {mutuals.map((f) => {
-          const avatarBg = avatarGradient(f.id)
-          return (
-            <Box
-              key={f.id}
-              className={classes.listRow}
-              sx={{ cursor: 'pointer' }}
-              onClick={() => setViewingUser({ userId: f.userId, name: f.name, designation: f.designation, avatarUrl: f.avatarUrl })}
-            >
-              <Avatar src={f.avatarUrl ?? undefined} className={classes.personAvatar} sx={{ background: avatarBg, color: '#fff' }}>
-                {getInitials(f.name)}
-              </Avatar>
-              <Box className={classes.personInfo}>
-                <Typography className={classes.personName}>{f.name}</Typography>
-                {f.designation && <Typography className={classes.personSub}>{f.designation}</Typography>}
+
+      {/* Friends of your friends -- header + row live together inside one
+          white card, matching the reference design. Always shows; "No data
+          yet" when the aggregate (see useMutualFriendsAggregate) comes back
+          empty, which happens when you have no friends yet, or your friends
+          have no connections beyond people you already know. */}
+      <Box className={classes.discoverSection}>
+        <Box className={classes.discoverSectionCard}>
+          <Box className={classes.discoverSectionHead}>
+            <Box>
+              <Box className={classes.discoverSectionTitleRow}>
+                <PeopleAltOutlinedIcon className={classes.discoverSectionIcon} />
+                <Typography className={classes.discoverSectionTitle}>Friends of your friends</Typography>
               </Box>
-              <Box onClick={(e) => e.stopPropagation()}>
-                <MutualAddFriendButton userId={f.userId} />
-              </Box>
+              <Typography className={classes.discoverSectionSub}>People mostly connected in your network</Typography>
             </Box>
-          )
-        })}
+            {mutuals.length > 0 && (
+              <Box
+                component="button"
+                className={classes.seeAllLink}
+                onClick={() => navigate(`${PATHS.dashboard.discover}?filter=friends-of-friends`)}
+              >
+                See all <ChevronRightIcon sx={{ fontSize: '1rem' }} />
+              </Box>
+            )}
+          </Box>
+          {mutualsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={22} sx={{ color: colors.moss }} />
+            </Box>
+          ) : mutuals.length === 0 ? (
+            <Typography className={classes.discoverNoData}>
+              No data yet. Once your friends add their own friends, people you&apos;re not connected to yet will show up here.
+            </Typography>
+          ) : (
+            <Box className={classes.discoverAvatarScroll}>
+              {mutuals.slice(0, 12).map((f) => {
+                const avatarBg = avatarGradient(f.id)
+                const count = mutualCounts.get(f.userId) ?? 0
+                return (
+                  <Box
+                    key={f.id}
+                    className={classes.discoverAvatarItem}
+                    onClick={() => setViewingUser({ userId: f.userId, name: f.name, designation: f.designation, avatarUrl: f.avatarUrl })}
+                  >
+                    <Avatar src={f.avatarUrl ?? undefined} className={classes.discoverAvatarLg} sx={{ background: avatarBg, color: '#fff' }}>
+                      {getInitials(f.name)}
+                    </Avatar>
+                    <Typography className={classes.discoverAvatarName}>{f.name.split(' ')[0]}</Typography>
+                    {count > 0 && <Typography className={classes.discoverAvatarCaption}>{count} mutual</Typography>}
+                  </Box>
+                )
+              })}
+            </Box>
+          )}
+        </Box>
+      </Box>
+
+      {/* New members -- same white-card + "always show, or say no data"
+          treatment. */}
+      <Box className={classes.discoverSection}>
+        <Box className={classes.discoverSectionCard}>
+          <Box className={classes.discoverSectionHead}>
+            <Box>
+              <Box className={classes.discoverSectionTitleRow}>
+                <PeopleAltOutlinedIcon className={classes.discoverSectionIcon} />
+                <Typography className={classes.discoverSectionTitle}>New members</Typography>
+                <Box component="span" className={classes.discoverNewBadge}>NEW</Box>
+              </Box>
+              <Typography className={classes.discoverSectionSub}>Recently joined your community</Typography>
+            </Box>
+            {newMembers.length > 0 && (
+              <Box
+                component="button"
+                className={classes.seeAllLink}
+                onClick={() => navigate(`${PATHS.dashboard.discover}?filter=new-members`)}
+              >
+                See all <ChevronRightIcon sx={{ fontSize: '1rem' }} />
+              </Box>
+            )}
+          </Box>
+          {membersLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={22} sx={{ color: colors.moss }} />
+            </Box>
+          ) : newMembers.length === 0 ? (
+            <Typography className={classes.discoverNoData}>
+              No data yet. New members will show up here as they join your community.
+            </Typography>
+          ) : (
+            <Box className={classes.discoverCardScroll}>
+              {newMembers.slice(0, 12).map((m) => {
+                const avatarBg = avatarGradient(m.userId)
+                return (
+                  <Box
+                    key={m.id}
+                    className={classes.discoverCard}
+                    onClick={() => setViewingUser({ userId: m.userId, name: m.name, designation: m.designation, avatarUrl: m.avatarUrl })}
+                  >
+                    <Avatar src={m.avatarUrl ?? undefined} className={classes.discoverAvatarLg} sx={{ background: avatarBg, color: '#fff' }}>
+                      {getInitials(m.name)}
+                    </Avatar>
+                    <Typography className={classes.discoverCardName}>{m.name}</Typography>
+                    <Typography className={classes.discoverCardCaption}>
+                      {m.joinedAt ? `Joined ${formatRelativeTime(m.joinedAt)}` : 'New to the community'}
+                    </Typography>
+                    <Box onClick={(e) => e.stopPropagation()} sx={{ mt: 1 }}>
+                      <NewMemberAddFriendButton member={m} />
+                    </Box>
+                  </Box>
+                )
+              })}
+            </Box>
+          )}
+        </Box>
       </Box>
 
       <UserProfileSheet
@@ -773,7 +1736,7 @@ const MutualFriendsTab: React.FC<{ friends: Friend[] }> = ({ friends }) => {
   )
 }
 
-// ── Friend status helpers ─────────────────────────────────────────────────────
+// -- Friend status helpers --------------------------------------------------
 const FRIEND_STATUS_MAP: Record<string, 'friends' | 'requested'> = {
   accepted: 'friends',
   friend: 'friends',
@@ -991,11 +1954,11 @@ const CommunityPage: React.FC = () => {
   // fixed for now since the pilot only covers Delhi (see CURRENT_STATE_OPTIONS).
   const networkLabel = 'Delhi Malayali Network'
 
-  const tabs: { key: Tab; label: string; badge?: number }[] = [
-    { key: 'feed',    label: 'Feed' },
-    { key: 'members', label: 'Members' },
-    { key: 'friends', label: 'Friends', badge: pendingCount },
-    { key: 'mutual',  label: 'Discover' },
+  const tabs: { key: Tab; label: string; icon: React.ReactElement; badge?: number }[] = [
+    { key: 'feed',    label: 'Feed',     icon: <HomeOutlinedIcon className={classes.tabIcon} /> },
+    { key: 'members', label: 'Members',  icon: <GroupsOutlinedIcon className={classes.tabIcon} /> },
+    { key: 'friends', label: 'Friends',  icon: <PeopleAltOutlinedIcon className={classes.tabIcon} />, badge: pendingCount },
+    { key: 'mutual',  label: 'Discover', icon: <ExploreOutlinedIcon className={classes.tabIcon} /> },
   ]
 
   return (
@@ -1005,9 +1968,12 @@ const CommunityPage: React.FC = () => {
       <CommunityCard
         communityName={isNetworkView ? networkLabel : (user?.communityName ? formatCommunityName(user.communityName) : user?.communityName)}
         joinedCommunityName={user?.communityName ? formatCommunityName(user.communityName) : user?.communityName}
+        description={communityDetail?.description}
         isNetworkView={isNetworkView}
         onExplore={() => navigate(PATHS.onboarding, { state: { revisit: true, initialView: 'explore' } })}
         onSelectMembers={() => setActiveTab('members')}
+        onSelectFriends={() => setActiveTab('friends')}
+        onSelectDiscover={() => setActiveTab('mutual')}
         memberCount={isNetworkView ? networkMemberCount : memberCount}
         friendCount={friendCount}
         subCommCount={subCommCount}
@@ -1021,15 +1987,18 @@ const CommunityPage: React.FC = () => {
               key={tab.key}
               ref={activeTab === tab.key ? activeTabRef : undefined}
               component="button"
-              className={cx(classes.tabBtn, { [classes.tabBtnActive]: activeTab === tab.key })}
+              className={classes.tabBtn}
               onClick={() => setActiveTab(tab.key)}
             >
-              {tab.label}
-              {tab.badge != null && tab.badge > 0 && (
-                <Box component="span" className={classes.tabBadge}>
-                  {tab.badge}
-                </Box>
-              )}
+              <Box className={cx(classes.tabPill, { [classes.tabPillActive]: activeTab === tab.key })}>
+                {tab.icon}
+                {tab.label}
+                {tab.badge != null && tab.badge > 0 && (
+                  <Box component="span" className={classes.tabBadge}>
+                    {tab.badge}
+                  </Box>
+                )}
+              </Box>
             </Box>
           ))}
         </Box>
@@ -1039,6 +2008,7 @@ const CommunityPage: React.FC = () => {
       {activeTab === 'feed' && (
         <>
           <FriendsScroll />
+          <AccommodationSummaryCard />
           <CreatePostInput />
           <Box sx={{ px: 2, pt: 1, pb: 2 }}>
             {isLoading && <ContentSkeleton count={4} variant="post" />}
@@ -1073,7 +2043,7 @@ const CommunityPage: React.FC = () => {
           <FriendsTab />
         </>
       )}
-      {activeTab === 'mutual'  && <MutualFriendsTab friends={friends as Friend[]} />}
+      {activeTab === 'mutual'  && <DiscoverTab friends={friends as Friend[]} communityId={user?.communityId} currentUserId={user?.id} />}
     </Box>
   )
 }

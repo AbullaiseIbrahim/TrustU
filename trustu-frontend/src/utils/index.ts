@@ -15,6 +15,18 @@ export function formatCommunityName(name?: string | null): string {
   return spaceIndex === -1 ? trimmed : `${trimmed.slice(0, spaceIndex)} - ${trimmed.slice(spaceIndex + 1)}`
 }
 
+/**
+ * Same special-casing as formatCommunityName above — the product only has one
+ * live community right now (Kerala natives in Jamia Nagar, Delhi), so its
+ * locality string is hardcoded here until the backend has more than one
+ * community and can return locality data directly. Returns null for any
+ * other community name so callers can hide the location line rather than
+ * show something wrong.
+ */
+export function communityLocation(formattedName?: string | null): string | null {
+  return formattedName === 'Kerala - Jamia Nagar' ? 'Jamia Nagar, Delhi' : null
+}
+
 export function getInitials(name: string): string {
   return name.split(' ').map(p => p[0]?.toUpperCase() ?? '').slice(0, 2).join('')
 }

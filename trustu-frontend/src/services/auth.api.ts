@@ -49,6 +49,22 @@ export function normalizeUser(raw: any): User {
     (nativeStateId != null ? INDIA_STATES.find(s => s.id === Number(nativeStateId))?.name : null) ||
     null
 
+  // Community — /register and /login return it as a `communities` array (one
+  // entry today, since the app only has one live community), not the flat
+  // community_id/community_name fields the rest of this normalizer otherwise
+  // checks for. Prefer a flat field if the backend ever adds one, then fall
+  // back to communities[0] (or a singular `community` object, in case another
+  // endpoint shapes it that way) so the user's actual community carries over
+  // instead of silently defaulting to "no community".
+  const communitiesArr = Array.isArray(raw?.communities) ? raw.communities : []
+  const primaryCommunity = raw?.community ?? profile.community ?? communitiesArr[0] ?? null
+  const resolvedCommunityId =
+    raw?.community_id != null ? String(raw.community_id) :
+    raw?.communityId   != null ? String(raw.communityId) :
+    primaryCommunity?.id != null ? String(primaryCommunity.id) : null
+  const resolvedCommunityName =
+    raw?.community_name ?? raw?.communityName ?? primaryCommunity?.name ?? null
+
   return {
     id:              String(raw?.id ?? ''),
     name:            raw?.name ?? profile.name ?? '',
@@ -59,11 +75,16 @@ export function normalizeUser(raw: any): User {
     designation:     normalizeDesignation(raw?.designation ?? raw?.profile_type ?? profile.designation ?? profile.profile_type),
     institute:       raw?.institute ?? raw?.institution ?? raw?.college ?? profile.institute ?? profile.institution ?? profile.college ?? null,
     nativeStateName,
-    avatarUrl:       profile.profile_image ?? raw?.avatar_url ?? raw?.avatarUrl ?? raw?.avatar ?? null,
+    // /user/profile, /register and /login all put profile_image at the TOP
+    // level of the user object, not nested under `profile` like the other
+    // fields this normalizer resolves -- check that first (confirmed against
+    // a live GET /user/profile response), then fall back to the nested/other
+    // shapes in case some other endpoint ever nests it.
+    avatarUrl:       raw?.profile_image ?? profile.profile_image ?? raw?.avatar_url ?? raw?.avatarUrl ?? raw?.avatar ?? null,
     profileComplete: Boolean(raw?.profile_complete ?? raw?.profileComplete ?? false),
-    communityJoined: Boolean(raw?.community_joined ?? raw?.communityJoined ?? false),
-    communityId:     raw?.community_id   != null ? String(raw.community_id)   : (raw?.communityId   ?? null),
-    communityName:   raw?.community_name ?? raw?.communityName ?? null,
+    communityJoined: Boolean(raw?.community_joined ?? raw?.communityJoined ?? (resolvedCommunityId != null)),
+    communityId:     resolvedCommunityId,
+    communityName:   resolvedCommunityName,
     createdAt:       raw?.created_at ?? raw?.createdAt ?? '',
     updatedAt:       raw?.updated_at ?? raw?.updatedAt ?? '',
   }
@@ -91,7 +112,23 @@ export const authApi = {
   },
 
   register: async (payload: RegisterRequest): Promise<AuthResponse> => {
-    const { data } = await apiClient.post<ApiResponse<AuthResponse>>(ENDPOINTS.auth.register(), payload)
+    const { profile_image, ...fields } = payload
+    // Only switch to multipart when a photo was actually picked -- the common
+    // (no-photo) path stays identical JSON, exactly as before.
+    if (profile_image) {
+      const fd = new FormData()
+      Object.entries(fields).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) fd.append(key, String(value))
+      })
+      fd.append('profile_image', profile_image)
+      const { data } = await apiClient.post<ApiResponse<AuthResponse>>(
+        ENDPOINTS.auth.register(),
+        fd,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      )
+      return extractAuthResponse(data.data ?? data)
+    }
+    const { data } = await apiClient.post<ApiResponse<AuthResponse>>(ENDPOINTS.auth.register(), fields)
     return extractAuthResponse(data.data ?? data)
   },
 

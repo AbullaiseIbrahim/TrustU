@@ -455,7 +455,7 @@ const VISIBLE_TO_OPTIONS = [
   { value: 'friends',                 label: 'Friends' },
   { value: 'mutual-friends',          label: 'Mutual Friends' },
   { value: 'friends-mutual-friends',  label: 'Friends & Mutual Friends' },
-  { value: 'anyone',                  label: 'Anyone' },
+  { value: 'anyone',                  label: 'Community' },
 ]
 
 /**
@@ -675,7 +675,7 @@ const EMPTY_FORM: ListingForm = {
   rentPerPerson: '',
   amenities: [],
   guestPreference: [],
-  visibleTo: 'friends-mutual-friends',
+  visibleTo: 'anyone',
   phone: '',
   totalRent: '',
   nearbyLandmark: '',
@@ -865,6 +865,15 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
   }
 
   const handlePost = () => {
+    if (!user?.communityId) {
+      // The backend requires community_id on every listing. If it's missing
+      // here, the cached session is stale/incomplete (this can happen after
+      // an old sign-in, before a fresh login/register last repopulated
+      // community info) -- surface a clear, actionable message instead of
+      // sending a request that just 400s with a raw backend string.
+      showError("We couldn't find your community on this session. Please log out and log back in, then try posting again.")
+      return
+    }
     if (!form.locality) {
       showError('Please select a locality.')
       return
@@ -882,11 +891,25 @@ const PostListingFlow: React.FC<Props> = ({ open, onClose }) => {
       return
     }
     const fullDescription = buildFullDescription()
+    // The backend requires a non-empty `description`, but buildFullDescription()
+    // only returns text when at least one conditional detail field (total rent,
+    // landmark, occupancy type, etc.) was filled in -- a listing where none of
+    // those apply (a common, valid case) produces '' and the backend rejects it
+    // with a 422 'The description field is required.' Fall back to a short
+    // summary built from fields we always have so a submission is never blocked
+    // by this.
+    const localityLabelForDescription = LOCALITY_OPTIONS.find(o => o.value === form.locality)?.label ?? form.locality
+    const fallbackDescription = [
+      typeLabel,
+      localityLabelForDescription ? `in ${localityLabelForDescription}` : '',
+      form.rentPerPerson ? `at ₹${form.rentPerPerson.trim()} per person` : '',
+    ].filter(Boolean).join(' ')
+    const description = fullDescription || fallbackDescription || (form.title.trim() || `${typeLabel} listing`)
 
     createMutation.mutate(
       {
         title:           form.title.trim() || `${typeLabel} — Listing`,
-        description:     fullDescription,
+        description:     description,
         amount:          Number(form.rentPerPerson) || 0,
         city_id:         LISTING_CITY_ID,
         community_id:    user?.communityId != null ? Number(user.communityId) : null,

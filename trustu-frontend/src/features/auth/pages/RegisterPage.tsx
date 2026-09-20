@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import AuthCard from '../components/AuthCard'
+import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined'
 import { AuthField, AuthSelectField, StepPill, authInputSx } from '../components/AuthField'
 import { authApi } from '@/services/auth.api'
 import { useAuth } from '@/app/AuthProvider'
@@ -214,9 +215,13 @@ interface Step2Props {
   onSubmit: (data: Step2Values) => void
   onBack: (data: Step2Values) => void
   isPending: boolean
+  photoPreviewUrl: string | null
+  onPickPhoto: () => void
 }
 
-function ProfileLocationStep({ name, designationLabel, initialValues, onSubmit, onBack, isPending }: Step2Props) {
+function ProfileLocationStep({
+  name, designationLabel, initialValues, onSubmit, onBack, isPending, photoPreviewUrl, onPickPhoto,
+}: Step2Props) {
   const nativeStateOptions = NATIVE_STATE_OPTIONS.map(s => ({ value: String(s.id), label: s.name }))
   const currentStateOptions = CURRENT_STATE_OPTIONS.map(s => ({ value: String(s.id), label: s.name }))
 
@@ -254,9 +259,25 @@ function ProfileLocationStep({ name, designationLabel, initialValues, onSubmit, 
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '18px' }}>
-          <Avatar sx={{ width: 44, height: 44, background: selfAvatarGradient(), color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
-            {getInitials(name || 'U')}
-          </Avatar>
+          <Box sx={{ position: 'relative', flexShrink: 0 }}>
+            <Avatar
+              src={photoPreviewUrl ?? undefined}
+              sx={{ width: 44, height: 44, background: selfAvatarGradient(), color: '#fff', fontWeight: 700, fontSize: '1rem' }}
+            >
+              {getInitials(name || 'U')}
+            </Avatar>
+            <Box
+              onClick={onPickPhoto}
+              sx={{
+                position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: '50%',
+                backgroundColor: colors.moss, border: `2px solid ${colors.white}`, display: 'flex',
+                alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                '& svg': { fontSize: '0.62rem', color: '#fff' },
+              }}
+            >
+              <CameraAltOutlinedIcon />
+            </Box>
+          </Box>
           <Box sx={{ minWidth: 0 }}>
             <Typography sx={{ fontSize: '15px', fontWeight: 800, color: colors.ink, letterSpacing: '-0.2px' }}>
               {name || 'Your name'}
@@ -331,6 +352,23 @@ const RegisterPage: React.FC = () => {
   const step1Ref = useRef<Step1Values | null>(null)
   const step2Ref = useRef<Step2Values | null>(null)
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!photoPreviewUrl) return
+    return () => URL.revokeObjectURL(photoPreviewUrl)
+  }, [photoPreviewUrl])
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow picking the same file again later
+    if (!file || !file.type.startsWith('image/') || file.size > 5 * 1024 * 1024) return
+    setPhotoFile(file)
+    setPhotoPreviewUrl(URL.createObjectURL(file))
+  }
+
   const { login, syncProfile } = useAuth()
 
   // No onError here — a failure (including 422 validation messages, which the
@@ -365,6 +403,7 @@ const RegisterPage: React.FC = () => {
       gender:                s1.gender    || undefined,
       phone:                 s1.phone     || undefined,
       institute:             s1.institute || undefined,
+      profile_image:         photoFile,
     })
   }
 
@@ -387,8 +426,17 @@ const RegisterPage: React.FC = () => {
           onSubmit={handleStep2Submit}
           onBack={(data) => { step2Ref.current = data; setStep(1) }}
           isPending={registerMutation.isPending}
+          photoPreviewUrl={photoPreviewUrl}
+          onPickPhoto={() => fileInputRef.current?.click()}
         />
       )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePhotoChange}
+        style={{ display: 'none' }}
+      />
     </AuthCard>
   )
 }

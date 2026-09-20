@@ -43,6 +43,42 @@ export const useSubCommunityMembers = (subCommunityId: string | null | undefined
     staleTime: 60_000,
   })
 
+/**
+ * "New members" for the Discover tab/page -- community members (excluding the
+ * current user and anyone already a friend), sorted by how recently they
+ * joined. Pulled from the same members list MembersTab already uses (page 1),
+ * so it needs no new endpoint.
+ *
+ * The API's `joined_at` field isn't confirmed to be populated on every
+ * environment -- if none of the eligible members have it, this falls back to
+ * the list's own (server-decided) order rather than showing nothing, and
+ * `hasJoinedAt: false` lets a caller flag that the sort is unconfirmed.
+ */
+export const useNewCommunityMembers = (
+  communityId: string | null | undefined,
+  currentUserId: string | null | undefined,
+) => {
+  const { data, isLoading } = useCommunityMembers(communityId, 1)
+  const members = data?.data ?? []
+
+  const ACCEPTED_STATUSES = new Set(['accepted', 'friend', 'friends'])
+  const eligible = members.filter((m) => {
+    if (currentUserId && String(m.userId) === String(currentUserId)) return false
+    return !ACCEPTED_STATUSES.has((m.friendshipStatus ?? '').toLowerCase())
+  })
+
+  const hasJoinedAt = eligible.some((m) => !!m.joinedAt)
+  const sorted = hasJoinedAt
+    ? [...eligible].sort((a, b) => {
+        if (!a.joinedAt) return 1
+        if (!b.joinedAt) return -1
+        return new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()
+      })
+    : eligible
+
+  return { members: sorted, isLoading, hasJoinedAt }
+}
+
 /** Join a sub-community */
 export const useJoinCommunity = () => {
   const queryClient = useQueryClient()

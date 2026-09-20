@@ -214,8 +214,10 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const isOwnPost = user?.id === post.userId
   const avatarBg = avatarGradient(post.userId || post.id)
 
-  // Combine title + description as single readable content
-  const contentText = post.title && post.description
+  // Combine title + description as single readable content -- CreatePostInput
+  // now sends identical title/description (single compose box), so only join
+  // them when they actually differ; otherwise show the text once.
+  const contentText = post.title && post.description && post.title !== post.description
     ? `${post.title}\n\n${post.description}`
     : post.title || post.description || ''
 
