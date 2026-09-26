@@ -48,7 +48,6 @@ export interface RegisterRequest {
   current_state_id: number    // current state ID — required for community assignment
   gender?: string
   phone?: string
-  institute?: string
   /** Profile photo picked during registration, if any. */
   profile_image?: File | null
 }

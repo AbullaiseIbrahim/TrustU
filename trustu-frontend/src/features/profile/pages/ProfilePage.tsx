@@ -12,8 +12,6 @@ import MaleIcon from '@mui/icons-material/Male'
 import FemaleIcon from '@mui/icons-material/Female'
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined'
-import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined'
-import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import LocationOnIcon from '@mui/icons-material/LocationOn'
 import { makeStyles } from 'tss-react/mui'
@@ -25,8 +23,8 @@ import { authApi } from '@/services/auth.api'
 import { getInitials, avatarGradient, selfAvatarGradient, formatINR, formatDate, formatCommunityName } from '@/utils'
 import { PATHS } from '@/routes/paths'
 import colors from '@/theme/colors'
-import type { Designation, Gender } from '@/types/auth.types'
-import { useFriends, useMutualFriendsAggregate } from '@/features/circle/hooks/useFriendshipQueries'
+import type { Gender } from '@/types/auth.types'
+import { useFriends, useFriendsOfFriends } from '@/features/circle/hooks/useFriendshipQueries'
 import type { Friend } from '@/services/friendship.api'
 import {
   useUserAccommodations, useDeleteAccommodation,
@@ -35,7 +33,6 @@ import { accommodationTypeLabel } from '@/services/accommodation.api'
 import EditListingDialog from '@/features/accommodation/components/EditListingDialog'
 import type { Accommodation } from '@/services/accommodation.api'
 
-const DESIGNATION_OPTIONS: Designation[] = ['Student', 'Faculty', 'Staff', 'Alumni', 'Other']
 const GENDER_OPTIONS: Gender[] = ['Male', 'Female', 'Other', 'Prefer not to say']
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -562,14 +559,12 @@ interface EditForm {
   lastName: string
   phone: string
   gender: string
-  designation: string
-  institute: string
 }
 
 interface EditSheetProps {
   open: boolean
   onClose: () => void
-  user: { name: string; email: string | null; phone: string | null; gender: string | null; designation: string | null; institute: string | null; avatarUrl: string | null }
+  user: { name: string; email: string | null; phone: string | null; gender: string | null; avatarUrl: string | null }
 }
 
 const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => {
@@ -585,8 +580,6 @@ const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => 
     lastName: '',
     phone: '',
     gender: '',
-    designation: '',
-    institute: '',
   })
 
   React.useEffect(() => {
@@ -597,8 +590,6 @@ const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => 
         lastName: parts.slice(1).join(' ') ?? '',
         phone: user.phone ?? '',
         gender: user.gender ?? '',
-        designation: user.designation ?? '',
-        institute: user.institute ?? '',
       })
       setSaveError(null)
       // Start each open showing the saved photo, not a stale pick from last time.
@@ -648,10 +639,8 @@ const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => 
         name:        fullName || undefined,
         // Sent lowercase to match what registration originally submits
         // ('male', 'student', ...) — the backend's validation may be case-sensitive.
-        designation: form.designation ? form.designation.toLowerCase() : undefined,
         gender:      form.gender ? form.gender.toLowerCase() : undefined,
         phone:       form.phone.trim() || undefined,
-        institute:   form.institute.trim() || undefined,
         photo:       photoFile,
       },
       {
@@ -782,21 +771,6 @@ const EditProfileSheet: React.FC<EditSheetProps> = ({ open, onClose, user }) => 
               options={GENDER_OPTIONS.map(g => ({ value: g, label: g }))}
             />
           </Box>
-          <Box className={classes.fieldRow}>
-            <SelectField
-              label="Designation"
-              value={form.designation}
-              onChange={v => setForm(prev => ({ ...prev, designation: v }))}
-              options={DESIGNATION_OPTIONS.map(d => ({ value: d, label: d }))}
-            />
-          </Box>
-          <Box className={classes.fieldRow}>
-            <Typography className={classes.fieldLabel}>Institution</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box component="input" className={classes.fieldInput} value={form.institute} onChange={set('institute')} placeholder="Your college / university" />
-              <ChevronRightIcon sx={{ fontSize: '1rem', color: colors.ink4, flexShrink: 0 }} />
-            </Box>
-          </Box>
         </Box>
 
         {/* Deactivate */}
@@ -899,7 +873,9 @@ const ProfilePage: React.FC = () => {
   const name = displayUser?.name ?? 'Unknown'
   const first8 = (friends as Friend[]).slice(0, 8)
   const friendCount = (friends as Friend[]).length
-  const { people: mutualPeople } = useMutualFriendsAggregate(friends as Friend[])
+  // Real "friends of friends" list via GET /friends/fof -- a single,
+  // backend-computed request instead of the N+1 useMutualFriendsAggregate.
+  const { data: mutualPeople = [] } = useFriendsOfFriends()
   const mutualCount = mutualPeople.length
   const first8Mutual = mutualPeople.slice(0, 8)
 
@@ -978,8 +954,9 @@ const ProfilePage: React.FC = () => {
         <DetailRow icon={genderIcon} label="Gender" value={displayUser?.gender ?? null} />
         <DetailRow icon={<FlagOutlinedIcon />} label="From" value={displayUser?.nativeStateName ?? null} />
         <DetailRow icon={<LocationOnOutlinedIcon />} label="Living in" value={displayUser?.communityName ? formatCommunityName(displayUser.communityName) : null} />
-        <DetailRow icon={<BadgeOutlinedIcon />} label="Designation" value={displayUser?.designation ?? null} />
-        <DetailRow icon={<SchoolOutlinedIcon />} label="Institution" value={displayUser?.institute ?? null} />
+        {/* Designation / Institution rows removed -- the backend no longer
+           accepts these fields (see Register/Edit Profile forms), so showing
+           them read-only here would be stale/misleading. */}
       </Box>
 
       {/* ── My Listings ── */}
@@ -1058,8 +1035,6 @@ const ProfilePage: React.FC = () => {
           email: displayUser?.email ?? null,
           phone: displayUser?.phone ?? null,
           gender: displayUser?.gender ?? null,
-          designation: displayUser?.designation ?? null,
-          institute: displayUser?.institute ?? null,
           avatarUrl: displayUser?.avatarUrl ?? null,
         }}
       />

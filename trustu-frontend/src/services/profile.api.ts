@@ -6,10 +6,8 @@ import { normalizeUser } from './auth.api'
 
 export interface UpdateProfilePayload {
   name?: string
-  designation?: string
   gender?: string
   phone?: string
-  institute?: string
   /** New profile photo to upload, if the user picked one in this edit. */
   photo?: File | null
 }

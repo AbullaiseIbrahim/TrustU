@@ -17,6 +17,7 @@ import PostCard from '../components/PostCard'
 import { usePosts } from '../hooks/usePostQueries'
 import ContentSkeleton from '@/components/ContentSkeleton'
 import EmptyState from '@/components/EmptyState'
+import PersonCard from '@/components/PersonCard'
 import { useAuth } from '@/app/AuthProvider'
 import {
   useFriends,
@@ -26,13 +27,13 @@ import {
   useRemoveFriend,
   useSendFriendRequest,
   useCancelFriendRequest,
-  useMutualFriendsAggregate,
+  useFriendsOfFriends,
 } from '@/features/circle/hooks/useFriendshipQueries'
 import type { Friend, PendingRequest } from '@/services/friendship.api'
 import UserProfileSheet, { type ProfileSheetUser } from '../components/UserProfileSheet'
 import { useCommunityMembers, useCommunity, useNewCommunityMembers } from '../hooks/useCommunityQueries'
 import type { CommunityMember } from '@/types/community.types'
-import { getInitials, avatarGradient, formatCommunityName, communityLocation, formatRelativeTime } from '@/utils'
+import { getInitials, formatCommunityName, communityLocation, formatRelativeTime } from '@/utils'
 import colors from '@/theme/colors'
 import CircularProgress from '@mui/material/CircularProgress'
 import Button from '@mui/material/Button'
@@ -556,22 +557,6 @@ export const useStyles = makeStyles()(() => ({
     padding: '2px 0',
     WebkitTapHighlightColor: 'transparent',
   },
-  discoverAvatarScroll: {
-    display: 'flex',
-    gap: 18,
-    padding: '0 0 2px',
-    overflowX: 'auto',
-    '&::-webkit-scrollbar': { display: 'none' },
-  },
-  discoverAvatarItem: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 5,
-    flexShrink: 0,
-    width: 66,
-    cursor: 'pointer',
-  },
   discoverAvatarLg: {
     width: 54,
     height: 54,
@@ -588,43 +573,12 @@ export const useStyles = makeStyles()(() => ({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
-  discoverAvatarCaption: {
-    fontSize: '0.66rem',
-    color: colors.ink3,
-    textAlign: 'center',
-  },
   discoverCardScroll: {
     display: 'flex',
     gap: 12,
     padding: '0 0 2px',
     overflowX: 'auto',
     '&::-webkit-scrollbar': { display: 'none' },
-  },
-  discoverCard: {
-    flexShrink: 0,
-    width: 138,
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: '14px 12px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 4,
-    boxShadow: '0 1px 2px rgba(20,20,15,0.04), 0 6px 22px rgba(20,20,15,0.05)',
-    cursor: 'pointer',
-  },
-  discoverCardName: {
-    fontWeight: 700,
-    fontSize: '0.82rem',
-    color: colors.ink,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  discoverCardCaption: {
-    fontSize: '0.68rem',
-    color: colors.ink3,
-    textAlign: 'center',
-    lineHeight: 1.3,
   },
   discoverEmpty: {
     margin: '0 16px',
@@ -857,6 +811,19 @@ export const useStyles = makeStyles()(() => ({
     flexDirection: 'column',
     gap: 12,
   },
+  // Boxed member-card grid -- each member gets their own rounded card,
+  // instead of one continuous list of rows, per direct request. The card
+  // itself is the shared PersonCard component (src/components/PersonCard.tsx)
+  // -- this is only the grid CONTAINER (2-up layout), used by Members, My
+  // Friends and Pending Requests alike.
+  memberCardGrid: {
+    display: 'grid',
+    // Fixed at 2 equal columns on every screen size -- 3-across (via
+    // auto-fill) read as too cramped, so this is a flat 2-up grid rather
+    // than one that reflows to 3 columns on wider viewports.
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: 12,
+  },
   circleCard: {
     backgroundColor: colors.white,
     borderRadius: 18,
@@ -1075,10 +1042,12 @@ const CommunityCard: React.FC<{
   const { classes, cx } = useStyles()
   const { data: friends = [] } = useFriends()
 
-  // Real mutual-friends count — aggregated via GET /friends/mutual/{userId}
-  // across the current user's own friends (see useMutualFriendsAggregate).
-  const { people: mutualPeople } = useMutualFriendsAggregate(friends as Friend[])
-  const mutualFriendsCount = mutualPeople.length
+  // Real "friends of friends" count via GET /friends/fof -- a single,
+  // backend-computed request instead of the N+1 useMutualFriendsAggregate
+  // (that hook is no longer used anywhere in the app -- see its docstring in
+  // useFriendshipQueries.ts for why).
+  const { data: fofPeople = [] } = useFriendsOfFriends()
+  const mutualFriendsCount = fofPeople.length
 
   // ── Network view keeps its original, simpler layout for now — it has its
   // own semantics (aggregate name, sub-community switcher link) that the new
@@ -1275,8 +1244,12 @@ const AccommodationSummaryCard: React.FC = () => {
   const friendsCount = listings.filter((a) => a.isConnected).length
   const mutualCount = listings.filter((a) => a.mutualFriends > 0).length
   // meta.total is the backend's real total (the list itself may only be one
-  // page), so it's the more accurate "everyone in the community" count.
-  const communityCount = data?.meta?.total ?? listings.length
+  // page), so it's the more accurate "everyone in the community" count --
+  // but this endpoint currently doesn't send total/meta at all, and the API
+  // layer defaults a missing total to 0 (not undefined), so `?? listings.length`
+  // never kicked in. `||` falls back whenever total is falsy (missing OR a
+  // genuine 0), which is what we want either way.
+  const communityCount = data?.meta?.total || listings.length
 
   return (
     <Box className={classes.accomCard}>
@@ -1372,44 +1345,36 @@ const FriendsTab: React.FC = () => {
 
   return (
     <Box className={classes.circleContent}>
-      <Box className={classes.circleCard}>
-        <Box className={classes.circleCardHeader}>
-          <Typography className={classes.circleCardTitle}>My Friends ({list.length})</Typography>
-        </Box>
-        {list.length === 0 ? (
-          <Typography className={classes.emptyRow}>No friends yet</Typography>
-        ) : list.map((f) => {
-          const avatarBg = avatarGradient(f.id)
-          return (
-            <Box
-              key={f.id}
-              className={classes.listRow}
-              sx={{ cursor: 'pointer' }}
-              onClick={() => setViewingUser({ userId: f.userId, name: f.name, designation: f.designation, avatarUrl: f.avatarUrl, communityName: f.communityName })}
-            >
-              <Avatar
-                src={f.avatarUrl ?? undefined}
-                className={classes.personAvatar}
-                sx={{ background: avatarBg, color: '#fff' }}
-              >
-                {getInitials(f.name)}
-              </Avatar>
-              <Box className={classes.personInfo}>
-                <Typography className={classes.personName}>{f.name}</Typography>
-                {f.designation && <Typography className={classes.personSub}>{f.designation}</Typography>}
-              </Box>
-              <Button
-                disableElevation
-                className={classes.removePill}
-                onClick={(e) => { e.stopPropagation(); removeMutation.mutate(f.userId) }}
-                disabled={removeMutation.isPending}
-              >
-                Remove
-              </Button>
-            </Box>
-          )
-        })}
+      <Box className={classes.circleCardHeader}>
+        <Typography className={classes.circleCardTitle}>My Friends ({list.length})</Typography>
       </Box>
+      {list.length === 0 ? (
+        <Typography className={classes.emptyRow}>No friends yet</Typography>
+      ) : (
+        <Box className={classes.memberCardGrid}>
+          {list.map((f) => (
+            <PersonCard
+              key={f.id}
+              name={f.name}
+              avatarUrl={f.avatarUrl}
+              colorSeed={f.id}
+              subtitle={f.designation}
+              capitalizeSubtitle
+              onClick={() => setViewingUser({ userId: f.userId, name: f.name, designation: f.designation, avatarUrl: f.avatarUrl, communityName: f.communityName })}
+              action={(
+                <Button
+                  disableElevation
+                  className={classes.removePill}
+                  onClick={() => removeMutation.mutate(f.userId)}
+                  disabled={removeMutation.isPending}
+                >
+                  Remove
+                </Button>
+              )}
+            />
+          ))}
+        </Box>
+      )}
 
       {/* Standalone "Add friend by user ID" box was retired — the Members tab's
           inline Add Friend buttons already cover this need with clearer,
@@ -1444,55 +1409,46 @@ const RequestsTab: React.FC = () => {
 
   return (
     <Box className={classes.circleContent}>
-      <Box className={classes.circleCard}>
-        <Box className={classes.circleCardHeader}>
-          <Typography className={classes.circleCardTitle}>Pending Requests ({list.length})</Typography>
-        </Box>
-        {list.length === 0 ? (
-          <Typography className={classes.emptyRow}>No pending requests</Typography>
-        ) : list.map((req) => {
-          const avatarBg = avatarGradient(req.id)
-          return (
-            <Box key={req.id} className={classes.requestRow}>
-              <Box
-                className={classes.requestTop}
-                sx={{ cursor: 'pointer' }}
-                onClick={() => setViewingUser({ userId: req.userId, name: req.name, designation: req.designation, avatarUrl: req.avatarUrl, communityName: req.communityName })}
-              >
-                <Avatar
-                  src={req.avatarUrl ?? undefined}
-                  className={classes.personAvatar}
-                  sx={{ background: avatarBg, color: '#fff' }}
-                >
-                  {getInitials(req.name)}
-                </Avatar>
-                <Box className={classes.personInfo}>
-                  <Typography className={classes.personName}>{req.name}</Typography>
-                  {req.designation && <Typography className={classes.personSub}>{req.designation}</Typography>}
-                </Box>
-              </Box>
-              <Box className={classes.requestActions}>
-                <Button
-                  disableElevation
-                  className={classes.confirmBtn}
-                  onClick={() => acceptMutation.mutate(req.id)}
-                  disabled={acceptMutation.isPending}
-                >
-                  Confirm
-                </Button>
-                <Button
-                  disableElevation
-                  className={classes.deleteBtn}
-                  onClick={() => rejectMutation.mutate(req.id)}
-                  disabled={rejectMutation.isPending}
-                >
-                  Delete
-                </Button>
-              </Box>
-            </Box>
-          )
-        })}
+      <Box className={classes.circleCardHeader}>
+        <Typography className={classes.circleCardTitle}>Pending Requests ({list.length})</Typography>
       </Box>
+      {list.length === 0 ? (
+        <Typography className={classes.emptyRow}>No pending requests</Typography>
+      ) : (
+        <Box className={classes.memberCardGrid}>
+          {list.map((req) => (
+            <PersonCard
+              key={req.id}
+              name={req.name}
+              avatarUrl={req.avatarUrl}
+              colorSeed={req.id}
+              subtitle={req.designation}
+              capitalizeSubtitle
+              onClick={() => setViewingUser({ userId: req.userId, name: req.name, designation: req.designation, avatarUrl: req.avatarUrl, communityName: req.communityName })}
+              action={(
+                <Box className={classes.requestActions} sx={{ width: '100%' }}>
+                  <Button
+                    disableElevation
+                    className={classes.confirmBtn}
+                    onClick={() => acceptMutation.mutate(req.id)}
+                    disabled={acceptMutation.isPending}
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    disableElevation
+                    className={classes.deleteBtn}
+                    onClick={() => rejectMutation.mutate(req.id)}
+                    disabled={rejectMutation.isPending}
+                  >
+                    Delete
+                  </Button>
+                </Box>
+              )}
+            />
+          ))}
+        </Box>
+      )}
 
       <UserProfileSheet
         open={!!viewingUser}
@@ -1537,8 +1493,8 @@ export const MutualAddFriendButton: React.FC<{ userId: string; outlined?: boolea
 // Status-aware "Add Friend" pill for New Members cards (reflects
 // pending/requested state from the community-members API's
 // friendshipStatus) -- unlike MutualAddFriendButton above, which is safe to
-// assume "not connected yet" always because useMutualFriendsAggregate
-// already excludes direct friends from its result.
+// assume "not connected yet" always because useFriendsOfFriends'
+// GET /friends/fof already excludes direct friends from its result.
 export const NewMemberAddFriendButton: React.FC<{ member: CommunityMember; outlined?: boolean }> = ({ member, outlined }) => {
   const { classes } = useStyles()
   const [localStatus, setLocalStatus] = useState<'requested' | 'none' | null>(null)
@@ -1583,22 +1539,29 @@ export const NewMemberAddFriendButton: React.FC<{ member: CommunityMember; outli
 }
 
 // -- Discover tab -- real, derivable suggestions only. Two sections:
-//  - "Friends of your friends" -- useMutualFriendsAggregate (the union of
-//    GET /friends/mutual/{userId} across your own friends), with a derived
-//    per-person "N mutual" count.
+//  - "Friends of your friends" -- useFriendsOfFriends (GET /friends/fof), a
+//    flat, backend-computed list. (The old useMutualFriendsAggregate N+1
+//    approach turned out to compute something different and often-empty --
+//    GET /friends/mutual/{userId} is a true set intersection of "friends of
+//    mine AND of userId", not "userId's friends", so it rarely surfaced real
+//    second-degree connections. /friends/fof replaces it here; per-person
+//    mutual counts aren't available from it, so that caption is gone too.)
 //  - "New members" -- useNewCommunityMembers (the community members list,
 //    sorted by join date; see that hook for the fallback used if join dates
 //    aren't populated).
 // A third mockup section, "People you may know" (dismiss button, "from
 // <city>" suggestions), has no backend data source anywhere in this app yet
 // and is intentionally left out rather than filled with placeholder people.
+// `friends` is no longer read directly (useFriendsOfFriends below fetches
+// its own data) but stays in the prop type so the call site doesn't need to
+// change what it passes in.
 const DiscoverTab: React.FC<{ friends: Friend[]; communityId?: string | null; currentUserId?: string }> = ({
-  friends, communityId, currentUserId,
+  communityId, currentUserId,
 }) => {
   const { classes } = useStyles()
   const navigate = useNavigate()
 
-  const { people: mutuals, isLoading: mutualsLoading, mutualCounts } = useMutualFriendsAggregate(friends)
+  const { data: mutuals = [], isLoading: mutualsLoading } = useFriendsOfFriends()
   const { members: newMembers, isLoading: membersLoading } = useNewCommunityMembers(communityId, currentUserId)
 
   const [viewingUser, setViewingUser] = useState<ProfileSheetUser | null>(null)
@@ -1612,9 +1575,9 @@ const DiscoverTab: React.FC<{ friends: Friend[]; communityId?: string | null; cu
 
       {/* Friends of your friends -- header + row live together inside one
           white card, matching the reference design. Always shows; "No data
-          yet" when the aggregate (see useMutualFriendsAggregate) comes back
-          empty, which happens when you have no friends yet, or your friends
-          have no connections beyond people you already know. */}
+          yet" when useFriendsOfFriends comes back empty, which happens when
+          you have no friends yet, or your friends have no connections beyond
+          people you already know. */}
       <Box className={classes.discoverSection}>
         <Box className={classes.discoverSectionCard}>
           <Box className={classes.discoverSectionHead}>
@@ -1644,24 +1607,24 @@ const DiscoverTab: React.FC<{ friends: Friend[]; communityId?: string | null; cu
               No data yet. Once your friends add their own friends, people you&apos;re not connected to yet will show up here.
             </Typography>
           ) : (
-            <Box className={classes.discoverAvatarScroll}>
-              {mutuals.slice(0, 12).map((f) => {
-                const avatarBg = avatarGradient(f.id)
-                const count = mutualCounts.get(f.userId) ?? 0
-                return (
-                  <Box
-                    key={f.id}
-                    className={classes.discoverAvatarItem}
-                    onClick={() => setViewingUser({ userId: f.userId, name: f.name, designation: f.designation, avatarUrl: f.avatarUrl })}
-                  >
-                    <Avatar src={f.avatarUrl ?? undefined} className={classes.discoverAvatarLg} sx={{ background: avatarBg, color: '#fff' }}>
-                      {getInitials(f.name)}
-                    </Avatar>
-                    <Typography className={classes.discoverAvatarName}>{f.name.split(' ')[0]}</Typography>
-                    {count > 0 && <Typography className={classes.discoverAvatarCaption}>{count} mutual</Typography>}
-                  </Box>
-                )
-              })}
+            // Shared PersonCard (src/components/PersonCard.tsx) -- same box
+            // look as the "New members" section below (per direct request that
+            // these two sections match, and a later request to stop duplicating
+            // that box design per-section and reuse one component instead), each
+            // with its own Add Friend action via MutualAddFriendButton rather
+            // than New Members' status-aware one.
+            <Box className={classes.discoverCardScroll}>
+              {mutuals.slice(0, 12).map((f) => (
+                <PersonCard
+                  key={f.id}
+                  variant="scroll"
+                  name={f.name}
+                  avatarUrl={f.avatarUrl}
+                  colorSeed={f.id}
+                  onClick={() => setViewingUser({ userId: f.userId, name: f.name, designation: f.designation, avatarUrl: f.avatarUrl })}
+                  action={<MutualAddFriendButton userId={f.userId} />}
+                />
+              ))}
             </Box>
           )}
         </Box>
@@ -1700,27 +1663,18 @@ const DiscoverTab: React.FC<{ friends: Friend[]; communityId?: string | null; cu
             </Typography>
           ) : (
             <Box className={classes.discoverCardScroll}>
-              {newMembers.slice(0, 12).map((m) => {
-                const avatarBg = avatarGradient(m.userId)
-                return (
-                  <Box
-                    key={m.id}
-                    className={classes.discoverCard}
-                    onClick={() => setViewingUser({ userId: m.userId, name: m.name, designation: m.designation, avatarUrl: m.avatarUrl })}
-                  >
-                    <Avatar src={m.avatarUrl ?? undefined} className={classes.discoverAvatarLg} sx={{ background: avatarBg, color: '#fff' }}>
-                      {getInitials(m.name)}
-                    </Avatar>
-                    <Typography className={classes.discoverCardName}>{m.name}</Typography>
-                    <Typography className={classes.discoverCardCaption}>
-                      {m.joinedAt ? `Joined ${formatRelativeTime(m.joinedAt)}` : 'New to the community'}
-                    </Typography>
-                    <Box onClick={(e) => e.stopPropagation()} sx={{ mt: 1 }}>
-                      <NewMemberAddFriendButton member={m} />
-                    </Box>
-                  </Box>
-                )
-              })}
+              {newMembers.slice(0, 12).map((m) => (
+                <PersonCard
+                  key={m.id}
+                  variant="scroll"
+                  name={m.name}
+                  avatarUrl={m.avatarUrl}
+                  colorSeed={m.userId}
+                  subtitle={m.joinedAt ? `Joined ${formatRelativeTime(m.joinedAt)}` : 'New to the community'}
+                  onClick={() => setViewingUser({ userId: m.userId, name: m.name, designation: m.designation, avatarUrl: m.avatarUrl })}
+                  action={<NewMemberAddFriendButton member={m} />}
+                />
+              ))}
             </Box>
           )}
         </Box>
@@ -1759,7 +1713,6 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number; c
   const { classes } = useStyles()
   const [page, setPage] = useState(1)
   const { data, isLoading } = useCommunityMembers(communityId, page)
-  const { data: friends = [] } = useFriends()
   const sendRequestMutation = useSendFriendRequest()
   const cancelRequestMutation = useCancelFriendRequest()
 
@@ -1770,8 +1723,6 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number; c
 
   const members = data?.data ?? []
   const meta = data?.meta
-
-  const friendUserIds = new Set((friends as Friend[]).map(f => f.userId))
 
   if (isLoading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -1797,102 +1748,97 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number; c
           </Typography>
         )}
       </Box>
-      <Box className={classes.circleCard}>
-        {members.length === 0 ? (
-          <Typography className={classes.emptyRow}>No members yet</Typography>
-        ) : members.map((m: CommunityMember) => {
-          const serverStatus = deriveFriendStatus(m.friendshipStatus)
-          const override = localStatus[m.userId]
-          const isFriend = friendUserIds.has(m.userId) || (serverStatus === 'friends' && override !== 'none')
-          const isRequested = !isFriend && (override === 'requested' || (serverStatus === 'requested' && override !== 'none'))
-          // Compare real user ids (not the membership row's `id`) — coerce to
-          // string defensively in case either side ever comes back numeric.
-          const isSelf = !!currentUserId && String(m.userId) === String(currentUserId)
-          const avatarBg = avatarGradient(m.userId)
-          return (
-            <Box
-              key={m.id}
-              className={classes.listRow}
-              sx={{ cursor: 'pointer' }}
-              onClick={() => setViewingMember({
-                user: { userId: m.userId, name: m.name, designation: m.designation, avatarUrl: m.avatarUrl },
-                status: isFriend ? 'friends' : isRequested ? 'requested' : 'none',
-              })}
-            >
-              <Avatar
-                src={m.avatarUrl ?? undefined}
-                className={classes.personAvatar}
-                sx={{ background: avatarBg, color: '#fff' }}
-              >
-                {getInitials(m.name)}
-              </Avatar>
-              <Box className={classes.personInfo}>
-                <Typography className={classes.personName}>{m.name}</Typography>
-                {m.designation && (
-                  <Typography className={classes.personSub}>{m.designation}</Typography>
-                )}
+      {members.length === 0 ? (
+        <Typography className={classes.emptyRow}>No members yet</Typography>
+      ) : (
+        <Box className={classes.memberCardGrid}>
+          {members.map((m: CommunityMember) => {
+            // The community-members API already returns friendship_status per
+            // member (verified reliable, and kept fresh: every friend mutation
+            // below invalidates the members query), so this no longer also
+            // fetches /friends separately just to cross-check it -- that was a
+            // second API call on every Members-tab visit for a status this
+            // endpoint already tells us directly.
+            const serverStatus = deriveFriendStatus(m.friendshipStatus)
+            const override = localStatus[m.userId]
+            const isFriend = serverStatus === 'friends' && override !== 'none'
+            const isRequested = !isFriend && (override === 'requested' || (serverStatus === 'requested' && override !== 'none'))
+            // Compare real user ids (not the membership row's `id`) — coerce to
+            // string defensively in case either side ever comes back numeric.
+            const isSelf = !!currentUserId && String(m.userId) === String(currentUserId)
+            const action = isSelf ? undefined : isFriend ? (
+              <Box className={classes.friendedPill}>
+                <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
+                Friends
               </Box>
-              {isSelf ? null : isFriend ? (
-                <Box className={classes.friendedPill}>
-                  <CheckIcon sx={{ fontSize: '0.7rem', color: colors.moss }} />
-                  Friends
-                </Box>
-              ) : isRequested ? (
-                <Button
-                  variant="outlined"
-                  className={classes.requestedPill}
-                  endIcon={<CloseIcon sx={{ fontSize: '0.8rem !important' }} />}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    cancelRequestMutation.mutate(m.userId)
-                    setLocalStatus(s => ({ ...s, [m.userId]: 'none' }))
-                  }}
-                  disabled={cancelRequestMutation.isPending}
-                >
-                  Requested
-                </Button>
-              ) : (
-                <Button
-                  disableElevation
-                  className={classes.addFriendPill}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    sendRequestMutation.mutate(m.userId)
-                    setLocalStatus(s => ({ ...s, [m.userId]: 'requested' }))
-                  }}
-                  disabled={sendRequestMutation.isPending}
-                >
-                  Add Friend
-                </Button>
-              )}
-            </Box>
-          )
-        })}
+            ) : isRequested ? (
+              <Button
+                variant="outlined"
+                className={classes.requestedPill}
+                endIcon={<CloseIcon sx={{ fontSize: '0.8rem !important' }} />}
+                onClick={() => {
+                  cancelRequestMutation.mutate(m.userId)
+                  setLocalStatus(s => ({ ...s, [m.userId]: 'none' }))
+                }}
+                disabled={cancelRequestMutation.isPending}
+              >
+                Requested
+              </Button>
+            ) : (
+              <Button
+                disableElevation
+                className={classes.addFriendPill}
+                onClick={() => {
+                  sendRequestMutation.mutate(m.userId)
+                  setLocalStatus(s => ({ ...s, [m.userId]: 'requested' }))
+                }}
+                disabled={sendRequestMutation.isPending}
+              >
+                Add Friend
+              </Button>
+            )
+            return (
+              <PersonCard
+                key={m.id}
+                name={m.name}
+                avatarUrl={m.avatarUrl}
+                colorSeed={m.userId}
+                subtitle={m.designation}
+                capitalizeSubtitle
+                onClick={() => setViewingMember({
+                  user: { userId: m.userId, name: m.name, designation: m.designation, avatarUrl: m.avatarUrl },
+                  status: isFriend ? 'friends' : isRequested ? 'requested' : 'none',
+                })}
+                action={action}
+              />
+            )
+          })}
+        </Box>
+      )}
 
-        {meta && meta.lastPage > 1 && (
-          <Box className={classes.paginationRow}>
-            <Button
-              variant="outlined"
-              className={classes.pageBtn}
-              onClick={() => setPage(p => p - 1)}
-              disabled={page <= 1}
-            >
-              <ChevronLeftIcon sx={{ fontSize: '1.1rem' }} />
-            </Button>
-            <Typography className={classes.pageLabel}>
-              Page {meta.currentPage} of {meta.lastPage}
-            </Typography>
-            <Button
-              variant="outlined"
-              className={classes.pageBtn}
-              onClick={() => setPage(p => p + 1)}
-              disabled={page >= meta.lastPage}
-            >
-              <ChevronRightIcon sx={{ fontSize: '1.1rem' }} />
-            </Button>
-          </Box>
-        )}
-      </Box>
+      {meta && meta.lastPage > 1 && (
+        <Box className={classes.paginationRow}>
+          <Button
+            variant="outlined"
+            className={classes.pageBtn}
+            onClick={() => setPage(p => p - 1)}
+            disabled={page <= 1}
+          >
+            <ChevronLeftIcon sx={{ fontSize: '1.1rem' }} />
+          </Button>
+          <Typography className={classes.pageLabel}>
+            Page {meta.currentPage} of {meta.lastPage}
+          </Typography>
+          <Button
+            variant="outlined"
+            className={classes.pageBtn}
+            onClick={() => setPage(p => p + 1)}
+            disabled={page >= meta.lastPage}
+          >
+            <ChevronRightIcon sx={{ fontSize: '1.1rem' }} />
+          </Button>
+        </Box>
+      )}
 
       <UserProfileSheet
         open={!!viewingMember}
@@ -1911,12 +1857,47 @@ const MembersTab: React.FC<{ communityId?: string | null; friendCount: number; c
   )
 }
 
+// ── Feed tab -- mounts/unmounts with the tab itself (like Members/Friends/
+//    Discover below) so switching back to Feed always issues a fresh
+//    GET /posts call rather than showing whatever was last cached. ───────────
+const FeedTab: React.FC = () => {
+  const { user } = useAuth()
+  const { data, isLoading, isError } = usePosts(user?.communityId)
+  const posts = data?.data ?? []
+
+  return (
+    <>
+      <FriendsScroll />
+      <AccommodationSummaryCard />
+      <CreatePostInput />
+      <Box sx={{ px: 2, pt: 1, pb: 2 }}>
+        {isLoading && <ContentSkeleton count={4} variant="post" />}
+        {!isLoading && isError && (
+          <EmptyState
+            title="Couldn't load posts"
+            description="Something went wrong. Please try again later."
+            icon={<ForumOutlinedIcon />}
+          />
+        )}
+        {!isLoading && !isError && posts.length === 0 && (
+          <EmptyState
+            title="No queries yet"
+            description="Be the first to ask something in your community!"
+            icon={<ForumOutlinedIcon />}
+          />
+        )}
+        {!isLoading && !isError && posts.map((post) => (
+          <PostCard key={post.id} post={post} />
+        ))}
+      </Box>
+    </>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 const CommunityPage: React.FC = () => {
   const { classes, cx } = useStyles()
   const { user } = useAuth()
-  const { data, isLoading, isError } = usePosts(user?.communityId)
-  const posts = data?.data ?? []
 
   const { data: friends = [] } = useFriends()
   const { data: pending = [] } = usePendingRequests()
@@ -2005,33 +1986,7 @@ const CommunityPage: React.FC = () => {
       </Box>
 
       {/* Feed tab */}
-      {activeTab === 'feed' && (
-        <>
-          <FriendsScroll />
-          <AccommodationSummaryCard />
-          <CreatePostInput />
-          <Box sx={{ px: 2, pt: 1, pb: 2 }}>
-            {isLoading && <ContentSkeleton count={4} variant="post" />}
-            {!isLoading && isError && (
-              <EmptyState
-                title="Couldn't load posts"
-                description="Something went wrong. Please try again later."
-                icon={<ForumOutlinedIcon />}
-              />
-            )}
-            {!isLoading && !isError && posts.length === 0 && (
-              <EmptyState
-                title="No queries yet"
-                description="Be the first to ask something in your community!"
-                icon={<ForumOutlinedIcon />}
-              />
-            )}
-            {!isLoading && !isError && posts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </Box>
-        </>
-      )}
+      {activeTab === 'feed' && <FeedTab />}
 
       {activeTab === 'members' && <MembersTab communityId={user?.communityId} friendCount={friendCount} currentUserId={user?.id} />}
       {activeTab === 'friends' && (

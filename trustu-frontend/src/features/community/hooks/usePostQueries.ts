@@ -8,13 +8,20 @@ export const POST_QUERY_KEYS = {
   comments: (postId: string) => ['posts', postId, 'comments'] as const,
 }
 
-/** Fetch paginated community posts — requires communityId to filter correctly */
+/**
+ * Fetch paginated community posts — requires communityId to filter correctly.
+ * `refetchOnMount: 'always'` -- the Feed tab (FeedTab in CommunityPage.tsx)
+ * mounts/unmounts as the user switches tabs, so this makes each switch back
+ * to Feed issue a fresh request instead of silently reusing whatever was
+ * cached from staleTime ago.
+ */
 export const usePosts = (communityId?: string | null) =>
   useQuery({
     queryKey: [...POST_QUERY_KEYS.list, communityId],
     queryFn: () => postsApi.list({ community_id: communityId }),
     enabled: !!communityId,
     staleTime: 30_000,
+    refetchOnMount: 'always',
   })
 
 /** Create a new post */

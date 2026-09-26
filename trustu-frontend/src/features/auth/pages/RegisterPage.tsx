@@ -22,19 +22,11 @@ const GENDER_OPTIONS = [
   { value: 'other',  label: 'Other' },
 ]
 
-const DESIGNATION_OPTIONS = [
-  { value: 'student', label: 'Student' },
-  { value: 'faculty', label: 'Faculty' },
-  { value: 'staff',   label: 'Staff' },
-  { value: 'alumni',  label: 'Alumni' },
-]
-
 // ── Step 1 schema ─────────────────────────────────────────────────────────────
 const step1Schema = z
   .object({
     name:                  z.string().min(2, 'Full name must be at least 2 characters'),
     gender:                z.enum(['male', 'female', 'other', '']),
-    designation:           z.string().min(1, 'Please select a designation'),
     phone:                 z.string()
       .min(1, 'Phone number is required')
       .refine(
@@ -42,7 +34,6 @@ const step1Schema = z
         { message: 'Enter a valid phone number' },
       ),
     email:                 z.string().email('Enter a valid email address'),
-    institute:             z.string(),
     password:              z.string().min(8, 'Password must be at least 8 characters'),
     password_confirmation: z.string(),
   })
@@ -123,8 +114,8 @@ function AccountStep({ prefillEmail, initialValues, onNext, onBack }: Step1Props
     useForm<Step1Values>({
       resolver: zodResolver(step1Schema),
       defaultValues: initialValues ?? {
-        name: '', gender: '', designation: '', phone: '',
-        email: prefillEmail, institute: '',
+        name: '', gender: '', phone: '',
+        email: prefillEmail,
         password: '', password_confirmation: '',
       },
     })
@@ -153,22 +144,11 @@ function AccountStep({ prefillEmail, initialValues, onNext, onBack }: Step1Props
           <Box component="input" autoComplete="name" autoFocus placeholder="Your full name" {...register('name')} sx={authInputSx} />
         </AuthField>
 
-        <Box sx={{ display: 'flex', gap: '12px' }}>
-          <Box sx={{ flex: 1 }}>
-            <AuthField label="Gender" error={errors.gender?.message}>
-              <Controller name="gender" control={control} render={({ field }) => (
-                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="Select" options={GENDER_OPTIONS} />
-              )} />
-            </AuthField>
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <AuthField label="Designation" error={errors.designation?.message}>
-              <Controller name="designation" control={control} render={({ field }) => (
-                <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="Select" options={DESIGNATION_OPTIONS} />
-              )} />
-            </AuthField>
-          </Box>
-        </Box>
+        <AuthField label="Gender" error={errors.gender?.message}>
+          <Controller name="gender" control={control} render={({ field }) => (
+            <AuthSelectField value={field.value} onChange={field.onChange} onBlur={field.onBlur} placeholder="Select" options={GENDER_OPTIONS} />
+          )} />
+        </AuthField>
 
         <AuthField label="Phone Number" error={errors.phone?.message}>
           <Box component="input" autoComplete="tel" placeholder="e.g. 9876543210" {...register('phone')} sx={authInputSx} />
@@ -176,10 +156,6 @@ function AccountStep({ prefillEmail, initialValues, onNext, onBack }: Step1Props
 
         <AuthField label="Email" error={errors.email?.message}>
           <Box component="input" type="email" autoComplete="email" placeholder="you@example.com" {...register('email')} sx={authInputSx} />
-        </AuthField>
-
-        <AuthField label="Institute / College" error={errors.institute?.message}>
-          <Box component="input" placeholder="Optional" {...register('institute')} sx={authInputSx} />
         </AuthField>
 
         <AuthField label="Password" error={errors.password?.message}>
@@ -210,7 +186,6 @@ function AccountStep({ prefillEmail, initialValues, onNext, onBack }: Step1Props
 // ── Step 2 component: "Save your profile" (location) ───────────────────────────
 interface Step2Props {
   name: string
-  designationLabel: string
   initialValues: Step2Values | null
   onSubmit: (data: Step2Values) => void
   onBack: (data: Step2Values) => void
@@ -220,7 +195,7 @@ interface Step2Props {
 }
 
 function ProfileLocationStep({
-  name, designationLabel, initialValues, onSubmit, onBack, isPending, photoPreviewUrl, onPickPhoto,
+  name, initialValues, onSubmit, onBack, isPending, photoPreviewUrl, onPickPhoto,
 }: Step2Props) {
   const nativeStateOptions = NATIVE_STATE_OPTIONS.map(s => ({ value: String(s.id), label: s.name }))
   const currentStateOptions = CURRENT_STATE_OPTIONS.map(s => ({ value: String(s.id), label: s.name }))
@@ -282,11 +257,6 @@ function ProfileLocationStep({
             <Typography sx={{ fontSize: '15px', fontWeight: 800, color: colors.ink, letterSpacing: '-0.2px' }}>
               {name || 'Your name'}
             </Typography>
-            {designationLabel && (
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 500, color: colors.ink3 }}>
-                {designationLabel}
-              </Typography>
-            )}
           </Box>
         </Box>
       </Box>
@@ -395,19 +365,19 @@ const RegisterPage: React.FC = () => {
     registerMutation.mutate({
       name:                  s1.name,
       email:                 s1.email,
-      profile_type:          s1.designation,
+      // The designation field was removed from the registration form, but
+      // the backend still requires profile_type -- default new signups to
+      // 'student' (the vast majority of users) rather than asking again.
+      profile_type:          'student',
       password:              s1.password,
       password_confirmation: s1.password_confirmation,
       native_state_id:       Number(data.native_state_id),
       current_state_id:      Number(data.current_state_id),
       gender:                s1.gender    || undefined,
       phone:                 s1.phone     || undefined,
-      institute:             s1.institute || undefined,
       profile_image:         photoFile,
     })
   }
-
-  const designationLabel = DESIGNATION_OPTIONS.find(d => d.value === step1Ref.current?.designation)?.label ?? ''
 
   return (
     <AuthCard maxWidth={480} bgcolor={colors.white}>
@@ -421,7 +391,6 @@ const RegisterPage: React.FC = () => {
       ) : (
         <ProfileLocationStep
           name={step1Ref.current?.name ?? ''}
-          designationLabel={designationLabel}
           initialValues={step2Ref.current}
           onSubmit={handleStep2Submit}
           onBack={(data) => { step2Ref.current = data; setStep(1) }}

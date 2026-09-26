@@ -9,8 +9,7 @@ import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PATHS } from '@/routes/paths'
 import { useAuth } from '@/app/AuthProvider'
-import { useFriends, useMutualFriendsAggregate } from '@/features/circle/hooks/useFriendshipQueries'
-import type { Friend } from '@/services/friendship.api'
+import { useFriendsOfFriends } from '@/features/circle/hooks/useFriendshipQueries'
 import { useNewCommunityMembers } from '../hooks/useCommunityQueries'
 import { getInitials, avatarGradient, formatRelativeTime, formatCommunityName, communityLocation } from '@/utils'
 import colors from '@/theme/colors'
@@ -27,9 +26,20 @@ import { useStyles, MutualAddFriendButton, NewMemberAddFriendButton } from './Co
  * card with its title/subtitle as the card's own header and its rows
  * separated by divider lines -- not one floating card per person -- and
  * each "Friends of your friends" row shows an avatar, name, a locality line,
- * a hometown line, a real "N mutual friends" line backed by the actual
- * connecting friends (not a placeholder count), and an outlined Add Friend
- * button on the right.
+ * a hometown line, and an outlined Add Friend button on the right.
+ *
+ * The "Friends of your friends" list itself comes from GET /friends/fof --
+ * a single, backend-computed friends-of-friends list (useFriendsOfFriends,
+ * see useFriendshipQueries.ts) -- replacing the old useMutualFriendsAggregate
+ * approach, which was discovered to be unreliable: it built the list by
+ * unioning GET /friends/mutual/{userId} across the current user's own
+ * friends, but that endpoint returns the true intersection of "friends of me
+ * AND friends of userId", not "userId's friends", so it silently missed real
+ * second-degree connections. /friends/fof doesn't return per-person mutual
+ * counts or connecting-friend avatars, so the "N mutual friends" caption and
+ * connector-avatar stack are gone from this view, and "Popular in your
+ * community" below now just shows the same list rather than a count-ranked
+ * subset of it.
  *
  * Locality uses real data: the app has one live community right now (Kerala
  * natives in Jamia Nagar, Delhi), and communityLocation/formatCommunityName
@@ -70,8 +80,10 @@ const DiscoverDetailPage: React.FC = () => {
     setSearchParams(next, { replace: true })
   }
 
-  const { data: friends = [] } = useFriends()
-  const { people: mutuals, isLoading: mutualsLoading, mutualCounts, mutualConnectors } = useMutualFriendsAggregate(friends as Friend[])
+  // Real "friends of friends" list via GET /friends/fof -- a single,
+  // backend-computed request (see the file-level comment above for why this
+  // replaced the old useMutualFriendsAggregate approach).
+  const { data: mutuals = [], isLoading: mutualsLoading } = useFriendsOfFriends()
   const { members: newMembers, isLoading: membersLoading } = useNewCommunityMembers(user?.communityId, user?.id)
 
   const [viewingUser, setViewingUser] = useState<ProfileSheetUser | null>(null)
@@ -89,12 +101,12 @@ const DiscoverDetailPage: React.FC = () => {
   const showFriendsOfFriends = activeFilter === 'all' || activeFilter === 'friends-of-friends'
   const showNewMembers = activeFilter === 'all' || activeFilter === 'new-members'
 
-  // "Popular in your community" -- the same mutual-friends pool, ranked by
-  // the real per-person mutual count (see useMutualFriendsAggregate) instead
-  // of join date. Shown only on "All", as in the reference design.
-  const popular = [...visibleMutuals]
-    .sort((a, b) => (mutualCounts.get(b.userId) ?? 0) - (mutualCounts.get(a.userId) ?? 0))
-    .slice(0, 8)
+  // "Popular in your community" -- the same friends-of-friends pool.
+  // /friends/fof doesn't return a per-person mutual count, so this is no
+  // longer ranked by mutual count (see the file-level comment above) -- it's
+  // just the first 8 from the list. Shown only on "All", as in the reference
+  // design.
+  const popular = visibleMutuals.slice(0, 8)
 
   const nothingToShow = !isLoading && visibleMutuals.length === 0 && visibleNewMembers.length === 0
 
@@ -153,8 +165,6 @@ const DiscoverDetailPage: React.FC = () => {
                   </Box>
                   {visibleMutuals.map((f) => {
                     const avatarBg = avatarGradient(f.id)
-                    const count = mutualCounts.get(f.userId) ?? 0
-                    const connectors = mutualConnectors.get(f.userId) ?? []
                     const location = communityLocation(formatCommunityName(f.communityName))
                     return (
                       <Box
@@ -184,25 +194,6 @@ const DiscoverDetailPage: React.FC = () => {
                           <Typography className={classes.discoverPersonFromText}>
                             {HOMETOWN_PLACEHOLDER}
                           </Typography>
-                          {count > 0 && (
-                            <Box className={classes.discoverMutualRow}>
-                              <Box className={classes.discoverMutualStack}>
-                                {connectors.map((c) => (
-                                  <Avatar
-                                    key={c.id}
-                                    src={c.avatarUrl ?? undefined}
-                                    className={classes.discoverMutualStackAvatar}
-                                    sx={{ background: avatarGradient(c.id), color: '#fff' }}
-                                  >
-                                    {getInitials(c.name)}
-                                  </Avatar>
-                                ))}
-                              </Box>
-                              <Typography className={classes.discoverMutualText}>
-                                {count} mutual friend{count > 1 ? 's' : ''}
-                              </Typography>
-                            </Box>
-                          )}
                         </Box>
                         <Box className={classes.discoverListAction} onClick={(e) => e.stopPropagation()}>
                           <MutualAddFriendButton userId={f.userId} outlined />
@@ -299,7 +290,6 @@ const DiscoverDetailPage: React.FC = () => {
               <Box className={classes.popularGrid}>
                 {popular.map((f) => {
                   const avatarBg = avatarGradient(f.id)
-                  const count = mutualCounts.get(f.userId) ?? 0
                   return (
                     <Box
                       key={f.id}
@@ -311,7 +301,6 @@ const DiscoverDetailPage: React.FC = () => {
                         {getInitials(f.name)}
                       </Avatar>
                       <Typography className={classes.discoverAvatarName}>{f.name.split(' ')[0]}</Typography>
-                      {count > 0 && <Typography className={classes.discoverAvatarCaption}>{count} mutual</Typography>}
                     </Box>
                   )
                 })}

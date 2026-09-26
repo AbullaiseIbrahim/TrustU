@@ -25,13 +25,19 @@ export const useCommunity = (communityId: string | null | undefined) =>
     staleTime: 5 * 60_000,
   })
 
-/** Members of a community (paginated) */
+/**
+ * Members of a community (paginated). `refetchOnMount: 'always'` -- both
+ * consumers (MembersTab, and useNewCommunityMembers below for Discover's
+ * "New members") mount/unmount as the user switches tabs, so this makes
+ * each switch back issue a fresh request instead of reusing a stale cache.
+ */
 export const useCommunityMembers = (communityId: string | null | undefined, page = 1) =>
   useQuery({
     queryKey: COMMUNITY_QUERY_KEYS.members(communityId ?? '', page),
     queryFn:  () => communityApi.members(communityId!, page),
     enabled:  !!communityId,
     staleTime: 60_000,
+    refetchOnMount: 'always',
   })
 
 /** Members of a sub-community (paginated) */

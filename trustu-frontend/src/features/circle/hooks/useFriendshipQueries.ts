@@ -7,13 +7,25 @@ export const FRIENDSHIP_KEYS = {
   friends:  ['friends', 'list']    as const,
   pending:  ['friends', 'pending'] as const,
   mutual:   (userId: string) => ['friends', 'mutual', userId] as const,
+  fof:      ['friends', 'fof']     as const,
 }
 
-export const useFriends = () =>
+// refetchOnMount: 'always' on these three (useFriends, usePendingRequests,
+// useFriendsOfFriends below) -- each is read by a tab that mounts/unmounts as
+// the user switches tabs (My Friends / Pending Requests / Discover), so this
+// makes switching back to one of those tabs issue a fresh request instead of
+// silently reusing whatever was cached from staleTime ago. These are also
+// read at CommunityPage's top level for the header badge counts, which never
+// unmounts -- 'always' only affects new mounts, so that subscription is
+// unaffected (no extra refetching there), but it does get the fresher data
+// for free whenever a tab-mount refetch completes.
+export const useFriends = (options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: FRIENDSHIP_KEYS.friends,
     queryFn:  friendshipApi.list,
     staleTime: 30_000,
+    refetchOnMount: 'always',
+    enabled: options?.enabled ?? true,
   })
 
 export const usePendingRequests = () =>
@@ -21,6 +33,22 @@ export const usePendingRequests = () =>
     queryKey: FRIENDSHIP_KEYS.pending,
     queryFn:  friendshipApi.pending,
     staleTime: 30_000,
+    refetchOnMount: 'always',
+  })
+
+/**
+ * GET /friends/fof — the real, backend-computed "friends of friends" list.
+ * Prefer this over `useMutualFriendsAggregate` below wherever only the flat
+ * people list / a count is needed (it's a single request, not an N+1 fan-out,
+ * and isn't capped at 20 of the user's own friends the way the aggregate is).
+ * `refetchOnMount: 'always'` -- see the comment above useFriends.
+ */
+export const useFriendsOfFriends = () =>
+  useQuery({
+    queryKey: FRIENDSHIP_KEYS.fof,
+    queryFn:  friendshipApi.fof,
+    staleTime: 30_000,
+    refetchOnMount: 'always',
   })
 
 export const useMutualFriends = (userId: string) =>
@@ -32,10 +60,22 @@ export const useMutualFriends = (userId: string) =>
   })
 
 /**
- * Real "mutual friends" aggregate — the API only exposes mutual friends relative
- * to one other user (`GET /friends/mutual/{userId}`), not a flat "my mutuals"
- * list. We approximate the flat list by unioning mutual-friend results across
- * the current user's own friends (capped to avoid an unbounded N+1 fan-out).
+ * Real "mutual friends" aggregate, WITH per-person mutual counts and
+ * connecting-friend lists (`mutualCounts` / `mutualConnectors` below) —
+ * built by unioning `GET /friends/mutual/{userId}` across the current
+ * user's own friends (capped to avoid an unbounded N+1 fan-out).
+ *
+ * NOT CURRENTLY USED ANYWHERE (as of the /friends/fof migration): every
+ * call site (CommunityPage's header stat + Discover tab, ProfilePage,
+ * DiscoverDetailPage) has switched to `useFriendsOfFriends` above, because
+ * this hook's core assumption turned out to be wrong -- `GET
+ * /friends/mutual/{userId}` returns the true intersection of "friends of
+ * me AND friends of userId", not "userId's own friends", so unioning it
+ * across my friends silently misses real second-degree connections (see
+ * `useFriendsOfFriends`'s call sites for the confirmed repro). Left in
+ * place only as a reference for what richer per-person mutual-count/
+ * connector data would look like if the backend ever adds that to
+ * `/friends/fof` directly -- otherwise safe to delete.
  */
 const MUTUAL_AGGREGATE_CAP = 20
 

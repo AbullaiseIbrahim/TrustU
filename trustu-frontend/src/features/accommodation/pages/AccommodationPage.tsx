@@ -35,6 +35,7 @@ import type { Accommodation } from '@/services/accommodation.api'
 import { formatINR, formatDate, getInitials, avatarGradient, formatCommunityName } from '@/utils'
 import colors from '@/theme/colors'
 import EmptyState from '@/components/EmptyState'
+import PosterBadge from '@/components/PosterBadge'
 import { useAuth } from '@/app/AuthProvider'
 import { useSnackbar } from '@/app/SnackbarProvider'
 import { PATHS } from '@/routes/paths'
@@ -681,10 +682,13 @@ const useStyles = makeStyles()(() => ({
     marginBottom: 5,
     border: '1px solid',
   },
+  // Layout-only wrapper around the shared PosterBadge (src/components/
+  // PosterBadge.tsx) -- the badge itself now owns all the visual styling
+  // (moss chip, avatar, name), so this card only needs to add its own
+  // spacing around it.
   gridPostedBy: {
-    fontSize: '0.70rem',
-    color: colors.ink3,
     marginBottom: 4,
+    maxWidth: '100%',
   },
   gridPrice: {
     fontWeight: 700,
@@ -1250,7 +1254,7 @@ const GridCard: React.FC<{
         )}
         <ConnectionChip status={status} classes={classes} />
         {acc.userName && (
-          <Typography className={classes.gridPostedBy}>Posted by {acc.userName}</Typography>
+          <PosterBadge name={acc.userName} className={classes.gridPostedBy} />
         )}
         <Typography className={classes.gridPrice}>
           {formatINR(acc.amount)}{acc.type === 1 ? ' Per Day' : ''} / head
@@ -1558,10 +1562,16 @@ type View = 'landing' | 'category' | 'subgroup' | 'all' | 'detail'
 const AccommodationPage: React.FC = () => {
   const { classes } = useStyles()
   const { user } = useAuth()
-  const { data: friends = [] } = useFriends()
-  const friendCount = (friends as Friend[]).length
 
   const [view, setView] = useState<View>('landing')
+
+  // friendCount is only rendered in the 'category' view's header (see the
+  // "Community stats header" block below) -- landing, subgroup, all, and
+  // detail views never touch it, so this only fetches /friends when actually
+  // on the category view instead of on every mount of this page (e.g. just
+  // opening the category picker).
+  const { data: friends = [] } = useFriends({ enabled: view === 'category' })
+  const friendCount = (friends as Friend[]).length
   const [detailOrigin, setDetailOrigin] = useState<'category' | 'subgroup' | 'all'>('category')
   const [selectedType, setSelectedType] = useState<number>(0)
   const [selectedSubGroup, setSelectedSubGroup] = useState<SubGroup | null>(null)
@@ -1690,7 +1700,7 @@ const AccommodationPage: React.FC = () => {
           {[
             { key: 'all' as FilterTab,       label: 'All',            dotColor: colors.ink4 },
             { key: 'friends' as FilterTab,   label: 'Friends',        dotColor: colors.moss },
-            { key: 'mutual' as FilterTab,    label: 'Mutual Friends', dotColor: colors.amber },
+            { key: 'mutual' as FilterTab,    label: 'Friends of Friends', dotColor: colors.amber },
             { key: 'saved' as FilterTab,     label: 'Saved',          dotColor: colors.urgent },
           ].map(pill => (
             <Box
@@ -1848,7 +1858,7 @@ const AccommodationPage: React.FC = () => {
   const FILTER_PILLS = [
     { key: 'all' as FilterTab,       label: 'All',            dotColor: colors.ink4 },
     { key: 'friends' as FilterTab,   label: 'Friends',        dotColor: colors.moss },
-    { key: 'mutual' as FilterTab,    label: 'Mutual Friends', dotColor: colors.amber },
+    { key: 'mutual' as FilterTab,    label: 'Friends of Friends', dotColor: colors.amber },
     { key: 'saved' as FilterTab,     label: 'Saved',          dotColor: colors.urgent },
   ]
 
