@@ -1241,8 +1241,22 @@ const AccommodationSummaryCard: React.FC = () => {
   const navigate = useNavigate()
   const { data } = useAccommodations()
   const listings = data?.data ?? []
-  const friendsCount = listings.filter((a) => a.isConnected).length
-  const mutualCount = listings.filter((a) => a.mutualFriends > 0).length
+
+  // `isConnected`/`mutualFriends` on each listing come from the accommodation
+  // normalizer and are always false/0 -- the raw API response never actually
+  // sends `is_connected` or `mutual_friends` (confirmed live: neither key
+  // exists anywhere in GET /accommodations), so these two tiles never moved
+  // no matter who posted what. Deriving them here instead, by cross-
+  // referencing each listing's poster (`a.userId`) against the already-
+  // fetched friends list (direct connections) and friends-of-friends list
+  // (GET /friends/fof, which itself already excludes direct friends), gives
+  // real counts using data this page already has.
+  const { data: friends = [] } = useFriends()
+  const { data: fofPeople = [] } = useFriendsOfFriends()
+  const friendIds = new Set(friends.map((f) => String(f.userId)))
+  const fofIds = new Set(fofPeople.map((f) => String(f.userId)))
+  const friendsCount = listings.filter((a) => friendIds.has(String(a.userId))).length
+  const fofCount = listings.filter((a) => fofIds.has(String(a.userId))).length
   // meta.total is the backend's real total (the list itself may only be one
   // page), so it's the more accurate "everyone in the community" count --
   // but this endpoint currently doesn't send total/meta at all, and the API
@@ -1274,10 +1288,10 @@ const AccommodationSummaryCard: React.FC = () => {
             <Box className={cx(classes.accomStatIcon, classes.accomStatIconAmber)}>
               <PeopleAltIcon sx={{ fontSize: '1rem' }} />
             </Box>
-            <Typography className={cx(classes.accomStatNumber, classes.accomStatNumberAmber)}>{mutualCount}</Typography>
+            <Typography className={cx(classes.accomStatNumber, classes.accomStatNumberAmber)}>{fofCount}</Typography>
           </Box>
           <Typography className={classes.accomStatLabel}>
-            Listings from <Box component="span" className={classes.accomStatLabelAmber}>mutual connections</Box>
+            Listings from <Box component="span" className={classes.accomStatLabelAmber}>friends of friends</Box>
           </Typography>
         </Box>
 
