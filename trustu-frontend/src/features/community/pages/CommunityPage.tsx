@@ -768,8 +768,9 @@ export const useStyles = makeStyles()(() => ({
   },
   discoverPersonDismiss: {
     position: 'absolute',
-    top: 6,
+    top: '50%',
     right: 6,
+    transform: 'translateY(-50%)',
     color: colors.ink3,
     padding: 4,
   },
