@@ -932,7 +932,7 @@ const ProfilePage: React.FC = () => {
           <Box className={classes.statDivider} />
           <Box className={classes.statItem}>
             <Typography className={classes.statNum}>{mutualCount.toLocaleString('en-IN')}</Typography>
-            <Typography className={classes.statLabel}>Mutuals</Typography>
+            <Typography className={classes.statLabel}>Friends of Friends</Typography>
           </Box>
         </Box>
 
@@ -994,9 +994,9 @@ const ProfilePage: React.FC = () => {
         <Typography className={classes.emptyStripText}>No friends yet.</Typography>
       )}
 
-      {/* ── Mutual Friends ── */}
+      {/* ── Friends of Friends ── */}
       <Box className={classes.sectionHeader}>
-        <Typography className={classes.sectionTitle}>Mutual Friends</Typography>
+        <Typography className={classes.sectionTitle}>Friends of Friends</Typography>
         {first8Mutual.length > 0 && (
           <Box
             component="button"
@@ -1023,7 +1023,7 @@ const ProfilePage: React.FC = () => {
           ))}
         </Box>
       ) : (
-        <Typography className={classes.emptyStripText}>No mutual friends yet.</Typography>
+        <Typography className={classes.emptyStripText}>No friends of friends yet.</Typography>
       )}
 
       {/* ── Edit Profile sheet ── */}

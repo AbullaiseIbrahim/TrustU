@@ -211,7 +211,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     showReplies ? post.id : '',
   )
 
-  const isOwnPost = user?.id === post.userId
+  // `user?.id` is the profile id (from GET /user/profile) -- a different,
+  // unrelated number from `post.userId` (the pivot/community-member id
+  // every posts/accommodations/friends endpoint actually uses to say who
+  // owns what). Comparing those two was why Delete either never showed up
+  // on your own posts, or showed up on someone else's and then failed:
+  // compare against user.communityMemberId instead, which is the same id
+  // space as post.userId (see User.communityMemberId's doc comment).
+  const isOwnPost = !!user?.communityMemberId && user.communityMemberId === post.userId
   const avatarBg = avatarGradient(post.userId || post.id)
 
   // Combine title + description as single readable content -- CreatePostInput
@@ -394,7 +401,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                       <strong>{comment.userName}</strong> · {formatRelativeTime(comment.createdAt)}
                     </Typography>
                     <Typography className={classes.replyContent}>{comment.content}</Typography>
-                    {comment.userId === user?.id && (
+                    {!!user?.communityMemberId && comment.userId === user.communityMemberId && (
                       <Typography
                         onClick={() => deleteCommentMutation.mutate(comment.id)}
                         sx={{ fontSize: '0.68rem', color: colors.urgent, cursor: 'pointer', mt: '4px', display: 'inline-block' }}

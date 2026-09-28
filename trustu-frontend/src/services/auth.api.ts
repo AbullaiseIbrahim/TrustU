@@ -81,6 +81,12 @@ export function normalizeUser(raw: any): User {
     // a live GET /user/profile response), then fall back to the nested/other
     // shapes in case some other endpoint ever nests it.
     avatarUrl:       raw?.profile_image ?? profile.profile_image ?? raw?.avatar_url ?? raw?.avatarUrl ?? raw?.avatar ?? null,
+    // Only /login and /register responses carry this (as a top-level
+    // `user_id` alongside `id`, both equal to the pivot/community-member id
+    // -- confirmed against live responses); GET /user/profile has no such
+    // field, so this normalizes to null there and AuthProvider is
+    // responsible for not letting that null clobber a value already saved.
+    communityMemberId: raw?.user_id != null ? String(raw.user_id) : null,
     profileComplete: Boolean(raw?.profile_complete ?? raw?.profileComplete ?? false),
     communityJoined: Boolean(raw?.community_joined ?? raw?.communityJoined ?? (resolvedCommunityId != null)),
     communityId:     resolvedCommunityId,

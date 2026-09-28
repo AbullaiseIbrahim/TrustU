@@ -77,7 +77,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUser = useCallback((partial: Partial<User>) => {
     setUser(prev => {
       if (!prev) return prev
-      const updated = { ...prev, ...partial }
+      const updated = {
+        ...prev,
+        ...partial,
+        // GET /user/profile (what a profile-save's response gets normalized
+        // through) never returns this id -- see the User.communityMemberId
+        // doc comment -- so a plain spread would null it out on every save.
+        // Preserve whatever we already resolved it to, same as syncProfile
+        // below does for community fields with the same problem.
+        communityMemberId: partial.communityMemberId ?? prev.communityMemberId,
+      }
       localStorage.setItem(USER_KEY, JSON.stringify(updated))
       return updated
     })
@@ -99,6 +108,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           communityId:     profile.communityId     ?? prev.communityId,
           communityName:   profile.communityName    ?? prev.communityName,
           communityJoined: profile.communityJoined || prev.communityJoined,
+          // Same reasoning as updateUser above: /user/profile never returns
+          // this id, so don't let it wipe the one captured at login/register.
+          communityMemberId: profile.communityMemberId ?? prev.communityMemberId,
           profileComplete: true,
         }
         localStorage.setItem(USER_KEY, JSON.stringify(updated))

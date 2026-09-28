@@ -3,6 +3,18 @@ export type Designation = 'Student' | 'Faculty' | 'Staff' | 'Alumni' | 'Other'
 
 export interface User {
   id: string
+  /**
+   * The id used everywhere a post/comment/accommodation/friend record
+   * refers to "who authored/owns this" (posts.user_id, accommodations'
+   * post.user_id, friends' userId, etc.) -- a *different*, backend-internal
+   * numbering than `id` above. `id` comes from GET /user/profile, which
+   * never returns this second id at all; the only place the API exposes it
+   * is the raw `user_id` field on the /login and /register responses, so
+   * it's captured there and preserved across profile refreshes/edits (see
+   * AuthProvider's syncProfile/updateUser) rather than re-derived later.
+   * Null until a login/register response has been seen this session.
+   */
+  communityMemberId: string | null
   name: string
   email: string | null
   phone: string | null
