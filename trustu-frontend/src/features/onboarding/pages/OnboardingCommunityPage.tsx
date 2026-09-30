@@ -435,8 +435,8 @@ const OnboardingCommunityPage: React.FC = () => {
   const memberCount = membersPage?.meta?.total ?? 0
   const friendCount = friends.length
   // Same approximation used by the main Community banner (CommunityPage.tsx)
-  // for consistency — no dedicated "total mutuals" endpoint exists yet.
-  const mutualCount = Math.floor(friendCount * 0.35)
+  // for consistency — no dedicated "total friends of friends" endpoint exists yet.
+  const fofCount = Math.floor(friendCount * 0.35)
   const isOn = isRevisit || joined
 
   return (
@@ -504,8 +504,8 @@ const OnboardingCommunityPage: React.FC = () => {
                 <Typography className={classes.statLabel}>Friends</Typography>
               </Box>
               <Box className={classes.statBlock}>
-                <Typography className={classes.statValue}>{mutualCount.toLocaleString('en-IN')}</Typography>
-                <Typography className={classes.statLabel}>Mutual Friends</Typography>
+                <Typography className={classes.statValue}>{fofCount.toLocaleString('en-IN')}</Typography>
+                <Typography className={classes.statLabel}>Friends of Friends</Typography>
               </Box>
             </Box>
 

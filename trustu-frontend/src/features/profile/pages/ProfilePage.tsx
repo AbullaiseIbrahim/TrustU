@@ -152,7 +152,7 @@ const useStyles = makeStyles()(() => ({
     marginTop: 10,
   },
 
-  // ── Section header (shared by Personal Details / Listings / Friends / Mutuals) ──
+  // ── Section header (shared by Personal Details / Listings / Friends / Friends of Friends) ──
   sectionHeader: {
     display: 'flex',
     alignItems: 'center',
@@ -336,7 +336,7 @@ const useStyles = makeStyles()(() => ({
     '&:disabled': { opacity: 0.6, cursor: 'not-allowed' },
   },
 
-  // ── Friends / Mutual Friends strips ─────────────────────────────────────
+  // ── Friends / Friends of Friends strips ─────────────────────────────────────
   friendsRow: {
     display: 'flex',
     gap: 14,
@@ -884,10 +884,10 @@ const ProfilePage: React.FC = () => {
   const first8 = (friends as Friend[]).slice(0, 8)
   const friendCount = (friends as Friend[]).length
   // Real "friends of friends" list via GET /friends/fof -- a single,
-  // backend-computed request instead of the N+1 useMutualFriendsAggregate.
-  const { data: mutualPeople = [] } = useFriendsOfFriends()
-  const mutualCount = mutualPeople.length
-  const first8Mutual = mutualPeople.slice(0, 8)
+  // backend-computed request instead of the old N+1 per-friend aggregate.
+  const { data: fofPeople = [] } = useFriendsOfFriends()
+  const fofCount = fofPeople.length
+  const first8Fof = fofPeople.slice(0, 8)
 
   const handleLogout = async () => {
     try { await authApi.logout() } catch { /* ignore */ } finally {
@@ -941,7 +941,7 @@ const ProfilePage: React.FC = () => {
           </Box>
           <Box className={classes.statDivider} />
           <Box className={classes.statItem}>
-            <Typography className={classes.statNum}>{mutualCount.toLocaleString('en-IN')}</Typography>
+            <Typography className={classes.statNum}>{fofCount.toLocaleString('en-IN')}</Typography>
             <Typography className={classes.statLabel}>Friends of Friends</Typography>
           </Box>
         </Box>
@@ -1007,19 +1007,19 @@ const ProfilePage: React.FC = () => {
       {/* ── Friends of Friends ── */}
       <Box className={classes.sectionHeader}>
         <Typography className={classes.sectionTitle}>Friends of Friends</Typography>
-        {first8Mutual.length > 0 && (
+        {first8Fof.length > 0 && (
           <Box
             component="button"
             className={classes.seeAllLink}
-            onClick={() => navigate(`${PATHS.dashboard.community}?tab=mutual`)}
+            onClick={() => navigate(`${PATHS.dashboard.community}?tab=discover`)}
           >
             See all
           </Box>
         )}
       </Box>
-      {first8Mutual.length > 0 ? (
+      {first8Fof.length > 0 ? (
         <Box className={classes.friendsRow}>
-          {first8Mutual.map(f => (
+          {first8Fof.map(f => (
             <Box key={f.id} className={classes.friendItem}>
               <Avatar
                 className={classes.friendAvatar}

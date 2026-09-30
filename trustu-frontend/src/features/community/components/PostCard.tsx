@@ -67,7 +67,7 @@ const useStyles = makeStyles()(() => ({
     fontWeight: 500,
     lineHeight: 1.3,
   },
-  mutualChip: {
+  fofChip: {
     display: 'inline-block',
     fontSize: '0.68rem',
     fontWeight: 600,
@@ -268,9 +268,9 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             ) : (
               <Typography className={classes.userSub}>{formatRelativeTime(post.createdAt)}</Typography>
             )}
-            {post.mutualCount != null && post.mutualCount > 0 && (
-              <Box component="span" className={classes.mutualChip}>
-                {post.mutualCount} Mutuals
+            {post.friendsOfFriendsCount != null && post.friendsOfFriendsCount > 0 && (
+              <Box component="span" className={classes.fofChip}>
+                {post.friendsOfFriendsCount} Friends of Friends
               </Box>
             )}
           </Box>

@@ -10,8 +10,8 @@ export interface Post {
   commentCount: number
   hasLiked: boolean
   createdAt: string
-  /** mutual friends count — optional, not always returned by API */
-  mutualCount?: number
+  /** friends-of-friends count — optional, not always returned by API */
+  friendsOfFriendsCount?: number
 }
 
 export interface Comment {

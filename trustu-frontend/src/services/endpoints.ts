@@ -26,9 +26,7 @@ export const ENDPOINTS = {
   friends: {
     list: () => '/friends',
     pending: () => '/friends/pending',
-    mutual: (userId: string | number) => `/friends/mutual/${userId}`,
-    // Friends-of-friends -- a flat, backend-computed list (unlike `mutual`
-    // above, which is scoped to one other user).
+    // Friends-of-friends -- a flat, backend-computed list.
     fof: () => '/friends/fof',
     sendRequest: (userId: string | number) => `/friends/request/${userId}`,
     accept: (id: string | number) => `/friends/accept/${id}`,

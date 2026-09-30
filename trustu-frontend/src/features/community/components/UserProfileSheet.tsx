@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Dialog, Box, Typography, IconButton, Avatar, CircularProgress, Slide } from '@mui/material'
+import { Dialog, Box, Typography, IconButton, Avatar, Slide } from '@mui/material'
 import type { TransitionProps } from '@mui/material/transitions'
 import CloseIcon from '@mui/icons-material/Close'
 import CheckIcon from '@mui/icons-material/Check'
@@ -7,7 +7,6 @@ import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined'
 import { makeStyles } from 'tss-react/mui'
 import colors from '@/theme/colors'
 import { getInitials, formatCommunityName } from '@/utils'
-import { useMutualFriends } from '@/features/circle/hooks/useFriendshipQueries'
 
 const SlideUp = React.forwardRef(function SlideUp(
   props: TransitionProps & { children: React.ReactElement },
@@ -73,7 +72,7 @@ const useStyles = makeStyles()(() => ({
     color: colors.ink4,
     marginTop: 4,
   },
-  mutualRow: {
+  fofRow: {
     display: 'flex',
     alignItems: 'center',
     gap: 6,
@@ -132,6 +131,8 @@ export interface ProfileSheetUser {
   designation?: string | null
   avatarUrl?: string | null
   communityName?: string | null
+  /** Shown only when the caller already has it -- the sheet fetches nothing. */
+  friendsOfFriendsCount?: number
 }
 
 interface Props {
@@ -153,8 +154,6 @@ const UserProfileSheet: React.FC<Props> = ({ open, onClose, user, friendStatus, 
   const [lastUser, setLastUser] = useState<ProfileSheetUser | null>(null)
   useEffect(() => { if (user) setLastUser(user) }, [user])
   const displayUser = user ?? lastUser
-
-  const { data: mutuals = [], isLoading } = useMutualFriends(displayUser?.userId ?? '')
 
   if (!displayUser) return null
 
@@ -182,12 +181,10 @@ const UserProfileSheet: React.FC<Props> = ({ open, onClose, user, friendStatus, 
         {displayUser.designation && <Typography className={classes.designation}>{displayUser.designation}</Typography>}
         {displayUser.communityName && <Typography className={classes.communityRow}>{formatCommunityName(displayUser.communityName)}</Typography>}
 
-        {isLoading ? (
-          <CircularProgress size={18} sx={{ color: colors.moss, mt: 2 }} />
-        ) : (
-          <Box className={classes.mutualRow}>
+        {!!displayUser.friendsOfFriendsCount && (
+          <Box className={classes.fofRow}>
             <PeopleAltOutlinedIcon sx={{ fontSize: '0.9rem' }} />
-            {mutuals.length > 0 ? `${mutuals.length} mutual friends` : 'No mutual friends yet'}
+            {displayUser.friendsOfFriendsCount} Friends of Friends
           </Box>
         )}
 

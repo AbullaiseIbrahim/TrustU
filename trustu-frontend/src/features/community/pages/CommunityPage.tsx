@@ -43,7 +43,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 
-type Tab = 'feed' | 'members' | 'friends' | 'mutual'
+type Tab = 'feed' | 'members' | 'friends' | 'discover'
 
 export const useStyles = makeStyles()(() => ({
   // ── Community gradient card ────────────────────────────────────────────────
@@ -774,17 +774,17 @@ export const useStyles = makeStyles()(() => ({
     color: colors.ink3,
     padding: 4,
   },
-  discoverMutualRow: {
+  discoverFofRow: {
     display: 'flex',
     alignItems: 'center',
     gap: 6,
     marginTop: 2,
   },
-  discoverMutualStack: {
+  discoverFofStack: {
     display: 'flex',
     flexShrink: 0,
   },
-  discoverMutualStackAvatar: {
+  discoverFofStackAvatar: {
     width: 16,
     height: 16,
     fontSize: '0.45rem',
@@ -793,7 +793,7 @@ export const useStyles = makeStyles()(() => ({
     marginLeft: -5,
     '&:first-of-type': { marginLeft: 0 },
   },
-  discoverMutualText: {
+  discoverFofText: {
     fontSize: '0.72rem',
     color: colors.ink3,
     fontWeight: 600,
@@ -1044,11 +1044,11 @@ const CommunityCard: React.FC<{
   const { data: friends = [] } = useFriends()
 
   // Real "friends of friends" count via GET /friends/fof -- a single,
-  // backend-computed request instead of the N+1 useMutualFriendsAggregate
+  // backend-computed request instead of the old N+1 per-friend aggregate
   // (that hook is no longer used anywhere in the app -- see its docstring in
   // useFriendshipQueries.ts for why).
   const { data: fofPeople = [] } = useFriendsOfFriends()
-  const mutualFriendsCount = fofPeople.length
+  const fofCount = fofPeople.length
 
   // ── Network view keeps its original, simpler layout for now — it has its
   // own semantics (aggregate name, sub-community switcher link) that the new
@@ -1080,7 +1080,7 @@ const CommunityCard: React.FC<{
         </Box>
 
         <Typography className={classes.friendsLine}>
-          {friendCount.toLocaleString('en-IN')} Friends · {mutualFriendsCount.toLocaleString('en-IN')} Mutual Friends
+          {friendCount.toLocaleString('en-IN')} Friends · {fofCount.toLocaleString('en-IN')} Friends of Friends
         </Typography>
 
         {first5.length > 0 && (
@@ -1185,7 +1185,7 @@ const CommunityCard: React.FC<{
         </Box>
         <Box className={classes.statDivider} />
         <Tooltip
-          title="Friends of your friends — people you're not connected to yet, but share a mutual connection with."
+          title="Friends of your friends — people you're not connected to yet, but connected to through one of your friends."
           arrow
         >
           <Box
@@ -1195,7 +1195,7 @@ const CommunityCard: React.FC<{
             sx={{ cursor: onSelectDiscover ? 'pointer' : 'default' }}
           >
             <Typography className={cx(classes.statNumber, classes.statAmber)}>
-              {mutualFriendsCount.toLocaleString('en-IN')}
+              {fofCount.toLocaleString('en-IN')}
             </Typography>
             <Typography className={classes.statLabel}>
               Friends of Friends
@@ -1243,9 +1243,9 @@ const AccommodationSummaryCard: React.FC = () => {
   const { data } = useAccommodations()
   const listings = data?.data ?? []
 
-  // `isConnected`/`mutualFriends` on each listing come from the accommodation
+  // `isConnected`/`friendsOfFriendsCount` on each listing come from the accommodation
   // normalizer and are always false/0 -- the raw API response never actually
-  // sends `is_connected` or `mutual_friends` (confirmed live: neither key
+  // sends `is_connected` or `friends_of_friends` (confirmed live: neither key
   // exists anywhere in GET /accommodations), so these two tiles never moved
   // no matter who posted what. Deriving them here instead, by cross-
   // referencing each listing's poster (`a.userId`) against the already-
@@ -1475,8 +1475,8 @@ const RequestsTab: React.FC = () => {
   )
 }
 
-// ── Small "Add Friend" pill used for mutual connections who aren't friends yet ─
-export const MutualAddFriendButton: React.FC<{ userId: string; outlined?: boolean }> = ({ userId, outlined }) => {
+// ── Small "Add Friend" pill used for friends of friends who aren't friends yet ─
+export const FofAddFriendButton: React.FC<{ userId: string; outlined?: boolean }> = ({ userId, outlined }) => {
   const { classes } = useStyles()
   const [requested, setRequested] = useState(false)
   const sendRequestMutation = useSendFriendRequest()
@@ -1507,7 +1507,7 @@ export const MutualAddFriendButton: React.FC<{ userId: string; outlined?: boolea
 
 // Status-aware "Add Friend" pill for New Members cards (reflects
 // pending/requested state from the community-members API's
-// friendshipStatus) -- unlike MutualAddFriendButton above, which is safe to
+// friendshipStatus) -- unlike FofAddFriendButton above, which is safe to
 // assume "not connected yet" always because useFriendsOfFriends'
 // GET /friends/fof already excludes direct friends from its result.
 export const NewMemberAddFriendButton: React.FC<{ member: CommunityMember; outlined?: boolean }> = ({ member, outlined }) => {
@@ -1555,12 +1555,12 @@ export const NewMemberAddFriendButton: React.FC<{ member: CommunityMember; outli
 
 // -- Discover tab -- real, derivable suggestions only. Two sections:
 //  - "Friends of your friends" -- useFriendsOfFriends (GET /friends/fof), a
-//    flat, backend-computed list. (The old useMutualFriendsAggregate N+1
+//    flat, backend-computed list. (The old N+1 per-friend aggregate
 //    approach turned out to compute something different and often-empty --
 //    GET /friends/mutual/{userId} is a true set intersection of "friends of
 //    mine AND of userId", not "userId's friends", so it rarely surfaced real
 //    second-degree connections. /friends/fof replaces it here; per-person
-//    mutual counts aren't available from it, so that caption is gone too.)
+//    friends-of-friends counts aren't available from it, so that caption is gone too.)
 //  - "New members" -- useNewCommunityMembers (the community members list,
 //    sorted by join date; see that hook for the fallback used if join dates
 //    aren't populated).
@@ -1576,7 +1576,7 @@ const DiscoverTab: React.FC<{ friends: Friend[]; communityId?: string | null; cu
   const { classes } = useStyles()
   const navigate = useNavigate()
 
-  const { data: mutuals = [], isLoading: mutualsLoading } = useFriendsOfFriends()
+  const { data: fofPeople = [], isLoading: fofLoading } = useFriendsOfFriends()
   const { members: newMembers, isLoading: membersLoading } = useNewCommunityMembers(communityId, currentUserId)
 
   const [viewingUser, setViewingUser] = useState<ProfileSheetUser | null>(null)
@@ -1603,7 +1603,7 @@ const DiscoverTab: React.FC<{ friends: Friend[]; communityId?: string | null; cu
               </Box>
               <Typography className={classes.discoverSectionSub}>People mostly connected in your network</Typography>
             </Box>
-            {mutuals.length > 0 && (
+            {fofPeople.length > 0 && (
               <Box
                 component="button"
                 className={classes.seeAllLink}
@@ -1613,11 +1613,11 @@ const DiscoverTab: React.FC<{ friends: Friend[]; communityId?: string | null; cu
               </Box>
             )}
           </Box>
-          {mutualsLoading ? (
+          {fofLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
               <CircularProgress size={22} sx={{ color: colors.moss }} />
             </Box>
-          ) : mutuals.length === 0 ? (
+          ) : fofPeople.length === 0 ? (
             <Typography className={classes.discoverNoData}>
               No data yet. Once your friends add their own friends, people you&apos;re not connected to yet will show up here.
             </Typography>
@@ -1626,10 +1626,10 @@ const DiscoverTab: React.FC<{ friends: Friend[]; communityId?: string | null; cu
             // look as the "New members" section below (per direct request that
             // these two sections match, and a later request to stop duplicating
             // that box design per-section and reuse one component instead), each
-            // with its own Add Friend action via MutualAddFriendButton rather
+            // with its own Add Friend action via FofAddFriendButton rather
             // than New Members' status-aware one.
             <Box className={classes.discoverCardScroll}>
-              {mutuals.slice(0, 12).map((f) => (
+              {fofPeople.slice(0, 12).map((f) => (
                 <PersonCard
                   key={f.id}
                   variant="scroll"
@@ -1637,7 +1637,7 @@ const DiscoverTab: React.FC<{ friends: Friend[]; communityId?: string | null; cu
                   avatarUrl={f.avatarUrl}
                   colorSeed={f.id}
                   onClick={() => setViewingUser({ userId: f.userId, name: f.name, designation: f.designation, avatarUrl: f.avatarUrl })}
-                  action={<MutualAddFriendButton userId={f.userId} />}
+                  action={<FofAddFriendButton userId={f.userId} />}
                 />
               ))}
             </Box>
@@ -1927,7 +1927,7 @@ const CommunityPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const tabParam = searchParams.get('tab') as Tab | null
-  const activeTab: Tab = (tabParam && ['feed', 'members', 'friends', 'mutual'].includes(tabParam))
+  const activeTab: Tab = (tabParam && ['feed', 'members', 'friends', 'discover'].includes(tabParam))
     ? tabParam
     : 'feed'
   const setActiveTab = (tab: Tab) => {
@@ -1954,7 +1954,7 @@ const CommunityPage: React.FC = () => {
     { key: 'feed',    label: 'Feed',     icon: <HomeOutlinedIcon className={classes.tabIcon} /> },
     { key: 'members', label: 'Members',  icon: <GroupsOutlinedIcon className={classes.tabIcon} /> },
     { key: 'friends', label: 'Friends',  icon: <PeopleAltOutlinedIcon className={classes.tabIcon} />, badge: pendingCount },
-    { key: 'mutual',  label: 'Discover', icon: <ExploreOutlinedIcon className={classes.tabIcon} /> },
+    { key: 'discover',  label: 'Discover', icon: <ExploreOutlinedIcon className={classes.tabIcon} /> },
   ]
 
   return (
@@ -1969,7 +1969,7 @@ const CommunityPage: React.FC = () => {
         onExplore={() => navigate(PATHS.onboarding, { state: { revisit: true, initialView: 'explore' } })}
         onSelectMembers={() => setActiveTab('members')}
         onSelectFriends={() => setActiveTab('friends')}
-        onSelectDiscover={() => setActiveTab('mutual')}
+        onSelectDiscover={() => setActiveTab('discover')}
         memberCount={isNetworkView ? networkMemberCount : memberCount}
         friendCount={friendCount}
         subCommCount={subCommCount}
@@ -2013,7 +2013,7 @@ const CommunityPage: React.FC = () => {
           <FriendsTab />
         </>
       )}
-      {activeTab === 'mutual'  && <DiscoverTab friends={friends as Friend[]} communityId={user?.communityId} currentUserId={user?.id} />}
+      {activeTab === 'discover'  && <DiscoverTab friends={friends as Friend[]} communityId={user?.communityId} currentUserId={user?.id} />}
     </Box>
   )
 }

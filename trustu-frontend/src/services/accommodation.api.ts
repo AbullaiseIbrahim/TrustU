@@ -67,7 +67,7 @@ export interface Accommodation {
   /** 1=Students · 2=Working pros · 3=Family */
   roommatePreference: number | null
   isConnected: boolean
-  mutualFriends: number
+  friendsOfFriendsCount: number
   createdAt: string
   /** Poster's WhatsApp / phone number (raw string from API, may be empty) */
   phone: string
@@ -112,9 +112,9 @@ export interface CreateAccommodationPayload {
   /** WhatsApp / contact number for interested users to reach the poster */
   phone?: string
   /**
-   * 0=Private · 1=Public · 2=Friends · 3=Mutual Friends (per /accommodations/schema).
+   * 0=Private · 1=Public · 2=Friends · 3=Friends of Friends (per /accommodations/schema).
    * The API validates this as an array (`visible_to[]=`) — PostListingFlow's
-   * "Friends & Mutual Friends" option relies on that and sends both [2, 3].
+   * "Friends & Friends of Friends" option relies on that and sends both [2, 3].
    */
   visible_to?: number[]
 }
@@ -204,7 +204,7 @@ function normalize(raw: any): Accommodation {
     currentRoommates: raw.current_roommates != null ? Number(raw.current_roommates) : (raw.currentRoommates != null ? Number(raw.currentRoommates) : null),
     roommatePreference: raw.roommate_preference != null ? Number(raw.roommate_preference) : (raw.roommatePreference != null ? Number(raw.roommatePreference) : null),
     isConnected:    Boolean(raw.is_connected   ?? raw.isConnected   ?? false),
-    mutualFriends:  Number(raw.mutual_friends  ?? raw.mutualFriends  ?? 0),
+    friendsOfFriendsCount: Number(raw.mutual_friends  ?? raw.mutualFriends  ?? 0),
     createdAt:      String(raw.created_at      ?? raw.createdAt      ?? ''),
     phone:          String(
       raw.phone            ??

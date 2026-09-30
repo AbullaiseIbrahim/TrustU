@@ -1,12 +1,10 @@
-import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { friendshipApi } from '@/services/friendship.api'
-import type { Friend } from '@/services/friendship.api'
 import { useSnackbar } from '@/app/SnackbarProvider'
 
 export const FRIENDSHIP_KEYS = {
   friends:  ['friends', 'list']    as const,
   pending:  ['friends', 'pending'] as const,
-  mutual:   (userId: string) => ['friends', 'mutual', userId] as const,
   fof:      ['friends', 'fof']     as const,
 }
 
@@ -38,9 +36,7 @@ export const usePendingRequests = () =>
 
 /**
  * GET /friends/fof — the real, backend-computed "friends of friends" list.
- * Prefer this over `useMutualFriendsAggregate` below wherever only the flat
- * people list / a count is needed (it's a single request, not an N+1 fan-out,
- * and isn't capped at 20 of the user's own friends the way the aggregate is).
+ * A single request (not an N+1 fan-out over the user's own friends).
  * `refetchOnMount: 'always'` -- see the comment above useFriends.
  */
 export const useFriendsOfFriends = () =>
@@ -50,83 +46,6 @@ export const useFriendsOfFriends = () =>
     staleTime: 30_000,
     refetchOnMount: 'always',
   })
-
-export const useMutualFriends = (userId: string) =>
-  useQuery({
-    queryKey: FRIENDSHIP_KEYS.mutual(userId),
-    queryFn:  () => friendshipApi.mutual(userId),
-    enabled:  !!userId,
-    staleTime: 60_000,
-  })
-
-/**
- * Real "mutual friends" aggregate, WITH per-person mutual counts and
- * connecting-friend lists (`mutualCounts` / `mutualConnectors` below) —
- * built by unioning `GET /friends/mutual/{userId}` across the current
- * user's own friends (capped to avoid an unbounded N+1 fan-out).
- *
- * NOT CURRENTLY USED ANYWHERE (as of the /friends/fof migration): every
- * call site (CommunityPage's header stat + Discover tab, ProfilePage,
- * DiscoverDetailPage) has switched to `useFriendsOfFriends` above, because
- * this hook's core assumption turned out to be wrong -- `GET
- * /friends/mutual/{userId}` returns the true intersection of "friends of
- * me AND friends of userId", not "userId's own friends", so unioning it
- * across my friends silently misses real second-degree connections (see
- * `useFriendsOfFriends`'s call sites for the confirmed repro). Left in
- * place only as a reference for what richer per-person mutual-count/
- * connector data would look like if the backend ever adds that to
- * `/friends/fof` directly -- otherwise safe to delete.
- */
-const MUTUAL_AGGREGATE_CAP = 20
-
-export const useMutualFriendsAggregate = (sourceFriends: Friend[]) => {
-  const capped = sourceFriends.slice(0, MUTUAL_AGGREGATE_CAP)
-
-  const results = useQueries({
-    queries: capped.map((f) => ({
-      queryKey: FRIENDSHIP_KEYS.mutual(f.userId),
-      queryFn: () => friendshipApi.mutual(f.userId),
-      enabled: !!f.userId,
-      staleTime: 60_000,
-    })),
-  })
-
-  const isLoading = capped.length > 0 && results.some((r) => r.isLoading)
-
-  // Once a friend group is fully interconnected, the union naturally includes
-  // people who are already direct friends -- exclude them so this tab reads as
-  // "people you might know" rather than re-listing your friends list.
-  const directFriendIds = new Set(sourceFriends.map((f) => f.userId))
-  const byId = new Map<string, Friend>()
-  // How many of the current user's own friends also connect to this person --
-  // a real, derived "N mutual" count (not per-target-person data the API
-  // exposes directly, but a straightforward tally of the same calls above).
-  const countById = new Map<string, number>()
-  // WHICH of the current user's own friends connect to this person -- real
-  // Friend objects (name/avatar), capped at 3 per person, used to render a
-  // small overlapping-avatar cluster next to the "N mutual" count.
-  const connectorsById = new Map<string, Friend[]>()
-  results.forEach((r, i) => {
-    const connector = capped[i]
-    ;(r.data ?? []).forEach((f) => {
-      if (directFriendIds.has(f.userId)) return
-      if (!byId.has(f.userId)) byId.set(f.userId, f)
-      countById.set(f.userId, (countById.get(f.userId) ?? 0) + 1)
-      if (connector) {
-        const list = connectorsById.get(f.userId) ?? []
-        if (list.length < 3) list.push(connector)
-        connectorsById.set(f.userId, list)
-      }
-    })
-  })
-
-  return {
-    people: Array.from(byId.values()),
-    isLoading,
-    mutualCounts: countById,
-    mutualConnectors: connectorsById,
-  }
-}
 
 // Note: none of these mutations set their own onError — a failure still reaches
 // the user via the global QueryCache/MutationCache handler in QueryProvider.tsx.

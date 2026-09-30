@@ -17,7 +17,7 @@ export interface ListingCardProps {
   description?: string
   createdAt: string
   isConnected?: boolean
-  mutualFriends?: number
+  friendsOfFriendsCount?: number
   onViewDetails?: (id: string) => void
   className?: string
   sx?: object
@@ -143,7 +143,7 @@ const useStyles = makeStyles()(() => ({
     fontWeight: 600,
     color: colors.mossDeep,
   },
-  mutualText: {
+  fofText: {
     fontSize: '0.68rem',
     color: colors.ink3,
     fontWeight: 500,
@@ -152,7 +152,7 @@ const useStyles = makeStyles()(() => ({
 
 const ListingCard: React.FC<ListingCardProps> = ({
   id, title, userName, type, location, description, createdAt,
-  mutualFriends = 0, onViewDetails, className, sx, extra,
+  friendsOfFriendsCount = 0, onViewDetails, className, sx, extra,
   listingTypeKey = 'accommodation', posterName,
 }) => {
   const { classes } = useStyles()
@@ -189,8 +189,8 @@ const ListingCard: React.FC<ListingCardProps> = ({
           <Box className={classes.posterChip}>
             <Avatar className={classes.posterAvatar}>{getInitials(posterName ?? userName ?? 'L')}</Avatar>
             <Typography className={classes.posterName}>{posterName ?? userName}</Typography>
-            {mutualFriends > 0 && (
-              <Typography className={classes.mutualText}>· {mutualFriends} mutual</Typography>
+            {friendsOfFriendsCount > 0 && (
+              <Typography className={classes.fofText}>· {friendsOfFriendsCount} Friends of Friends</Typography>
             )}
           </Box>
         )}

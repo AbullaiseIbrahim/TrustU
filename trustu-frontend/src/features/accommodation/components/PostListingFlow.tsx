@@ -453,8 +453,8 @@ const GENDER_OPTIONS = [
 
 const VISIBLE_TO_OPTIONS = [
   { value: 'friends',                 label: 'Friends' },
-  { value: 'mutual-friends',          label: 'Mutual Friends' },
-  { value: 'friends-mutual-friends',  label: 'Friends & Mutual Friends' },
+  { value: 'friends-of-friends', label: 'Friends of Friends' },
+  { value: 'friends-and-fof',    label: 'Friends & Friends of Friends' },
   { value: 'anyone',                  label: 'Community' },
 ]
 
@@ -599,14 +599,14 @@ const FLAT_TYPE_MAP: Record<string, number> = {
 
 /**
  * Maps the UI's 4 visibility choices to the backend's actual `visible_to`
- * enum (0=Private · 1=Public · 2=Friends · 3=Mutual Friends — see
+ * enum (0=Private · 1=Public · 2=Friends · 3=Friends of Friends — see
  * GET /accommodations/schema). `visible_to` accepts an array, so "Friends &
- * Mutual Friends" sends both enum values rather than needing a combined one.
+ * Friends of Friends" sends both enum values rather than needing a combined one.
  */
 const VISIBLE_TO_MAP: Record<string, number[]> = {
   friends: [2],
-  'mutual-friends': [3],
-  'friends-mutual-friends': [2, 3],
+  'friends-of-friends': [3],
+  'friends-and-fof': [2, 3],
   anyone: [1],
 }
 

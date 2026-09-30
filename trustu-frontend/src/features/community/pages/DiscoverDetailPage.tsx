@@ -14,12 +14,12 @@ import { useNewCommunityMembers } from '../hooks/useCommunityQueries'
 import { getInitials, avatarGradient, formatRelativeTime, formatCommunityName, communityLocation } from '@/utils'
 import colors from '@/theme/colors'
 import UserProfileSheet, { type ProfileSheetUser } from '../components/UserProfileSheet'
-import { useStyles, MutualAddFriendButton, NewMemberAddFriendButton } from './CommunityPage'
+import { useStyles, FofAddFriendButton, NewMemberAddFriendButton } from './CommunityPage'
 
 /**
  * Discover detail page -- reached from any "See all" on the Community
  * page's Discover tab. Reuses that tab's styles/components (useStyles,
- * MutualAddFriendButton, NewMemberAddFriendButton) so the two stay visually
+ * FofAddFriendButton, NewMemberAddFriendButton) so the two stay visually
  * and behaviorally consistent rather than drifting apart.
  *
  * Each section (Friends of your friends / New members) renders as one white
@@ -30,13 +30,13 @@ import { useStyles, MutualAddFriendButton, NewMemberAddFriendButton } from './Co
  *
  * The "Friends of your friends" list itself comes from GET /friends/fof --
  * a single, backend-computed friends-of-friends list (useFriendsOfFriends,
- * see useFriendshipQueries.ts) -- replacing the old useMutualFriendsAggregate
+ * see useFriendshipQueries.ts) -- replacing the old per-friend aggregate
  * approach, which was discovered to be unreliable: it built the list by
  * unioning GET /friends/mutual/{userId} across the current user's own
  * friends, but that endpoint returns the true intersection of "friends of me
  * AND friends of userId", not "userId's friends", so it silently missed real
- * second-degree connections. /friends/fof doesn't return per-person mutual
- * counts or connecting-friend avatars, so the "N mutual friends" caption and
+ * second-degree connections. /friends/fof doesn't return per-person friends-of-friends
+ * counts or connecting-friend avatars, so the "N friends of friends" caption and
  * connector-avatar stack are gone from this view, and "Popular in your
  * community" below now just shows the same list rather than a count-ranked
  * subset of it.
@@ -82,8 +82,8 @@ const DiscoverDetailPage: React.FC = () => {
 
   // Real "friends of friends" list via GET /friends/fof -- a single,
   // backend-computed request (see the file-level comment above for why this
-  // replaced the old useMutualFriendsAggregate approach).
-  const { data: mutuals = [], isLoading: mutualsLoading } = useFriendsOfFriends()
+  // replaced the old per-friend aggregate approach).
+  const { data: fofPeople = [], isLoading: fofLoading } = useFriendsOfFriends()
   const { members: newMembers, isLoading: membersLoading } = useNewCommunityMembers(user?.communityId, user?.id)
 
   const [viewingUser, setViewingUser] = useState<ProfileSheetUser | null>(null)
@@ -94,21 +94,21 @@ const DiscoverDetailPage: React.FC = () => {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
   const dismiss = (userId: string) => setDismissedIds((prev) => new Set(prev).add(userId))
 
-  const visibleMutuals = mutuals.filter((f) => !dismissedIds.has(f.userId))
+  const visibleFof = fofPeople.filter((f) => !dismissedIds.has(f.userId))
   const visibleNewMembers = newMembers.filter((m) => !dismissedIds.has(m.userId))
 
-  const isLoading = mutualsLoading || membersLoading
+  const isLoading = fofLoading || membersLoading
   const showFriendsOfFriends = activeFilter === 'all' || activeFilter === 'friends-of-friends'
   const showNewMembers = activeFilter === 'all' || activeFilter === 'new-members'
 
   // "Popular in your community" -- the same friends-of-friends pool.
-  // /friends/fof doesn't return a per-person mutual count, so this is no
-  // longer ranked by mutual count (see the file-level comment above) -- it's
+  // /friends/fof doesn't return a per-person friends-of-friends count, so this is no
+  // longer ranked by friends-of-friends count (see the file-level comment above) -- it's
   // just the first 8 from the list. Shown only on "All", as in the reference
   // design.
-  const popular = visibleMutuals.slice(0, 8)
+  const popular = visibleFof.slice(0, 8)
 
-  const nothingToShow = !isLoading && visibleMutuals.length === 0 && visibleNewMembers.length === 0
+  const nothingToShow = !isLoading && visibleFof.length === 0 && visibleNewMembers.length === 0
 
   return (
     <Box sx={{ backgroundColor: colors.cream, minHeight: '100%', pb: 3 }}>
@@ -149,7 +149,7 @@ const DiscoverDetailPage: React.FC = () => {
         <>
           {showFriendsOfFriends && (
             <Box sx={{ mb: 2 }}>
-              {visibleMutuals.length === 0 ? (
+              {visibleFof.length === 0 ? (
                 <>
                   <Box sx={{ px: 2, pb: 1 }}>
                     <Typography className={classes.discoverSectionTitle}>Friends of your friends</Typography>
@@ -163,7 +163,7 @@ const DiscoverDetailPage: React.FC = () => {
                     <Typography className={classes.discoverSectionTitle}>Friends of your friends</Typography>
                     <Typography className={classes.discoverSectionSub}>People mostly connected in your network</Typography>
                   </Box>
-                  {visibleMutuals.map((f) => {
+                  {visibleFof.map((f) => {
                     const avatarBg = avatarGradient(f.id)
                     const location = communityLocation(formatCommunityName(f.communityName))
                     return (
@@ -196,7 +196,7 @@ const DiscoverDetailPage: React.FC = () => {
                           </Typography>
                         </Box>
                         <Box className={classes.discoverListAction} onClick={(e) => e.stopPropagation()}>
-                          <MutualAddFriendButton userId={f.userId} outlined />
+                          <FofAddFriendButton userId={f.userId} outlined />
                         </Box>
                       </Box>
                     )

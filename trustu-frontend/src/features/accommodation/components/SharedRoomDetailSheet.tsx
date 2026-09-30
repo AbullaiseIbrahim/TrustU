@@ -5,7 +5,6 @@ import {
   Box,
   Typography,
   Avatar,
-  Chip,
   Divider,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -27,7 +26,6 @@ import SingleBedIcon from '@mui/icons-material/SingleBed'
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined'
 import { makeStyles } from 'tss-react/mui'
 import { type Accommodation, accommodationTypeLabel, accommodationGenderLabel } from '@/services/accommodation.api'
-import { useMutualFriends } from '@/features/circle/hooks/useFriendshipQueries'
 import { formatINR, formatDate, getInitials, avatarGradient } from '@/utils'
 import colors from '@/theme/colors'
 
@@ -192,7 +190,7 @@ const useStyles = makeStyles()(() => ({
     color: colors.ink3,
     marginTop: 2,
   },
-  mutualChip: {
+  fofChip: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 4,
@@ -347,10 +345,6 @@ interface Props {
 const SharedRoomDetailSheet: React.FC<Props> = ({ acc, onClose, saved = false, onToggleSave }) => {
   const { classes } = useStyles()
 
-  const { data: mutualFriends = [], isLoading: loadingMutual } = useMutualFriends(
-    acc?.userId ?? '',
-  )
-
   if (!acc) return null
 
   const hue = 110
@@ -362,7 +356,7 @@ const SharedRoomDetailSheet: React.FC<Props> = ({ acc, onClose, saved = false, o
     accommodationGenderLabel(acc.gender) !== 'Any' ? accommodationGenderLabel(acc.gender) : null,
   ].filter(Boolean).join(' · ')
 
-  const mutualCount = loadingMutual ? acc.mutualFriends : mutualFriends.length
+  const fofCount = acc.friendsOfFriendsCount
 
   return (
     <Dialog
@@ -467,10 +461,10 @@ const SharedRoomDetailSheet: React.FC<Props> = ({ acc, onClose, saved = false, o
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography className={classes.posterName}>{acc.userName}</Typography>
               <Typography className={classes.posterMeta}>Posted by · {acc.address}</Typography>
-              {mutualCount > 0 && (
-                <Box className={classes.mutualChip}>
+              {fofCount > 0 && (
+                <Box className={classes.fofChip}>
                   <PeopleAltOutlinedIcon sx={{ fontSize: '0.75rem' }} />
-                  {mutualCount} mutual friend{mutualCount !== 1 ? 's' : ''}
+                  {fofCount} Friends of Friends
                 </Box>
               )}
             </Box>
@@ -529,30 +523,6 @@ const SharedRoomDetailSheet: React.FC<Props> = ({ acc, onClose, saved = false, o
               </Typography>
             </Box>
           </Box>
-
-          {/* Mutual friends */}
-          {mutualFriends.length > 0 && (
-            <Box>
-              <Typography className={classes.sectionTitle}>
-                {mutualFriends.length} mutual friend{mutualFriends.length !== 1 ? 's' : ''} here
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {mutualFriends.map(f => (
-                  <Chip
-                    key={f.id}
-                    avatar={
-                      <Avatar sx={{ bgcolor: colors.mossSoft, color: colors.mossDeep, fontSize: '0.6rem', fontWeight: 700 }}>
-                        {getInitials(f.name)}
-                      </Avatar>
-                    }
-                    label={f.name}
-                    size="small"
-                    sx={{ backgroundColor: colors.mossSoft, color: colors.mossDeep, fontWeight: 600, fontSize: '0.75rem' }}
-                  />
-                ))}
-              </Box>
-            </Box>
-          )}
 
         </Box>
       </DialogContent>

@@ -179,7 +179,7 @@ function getSubGroups(type: number): SubGroup[] {
 }
 
 // Friendship type for listings
-type FriendStatus = 'friend' | 'mutual' | 'community' | 'none'
+type FriendStatus = 'friend' | 'fof' | 'community' | 'none'
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -918,7 +918,7 @@ const useStyles = makeStyles()(() => ({
     color: colors.ink,
     letterSpacing: '-0.2px',
   },
-  posterMutuals: {
+  posterFof: {
     fontSize: '0.7rem',
     color: colors.ink3,
     fontWeight: 500,
@@ -944,12 +944,12 @@ const useStyles = makeStyles()(() => ({
     paddingTop: 8,
     borderTop: `1px solid ${colors.line}`,
   },
-  mutualConnections: {
+  fofConnections: {
     fontSize: '0.78rem',
     color: colors.ink3,
     marginTop: 6,
   },
-  mutualConnectionsLabel: {
+  fofConnectionsLabel: {
     fontWeight: 600,
     color: colors.ink2,
   },
@@ -1039,7 +1039,7 @@ function amenityIcon(name: string): React.ReactNode {
 
 function connectionStatus(acc: Accommodation): FriendStatus {
   if (acc.isConnected) return 'friend'
-  if (acc.mutualFriends > 0) return 'mutual'
+  if (acc.friendsOfFriendsCount > 0) return 'fof'
   return 'community'
 }
 
@@ -1049,9 +1049,9 @@ const ConnectionChip: React.FC<{ status: FriendStatus; classes: ReturnType<typeo
       <CheckIcon sx={{ fontSize: '0.7rem' }} /> Friend
     </Box>
   )
-  if (status === 'mutual') return (
+  if (status === 'fof') return (
     <Box className={classes.connectionChip} sx={{ color: '#a07a10', borderColor: colors.amber, backgroundColor: '#FFF8E7' }}>
-      Mutual Friend
+      Friend of Friend
     </Box>
   )
   return (
@@ -1155,7 +1155,7 @@ function applyShortStayFilters(list: Accommodation[], filters: ShortStayFilters)
   }
   if (filters.guests > 1) out = out.filter(a => a.peopleAllowed >= filters.guests)
   if (filters.postedBy === 'friends') out = out.filter(a => a.isConnected)
-  if (filters.postedBy === 'mutuals') out = out.filter(a => a.mutualFriends > 0)
+  if (filters.postedBy === 'fof') out = out.filter(a => a.friendsOfFriendsCount > 0)
   if (filters.gender === 'male')   out = out.filter(a => a.gender === 0)
   if (filters.gender === 'female') out = out.filter(a => a.gender === 1)
   return out
@@ -1266,13 +1266,13 @@ const GridCard: React.FC<{
 
 // ── Category view ─────────────────────────────────────────────────────────────
 
-type FilterTab = 'all' | 'friends' | 'mutual' | 'saved'
+type FilterTab = 'all' | 'friends' | 'fof' | 'saved'
 
 // The listing API filters by feed server-side; 'all' sends no feed param.
 const FEED_PARAM: Record<FilterTab, string | undefined> = {
   all: undefined,
   friends: 'friends',
-  mutual: 'fof',
+  fof: 'fof',
   saved: 'saved',
 }
 const feedParams = (tab: FilterTab) => {
@@ -1439,10 +1439,10 @@ const DetailView: React.FC<{
                 <Typography className={classes.posterName}>{acc.userName || 'Community Member'}</Typography>
                 <ChevronRightIcon sx={{ fontSize: '0.9rem', color: colors.ink3 }} />
               </Box>
-              {acc.mutualFriends > 0 ? (
-                <Typography className={classes.posterMutuals}>{acc.mutualFriends} mutual connections</Typography>
+              {acc.friendsOfFriendsCount > 0 ? (
+                <Typography className={classes.posterFof}>{acc.friendsOfFriendsCount} Friends of Friends</Typography>
               ) : (
-                <Typography className={classes.posterMutuals}>Community member</Typography>
+                <Typography className={classes.posterFof}>Community member</Typography>
               )}
             </Box>
             {status === 'friend' && (
@@ -1450,9 +1450,9 @@ const DetailView: React.FC<{
                 <CheckIcon sx={{ fontSize: '0.75rem' }} /> Friends
               </Box>
             )}
-            {status === 'mutual' && (
+            {status === 'fof' && (
               <Box className={classes.friendsBadge} sx={{ backgroundColor: '#c89a28' }}>
-                Mutual
+                Friend of Friend
               </Box>
             )}
           </Box>
@@ -1719,7 +1719,7 @@ const AccommodationPage: React.FC = () => {
           {[
             { key: 'all' as FilterTab,       label: 'All',            dotColor: colors.ink4 },
             { key: 'friends' as FilterTab,   label: 'Friends',        dotColor: colors.moss },
-            { key: 'mutual' as FilterTab,    label: 'Friends of Friends', dotColor: colors.amber },
+            { key: 'fof' as FilterTab,    label: 'Friends of Friends', dotColor: colors.amber },
             { key: 'saved' as FilterTab,     label: 'Saved',          dotColor: colors.urgent },
           ].map(pill => (
             <Box
@@ -1877,7 +1877,7 @@ const AccommodationPage: React.FC = () => {
   const FILTER_PILLS = [
     { key: 'all' as FilterTab,       label: 'All',            dotColor: colors.ink4 },
     { key: 'friends' as FilterTab,   label: 'Friends',        dotColor: colors.moss },
-    { key: 'mutual' as FilterTab,    label: 'Friends of Friends', dotColor: colors.amber },
+    { key: 'fof' as FilterTab,    label: 'Friends of Friends', dotColor: colors.amber },
     { key: 'saved' as FilterTab,     label: 'Saved',          dotColor: colors.urgent },
   ]
 
@@ -1894,7 +1894,7 @@ const AccommodationPage: React.FC = () => {
           {friendCount > 0 ? `${friendCount * 10} Members` : 'Members'}
         </Typography>
         <Typography className={classes.communityHeaderFriends}>
-          {friendCount} Friends · {Math.floor(friendCount * 0.35)} Mutual
+          {friendCount} Friends · {Math.floor(friendCount * 0.35)} Friends of Friends
         </Typography>
       </Box>
 

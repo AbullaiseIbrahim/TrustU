@@ -18,7 +18,7 @@ function normalizePost(raw: any): Post {
     commentCount:    Number(raw.comments_count ?? raw.reply_count ?? raw.commentCount ?? 0),
     hasLiked:        Boolean(raw.has_liked  ?? raw.has_upvoted   ?? raw.hasLiked      ?? false),
     createdAt:       String(raw.created_at  ?? raw.createdAt     ?? ''),
-    mutualCount:     raw.mutual_count != null ? Number(raw.mutual_count) : (raw.mutualCount != null ? Number(raw.mutualCount) : undefined),
+    friendsOfFriendsCount: raw.mutual_count != null ? Number(raw.mutual_count) : (raw.mutualCount != null ? Number(raw.mutualCount) : undefined),
   }
 }
 

@@ -23,7 +23,7 @@ export interface ShortStayFilters {
   dateFrom: string
   dateTo: string
   guests: number
-  postedBy: string   // '' | 'friends' | 'mutuals' | 'anyone'
+  postedBy: string   // '' | 'friends' | 'fof' | 'anyone'
   gender: string     // '' | 'male' | 'female' | 'any'
   flatType: string[] // '1bhk' | '2bhk' | '3bhk' | 'hotel-room'
 }
@@ -61,7 +61,7 @@ export function getShortStayActiveChips(f: ShortStayFilters): string[] {
     chips.push(`${lo}–${hi}`)
   }
   if (f.postedBy === 'friends')  chips.push('Friends only')
-  if (f.postedBy === 'mutuals')  chips.push('Mutuals')
+  if (f.postedBy === 'fof')  chips.push('Friends of Friends')
   if (f.gender === 'female')     chips.push('Female only')
   if (f.gender === 'male')       chips.push('Male only')
   if (f.flatType.length)         chips.push(...f.flatType.map(t => t.toUpperCase()))
@@ -286,7 +286,7 @@ const useStyles = makeStyles()(() => ({
 
 const POSTED_BY = [
   { value: 'friends', label: 'Friends' },
-  { value: 'mutuals', label: 'Mutual friends' },
+  { value: 'fof', label: 'Friends of Friends' },
   { value: 'anyone',  label: 'Anyone' },
 ]
 

@@ -72,19 +72,11 @@ export const friendshipApi = {
     return (Array.isArray(items) ? items : []).map(normalizePending)
   },
 
-  /** GET /friends/mutual/{userId} */
-  mutual: async (userId: string): Promise<Friend[]> => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await apiClient.get<ApiResponse<any[]>>(ENDPOINTS.friends.mutual(userId))
-    const items = data.data ?? data ?? []
-    return (Array.isArray(items) ? items : []).map(normalizeFriend)
-  },
-
   /**
    * GET /friends/fof — friends-of-friends: a flat, backend-computed list of
    * people connected to the current user's friends (excluding the user's own
    * direct friends). Each entry normalizes through the same `normalizeFriend`
-   * used for `list()`/`mutual()`, since the raw shape matches (top-level
+   * used for `list()`, since the raw shape matches (top-level
    * id/user_id/name plus a nested `profile` object).
    */
   fof: async (): Promise<Friend[]> => {
