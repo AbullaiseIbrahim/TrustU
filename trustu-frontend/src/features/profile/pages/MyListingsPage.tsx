@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import {
   Box, Typography, Skeleton, IconButton, Menu, MenuItem,
-  ListItemIcon, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Button,
+  ListItemIcon, Chip,
 } from '@mui/material'
 import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
@@ -12,6 +12,7 @@ import { makeStyles } from 'tss-react/mui'
 import { useUserAccommodations, useDeleteAccommodation } from '@/features/accommodation/hooks/useAccommodationQueries'
 import { accommodationTypeLabel, accommodationGenderLabel } from '@/services/accommodation.api'
 import EditListingDialog from '@/features/accommodation/components/EditListingDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import { formatINR, formatDate } from '@/utils'
 import colors from '@/theme/colors'
 import type { Accommodation } from '@/services/accommodation.api'
@@ -261,28 +262,17 @@ const AccommodationSection: React.FC = () => {
         accommodation={editingListing}
       />
 
-      <Dialog open={!!deletingListing} onClose={() => setDeletingListing(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.05rem' }}>Delete this listing?</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: '0.85rem', color: colors.textSecondary }}>
-            {deletingListing?.title || 'This listing'} will be removed permanently. This can't be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setDeletingListing(null)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="error"
-            disabled={deleteMutation.isPending}
-            onClick={() => {
-              if (!deletingListing) return
-              deleteMutation.mutate(deletingListing.id, { onSuccess: () => setDeletingListing(null) })
-            }}
-          >
-            {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={!!deletingListing}
+        title="Delete this listing?"
+        message={`${deletingListing?.title || 'This listing'} will be removed permanently. This can't be undone.`}
+        loading={deleteMutation.isPending}
+        onClose={() => setDeletingListing(null)}
+        onConfirm={() => {
+          if (!deletingListing) return
+          deleteMutation.mutate(deletingListing.postId, { onSuccess: () => setDeletingListing(null) })
+        }}
+      />
     </Box>
   )
 }

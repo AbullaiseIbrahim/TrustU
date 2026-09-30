@@ -1268,6 +1268,18 @@ const GridCard: React.FC<{
 
 type FilterTab = 'all' | 'friends' | 'mutual' | 'saved'
 
+// The listing API filters by feed server-side; 'all' sends no feed param.
+const FEED_PARAM: Record<FilterTab, string | undefined> = {
+  all: undefined,
+  friends: 'friends',
+  mutual: 'fof',
+  saved: 'saved',
+}
+const feedParams = (tab: FilterTab) => {
+  const feed = FEED_PARAM[tab]
+  return feed ? { feed } : undefined
+}
+
 // Wishlist has no backend endpoint yet (no /wishlist or /favorites route) —
 // persist locally so saved listings survive reloads/navigation instead of
 // resetting on every mount.
@@ -1593,9 +1605,22 @@ const AccommodationPage: React.FC = () => {
     }
   }, [savedIds])
 
-  // Fetch all accommodations
+  // Fetch all accommodations (unfiltered — drives the landing card counts)
   const { data, isLoading } = useAccommodations()
   const allAccommodations = data?.data ?? []
+
+  // Feed-filtered lists for the pill tabs. With the 'all' tab the params are
+  // undefined, so these share the cache entry with the unfiltered query above.
+  const { data: categoryFeedData, isLoading: categoryFeedLoading } = useAccommodations(
+    feedParams(filterTab),
+    { enabled: view === 'category' || view === 'subgroup', staleTime: 0 },
+  )
+  const categoryFeed = categoryFeedData?.data ?? []
+  const { data: allFeedData, isLoading: allFeedLoading } = useAccommodations(
+    feedParams(allFilterTab),
+    { enabled: view === 'all', staleTime: 0 },
+  )
+  const allFeed = allFeedData?.data ?? []
 
   // Deep link — a shared listing URL looks like /dashboard/accommodation?listing=<id>.
   // Fetch and open that specific listing directly on load.
@@ -1624,31 +1649,25 @@ const AccommodationPage: React.FC = () => {
 
   // Filter accommodations for current category + filter tab
   const categoryAccommodations = useMemo(() => {
-    let list = allAccommodations.filter(a => a.type === selectedType)
-
-    // Apply filter tab
-    if (filterTab === 'friends')   list = list.filter(a => a.isConnected)
-    if (filterTab === 'mutual')    list = list.filter(a => a.mutualFriends > 0)
-    if (filterTab === 'saved')     list = list.filter(a => savedIds.has(a.id))
+    // Filter tab is applied server-side via the feed param
+    const list = categoryFeed.filter(a => a.type === selectedType)
 
     // Short Stay gets its own filter sheet (dates, guests, poster) instead of
     // the generic one (roommates/location don't apply to Short Stay).
     return selectedType === 1
       ? applyShortStayFilters(list, shortStayFilters)
       : applyFilters(list, filters)
-  }, [allAccommodations, selectedType, filterTab, filters, shortStayFilters, savedIds])
+  }, [categoryFeed, selectedType, filters, shortStayFilters])
 
   const subGroups = getSubGroups(selectedType)
   const currentCategory = CATEGORIES.find(c => c.type === selectedType)
 
   // Unified "all categories" feed — every listing, newest first, independent of selectedType
   const allFilteredAccommodations = useMemo(() => {
-    let list = [...allAccommodations].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    if (allFilterTab === 'friends')   list = list.filter(a => a.isConnected)
-    if (allFilterTab === 'mutual')    list = list.filter(a => a.mutualFriends > 0)
-    if (allFilterTab === 'saved')     list = list.filter(a => savedIds.has(a.id))
+    // Filter tab is applied server-side via the feed param
+    const list = [...allFeed].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return applyFilters(list, allFilters)
-  }, [allAccommodations, allFilterTab, allFilters, savedIds])
+  }, [allFeed, allFilters])
 
   const handleToggleSave = (id: string) =>
     setSavedIds(prev => {
@@ -1719,7 +1738,7 @@ const AccommodationPage: React.FC = () => {
         </Box>
 
         <Box className={classes.subgroupList}>
-          {isLoading ? (
+          {allFeedLoading ? (
             <ContentSkeleton count={4} variant="post" />
           ) : allFilteredAccommodations.length === 0 ? (
             <EmptyState
@@ -1923,7 +1942,7 @@ const AccommodationPage: React.FC = () => {
       </Box>
 
       {/* Sub-type groups */}
-      {isLoading ? (
+      {categoryFeedLoading ? (
         <Box sx={{ px: 2 }}><ContentSkeleton count={2} variant="post" /></Box>
       ) : categoryAccommodations.length === 0 ? (
         <Box sx={{ px: 2 }}>

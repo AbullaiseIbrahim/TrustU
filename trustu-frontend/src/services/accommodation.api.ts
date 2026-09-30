@@ -37,6 +37,8 @@ export const accommodationGenderLabel = (v: number) =>
 
 export interface Accommodation {
   id: string
+  /** The feed post this listing belongs to — deleting a listing deletes this post */
+  postId: string
   userId: string
   userName: string
   title: string
@@ -178,7 +180,8 @@ function normalize(raw: any): Accommodation {
   const post = raw.post ?? {}
   return {
     id:             String(raw.id ?? ''),
-    userId:         String(post.user_id      ?? raw.user_id     ?? raw.userId     ?? ''),
+    postId:         String(raw.post_id ?? raw.postId ?? post.id ?? ''),
+    userId:        String(post.user_id      ?? raw.user_id     ?? raw.userId     ?? ''),
     userName:       String(post.user?.name   ?? raw.user_name   ?? raw.userName   ?? ''),
     title:          String(post.title        ?? raw.title       ?? ''),
     address:        String(raw.address       ?? ''),

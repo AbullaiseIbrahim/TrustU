@@ -31,6 +31,7 @@ import {
 } from '@/features/accommodation/hooks/useAccommodationQueries'
 import { accommodationTypeLabel } from '@/services/accommodation.api'
 import EditListingDialog from '@/features/accommodation/components/EditListingDialog'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import type { Accommodation } from '@/services/accommodation.api'
 
 const GENDER_OPTIONS: Gender[] = ['Male', 'Female', 'Other', 'Prefer not to say']
@@ -793,7 +794,7 @@ const MyListingsSection: React.FC = () => {
   const deleteMutation = useDeleteAccommodation()
   const listings: Accommodation[] = data?.data ?? []
   const [editingListing, setEditingListing] = useState<Accommodation | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingListing, setDeletingListing] = useState<Accommodation | null>(null)
 
   if (isLoading) return null
 
@@ -837,11 +838,8 @@ const MyListingsSection: React.FC = () => {
               <Box
                 component="button"
                 className={classes.listingDeleteBtn}
-                disabled={deleteMutation.isPending && deletingId === acc.id}
-                onClick={() => {
-                  setDeletingId(acc.id)
-                  deleteMutation.mutate(acc.id, { onSettled: () => setDeletingId(null) })
-                }}
+                disabled={deleteMutation.isPending && deletingListing?.id === acc.id}
+                onClick={() => setDeletingListing(acc)}
               >
                 <DeleteOutlineIcon sx={{ fontSize: '0.95rem' }} /> Delete
               </Box>
@@ -854,6 +852,18 @@ const MyListingsSection: React.FC = () => {
         open={!!editingListing}
         onClose={() => setEditingListing(null)}
         accommodation={editingListing}
+      />
+
+      <ConfirmDialog
+        open={!!deletingListing}
+        title="Delete this listing?"
+        message={`${deletingListing?.title || 'This listing'} will be removed permanently. This can't be undone.`}
+        loading={deleteMutation.isPending}
+        onClose={() => setDeletingListing(null)}
+        onConfirm={() => {
+          if (!deletingListing) return
+          deleteMutation.mutate(deletingListing.postId, { onSuccess: () => setDeletingListing(null) })
+        }}
       />
     </>
   )

@@ -4,6 +4,7 @@ import {
   type CreateAccommodationPayload,
   type UpdateAccommodationPayload,
 } from '@/services/accommodation.api'
+import { postsApi } from '@/services/posts.api'
 import { useSnackbar } from '@/app/SnackbarProvider'
 
 export const ACCOMMODATION_KEYS = {
@@ -12,11 +13,15 @@ export const ACCOMMODATION_KEYS = {
   detail: (id: string) => ['accommodations', id] as const,
 }
 
-export const useAccommodations = (params?: Record<string, unknown>) =>
+export const useAccommodations = (
+  params?: Record<string, unknown>,
+  options?: { enabled?: boolean; staleTime?: number },
+) =>
   useQuery({
     queryKey: ACCOMMODATION_KEYS.list(params),
     queryFn: () => accommodationApi.list(params),
-    staleTime: 30_000,
+    staleTime: options?.staleTime ?? 30_000,
+    enabled: options?.enabled ?? true,
   })
 
 export const useUserAccommodations = () =>
@@ -68,9 +73,12 @@ export const useDeleteAccommodation = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => accommodationApi.delete(id),
+    // A listing is removed by deleting its feed post (DELETE /posts/:postId),
+    // same as deleting the post from the community feed.
+    mutationFn: (postId: string) => postsApi.delete(postId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] })
+      queryClient.invalidateQueries({ queryKey: ['posts'] })
       showInfo('Listing removed.')
     },
   })

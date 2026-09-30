@@ -15,6 +15,7 @@ import type { Post } from '@/types/post.types'
 import { useCreateComment, useComments, useLikePost, useDeletePost, useDeleteComment } from '../hooks/usePostQueries'
 import { useAuth } from '@/app/AuthProvider'
 import colors from '@/theme/colors'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 interface PostCardProps {
   post: Post
@@ -239,9 +240,12 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const handleLike = () => likeMutation.mutate({ postId: post.id, hasLiked: post.hasLiked })
 
+  const [confirmDeletePost, setConfirmDeletePost] = useState(false)
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
+
   const handleDeletePost = () => {
     setMenuAnchor(null)
-    deleteMutation.mutate(post.id)
+    setConfirmDeletePost(true)
   }
 
   return (
@@ -403,7 +407,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                     <Typography className={classes.replyContent}>{comment.content}</Typography>
                     {!!user?.communityMemberId && comment.userId === user.communityMemberId && (
                       <Typography
-                        onClick={() => deleteCommentMutation.mutate(comment.id)}
+                        onClick={() => setDeletingCommentId(comment.id)}
                         sx={{ fontSize: '0.68rem', color: colors.urgent, cursor: 'pointer', mt: '4px', display: 'inline-block' }}
                       >
                         Delete
@@ -416,6 +420,27 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           )}
         </Box>
       </Collapse>
+
+      <ConfirmDialog
+        open={confirmDeletePost}
+        title="Delete this post?"
+        message="This post will be removed permanently. This can't be undone."
+        loading={deleteMutation.isPending}
+        onClose={() => setConfirmDeletePost(false)}
+        onConfirm={() => deleteMutation.mutate(post.id, { onSuccess: () => setConfirmDeletePost(false) })}
+      />
+
+      <ConfirmDialog
+        open={!!deletingCommentId}
+        title="Delete this comment?"
+        message="This comment will be removed permanently. This can't be undone."
+        loading={deleteCommentMutation.isPending}
+        onClose={() => setDeletingCommentId(null)}
+        onConfirm={() => {
+          if (!deletingCommentId) return
+          deleteCommentMutation.mutate(deletingCommentId, { onSuccess: () => setDeletingCommentId(null) })
+        }}
+      />
     </Box>
   )
 }
